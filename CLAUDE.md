@@ -25,6 +25,7 @@ Film, seyahat detayı, takvim entegrasyonu, ortak masraf paylaşımı = sonraki 
 ## Tasarım Dili — ÖNEMLİ
 
 Kullanıcı (Serkan) premium, modern, motion-rich arayüzleri tercih eder:
+
 - Statik/sıkıcı formlar YOK — spring animasyonlu sayılar, staggered giriş animasyonları, hover efektleri, akışkan geçişler
 - Apple / premium ürün estetiği; "gaming UI" neon estetiği DEĞİL
 - Temiz, minimal, az renk; boşluk kullanımı cömert

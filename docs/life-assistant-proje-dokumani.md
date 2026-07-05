@@ -1,6 +1,6 @@
 # Life Assistant — Proje Dokümanı v1.0
 
-*Konsolidasyon tarihi: 6 Temmuz 2026 · Sahibi: Serkan*
+_Konsolidasyon tarihi: 6 Temmuz 2026 · Sahibi: Serkan_
 
 ---
 
@@ -27,7 +27,7 @@ Kişinin günlük yaşamını dört alanda tek çatı altında yöneten, **AI-na
 - **Vizyondaki ve yakında çıkacak filmleri tarama** → kullanıcıya öneri akışı → "izlemek istiyorum" ile listeye ekleme.
 - Listeye eklenen filmler için **film günü otomatik hatırlatması** (takvim sütunuyla entegre).
 - Basit film puanlama sistemi (5 yıldız / 10 puan).
-- *Sonraki faz:* beğenilere göre kişiselleştirilmiş film önerisi (ayrı modül, hatta ayrı uygulama olabilir).
+- _Sonraki faz:_ beğenilere göre kişiselleştirilmiş film önerisi (ayrı modül, hatta ayrı uygulama olabilir).
 - Veri kaynağı adayı: TMDB API (vizyon + yakında çıkacaklar + Türkçe destek), streaming erişilebilirliği için JustWatch verisi.
 
 ### 2.3 Seyahat Planlama
@@ -51,12 +51,12 @@ Kişinin günlük yaşamını dört alanda tek çatı altında yöneten, **AI-na
 
 ## 3. Bağ Dokusu — Uygulamayı Özel Kılan Entegrasyonlar
 
-| Akış | Mevcut pazarda var mı? |
-|---|---|
-| Film listesi → takvimde film günü hatırlatması | Yok (Letterboxd sadece streaming bildirimi yapıyor) |
-| Seyahat planı → kişisel bütçede tasarruf kalemi | Yok (Wanderlog vb. seyahat-silosu) |
-| Ortak masraf (settlement) → kişisel bütçe yansıması | Yok (Tricount/Splitwise kişisel bütçeden kopuk) |
-| İstek listesi → aylık biriktirme → gider kalemi | Yok — en özgün fikir |
+| Akış                                                | Mevcut pazarda var mı?                              |
+| --------------------------------------------------- | --------------------------------------------------- |
+| Film listesi → takvimde film günü hatırlatması      | Yok (Letterboxd sadece streaming bildirimi yapıyor) |
+| Seyahat planı → kişisel bütçede tasarruf kalemi     | Yok (Wanderlog vb. seyahat-silosu)                  |
+| Ortak masraf (settlement) → kişisel bütçe yansıması | Yok (Tricount/Splitwise kişisel bütçeden kopuk)     |
+| İstek listesi → aylık biriktirme → gider kalemi     | Yok — en özgün fikir                                |
 
 ---
 
@@ -81,24 +81,16 @@ Kişinin günlük yaşamını dört alanda tek çatı altında yöneten, **AI-na
 ## 6. Önceliklendirme (Taslak Yol Haritası)
 
 **MVP (Faz 1) — çekirdek döngü:**
+
 1. Kişisel bütçe temel modülü (gelir, standart giderler, aylık görünüm)
 2. İstek listesi (harcama + seyahat) → tasarruf hedefi → gider kalemi döngüsü
 3. Basit hatırlatma/bildirim altyapısı
 
-**Faz 2 — yaşam katmanı:**
-4. Film izleme listesi + vizyon taraması + film günü hatırlatması
-5. Takvim entegrasyonu (Google Calendar) + yaşam kategorileri
-6. Günlük/haftalık limit asistanı (proaktif uyarılar)
+**Faz 2 — yaşam katmanı:** 4. Film izleme listesi + vizyon taraması + film günü hatırlatması 5. Takvim entegrasyonu (Google Calendar) + yaşam kategorileri 6. Günlük/haftalık limit asistanı (proaktif uyarılar)
 
-**Faz 3 — sosyal katman:**
-7. Seyahat planlayıcı (not defteri modeli) + takvim/bütçe bağları
-8. Ortak seyahat + Tricount tarzı masraf paylaşımı ve settlement
-9. Ortak masraf → kişisel bütçe yansıması
+**Faz 3 — sosyal katman:** 7. Seyahat planlayıcı (not defteri modeli) + takvim/bütçe bağları 8. Ortak seyahat + Tricount tarzı masraf paylaşımı ve settlement 9. Ortak masraf → kişisel bütçe yansıması
 
-**Faz 4 — akıl katmanı:**
-10. AI asistan kabuğu (doğal dille giriş: "cuma sinemaya gidiyoruz, 600 TL bütçem var" → otomatik kayıt + hatırlatma)
-11. Beğeniye göre film önerisi
-12. Aylık AI raporları / içgörüler
+**Faz 4 — akıl katmanı:** 10. AI asistan kabuğu (doğal dille giriş: "cuma sinemaya gidiyoruz, 600 TL bütçem var" → otomatik kayıt + hatırlatma) 11. Beğeniye göre film önerisi 12. Aylık AI raporları / içgörüler
 
 ---
 
@@ -120,4 +112,4 @@ Kişinin günlük yaşamını dört alanda tek çatı altında yöneten, **AI-na
 
 ---
 
-*Bu doküman yaşayan bir belgedir; yeni fikirler geldikçe güncellenir.*
+_Bu doküman yaşayan bir belgedir; yeni fikirler geldikçe güncellenir._
