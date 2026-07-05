@@ -31,15 +31,24 @@ Kullanıcı (Serkan) premium, modern, motion-rich arayüzleri tercih eder:
 - Temiz, minimal, az renk; boşluk kullanımı cömert
 - Mobil öncelikli tasarla (375px genişlik referans), sonra desktop
 
-## Veri Modeli Taslağı
+## Veri Modeli (v1 — 2026-07-06'da birlikte kararlaştırıldı)
 
-- `users` (Supabase Auth)
-- `incomes`: user_id, ad, tutar, maaş_günü (ayın günü), otomatik_yenile (bool)
-- `expense_items`: user_id, ad, tutar, periyot (haftalık/aylık/yıllık), kategori, kaynak (manuel | tasarruf_hedefi)
-- `wishlist_items`: user_id, ad, tip (harcama | seyahat), tahmini_tutar, hedef_tarih, durum
-- `savings_goals`: wishlist_item_id, aylık_tutar (hesaplanan), başlangıç_tarihi, biriken_tutar, expense_item_id (bütçeye eklenmişse)
+Şema `supabase/migrations/20260706010000_initial_schema.sql` dosyasında. Tablo/kolon adları İngilizce.
 
-Bu taslak; ilk oturumda birlikte gözden geçirip migration'ları öyle yaz.
+- `incomes`: name, amount, currency, salary_day, auto_renew
+- `expense_items`: name, amount, currency, period (weekly|monthly|yearly), category, source (manual|savings_goal), is_active
+- `wishlist_items`: name, kind (purchase|travel), estimated_amount, currency, target_date, status
+- `savings_goals`: wishlist_item_id (unique), target_amount (dönüşümde sabitlenir), monthly_amount, start_date, expense_item_id, status
+- `savings_contributions`: savings_goal_id, amount, contributed_on, note — biriken tutar bu ledger'ın toplamı
+- `reminders`: title, due_on, source_type, source_id, status — MVP'de yalnızca uygulama içi
+
+Alınan kararlar:
+
+- Para: `numeric(12,2)` + ISO `currency` kolonu (varsayılan 'TRY')
+- Her tabloda RLS aktif, politika: `user_id = auth.uid()` (her işlem için ayrı policy)
+- `updated_at` trigger'la güncellenir
+- Auth: e-posta+şifre ve Google OAuth birlikte
+- Push bildirimi Faz 2; MVP'de hatırlatmalar uygulama içi
 
 ## Çalışma Kuralları
 
