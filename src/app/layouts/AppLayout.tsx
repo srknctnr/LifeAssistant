@@ -1,6 +1,8 @@
-import { Home, Sparkles, Wallet } from 'lucide-react'
+import { Home, LogOut, Sparkles, Wallet } from 'lucide-react'
 import { motion } from 'motion/react'
 import { NavLink, Outlet } from 'react-router-dom'
+
+import { useAuth } from '@/features/auth/useAuth'
 
 const navItems = [
   { to: '/', label: 'Özet', icon: Home },
@@ -9,9 +11,27 @@ const navItems = [
 ]
 
 export function AppLayout() {
+  const { signOut } = useAuth()
+
   return (
     <div className="mx-auto flex min-h-dvh max-w-md flex-col">
-      <main className="flex-1 px-5 pt-8 pb-28">
+      <header className="flex items-center justify-between px-5 pt-6">
+        <div className="flex items-center gap-2.5">
+          <img src="/logo.svg" alt="" className="h-7 w-7 rounded-lg" />
+          <span className="text-sm font-semibold tracking-tight">
+            Life Assistant
+          </span>
+        </div>
+        <button
+          onClick={() => void signOut()}
+          aria-label="Çıkış yap"
+          className="rounded-full p-2 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-600"
+        >
+          <LogOut size={18} />
+        </button>
+      </header>
+
+      <main className="flex-1 px-5 pt-6 pb-28">
         <Outlet />
       </main>
 
