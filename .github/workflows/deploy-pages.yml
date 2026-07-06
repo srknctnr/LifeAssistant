@@ -4,9 +4,13 @@
 
 name: Deploy to GitHub Pages
 
+# Manual-only until Pages is enabled in repo settings; switch back to
+# push-triggered when going live:
+#   on:
+#     push:
+#       branches: [main]
+#     workflow_dispatch:
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 permissions:
