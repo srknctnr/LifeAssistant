@@ -5,11 +5,8 @@ import { Segmented } from '@/components/Segmented'
 import { TextField } from '@/components/TextField'
 import { useAuth } from '@/features/auth/useAuth'
 import { useCreateExpenseItem } from '@/features/budget/hooks'
-import {
-  parseAmountInput,
-  PERIOD_LABELS,
-  type ExpensePeriod,
-} from '@/features/budget/money'
+import { PERIOD_LABELS, type ExpensePeriod } from '@/features/budget/money'
+import { parseAmountInput } from '@/lib/money'
 
 const periodOptions = (
   Object.entries(PERIOD_LABELS) as [ExpensePeriod, string][]

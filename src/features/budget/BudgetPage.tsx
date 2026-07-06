@@ -1,10 +1,13 @@
-import { Plus, Trash2 } from 'lucide-react'
+import { Trash2 } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
-import { useState, type ReactNode } from 'react'
+import { useState } from 'react'
 
 import { AnimatedNumber } from '@/components/AnimatedNumber'
+import { EmptyState } from '@/components/EmptyState'
 import { PageTransition } from '@/components/PageTransition'
+import { Section } from '@/components/Section'
 import { Sheet } from '@/components/Sheet'
+import { SkeletonRows } from '@/components/SkeletonRows'
 import type { ExpenseItem, Income } from '@/features/budget/api'
 import { ExpenseForm } from '@/features/budget/ExpenseForm'
 import {
@@ -15,11 +18,11 @@ import {
 } from '@/features/budget/hooks'
 import { IncomeForm } from '@/features/budget/IncomeForm'
 import {
-  formatMoney,
   monthlyEquivalent,
   PERIOD_LABELS,
   PERIOD_SUFFIX,
 } from '@/features/budget/money'
+import { formatMoney } from '@/lib/money'
 
 type SheetKind = 'income' | 'expense' | null
 
@@ -127,32 +130,6 @@ export function BudgetPage() {
   )
 }
 
-function Section({
-  title,
-  onAdd,
-  children,
-}: {
-  title: string
-  onAdd: () => void
-  children: ReactNode
-}) {
-  return (
-    <section className="mt-8">
-      <div className="mb-3 flex items-center justify-between">
-        <h2 className="text-base font-semibold tracking-tight">{title}</h2>
-        <button
-          onClick={onAdd}
-          aria-label={`${title} ekle`}
-          className="rounded-full bg-indigo-50 p-2 text-indigo-600 transition-colors hover:bg-indigo-100"
-        >
-          <Plus size={17} strokeWidth={2.4} />
-        </button>
-      </div>
-      {children}
-    </section>
-  )
-}
-
 function IncomeRow({ income }: { income: Income }) {
   const deleteIncome = useDeleteIncome()
 
@@ -229,22 +206,5 @@ function ExpenseRow({ item }: { item: ExpenseItem }) {
         </button>
       </div>
     </motion.li>
-  )
-}
-
-function SkeletonRows() {
-  return (
-    <div className="space-y-2.5">
-      <div className="h-16 animate-pulse rounded-2xl bg-zinc-100" />
-      <div className="h-16 animate-pulse rounded-2xl bg-zinc-100" />
-    </div>
-  )
-}
-
-function EmptyState({ text }: { text: string }) {
-  return (
-    <div className="rounded-2xl border border-dashed border-zinc-200 p-5 text-center text-sm text-zinc-400">
-      {text}
-    </div>
   )
 }

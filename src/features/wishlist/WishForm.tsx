@@ -1,19 +1,22 @@
 import { useState, type FormEvent } from 'react'
 
 import { Button } from '@/components/Button'
-import { Switch } from '@/components/Switch'
+import { Segmented } from '@/components/Segmented'
 import { TextField } from '@/components/TextField'
 import { useAuth } from '@/features/auth/useAuth'
-import { useCreateIncome } from '@/features/budget/hooks'
+import { useCreateWishlistItem } from '@/features/wishlist/hooks'
+import type { Enums } from '@/lib/database.types'
 import { parseAmountInput } from '@/lib/money'
 
-export function IncomeForm({ onDone }: { onDone: () => void }) {
+type WishlistKind = Enums<'wishlist_kind'>
+
+export function WishForm({ onDone }: { onDone: () => void }) {
   const { session } = useAuth()
-  const createIncome = useCreateIncome()
+  const createItem = useCreateWishlistItem()
   const [name, setName] = useState('')
+  const [kind, setKind] = useState<WishlistKind>('purchase')
   const [amount, setAmount] = useState('')
-  const [salaryDay, setSalaryDay] = useState('1')
-  const [autoRenew, setAutoRenew] = useState(true)
+  const [targetDate, setTargetDate] = useState('')
   const [error, setError] = useState<string | null>(null)
 
   async function handleSubmit(event: FormEvent) {
@@ -25,20 +28,15 @@ export function IncomeForm({ onDone }: { onDone: () => void }) {
       setError('Geçerli bir tutar gir (örn. 4500 veya 4500,50).')
       return
     }
-    const day = Number.parseInt(salaryDay, 10)
-    if (!day || day < 1 || day > 31) {
-      setError('Maaş günü 1 ile 31 arasında olmalı.')
-      return
-    }
     if (!session) return
 
     try {
-      await createIncome.mutateAsync({
+      await createItem.mutateAsync({
         user_id: session.user.id,
         name: name.trim(),
-        amount: parsedAmount,
-        salary_day: day,
-        auto_renew: autoRenew,
+        kind,
+        estimated_amount: parsedAmount,
+        target_date: targetDate || null,
       })
       onDone()
     } catch {
@@ -49,14 +47,25 @@ export function IncomeForm({ onDone }: { onDone: () => void }) {
   return (
     <form className="space-y-4" onSubmit={handleSubmit}>
       <TextField
-        label="Ad"
+        label="Ne istiyorsun?"
         required
-        placeholder="Maaş"
+        placeholder="Kapadokya gezisi, yeni telefon…"
         value={name}
         onChange={(e) => setName(e.target.value)}
       />
+      <div className="space-y-1.5">
+        <span className="block text-sm font-medium text-zinc-700">Tür</span>
+        <Segmented<WishlistKind>
+          options={[
+            { value: 'purchase', label: 'Harcama' },
+            { value: 'travel', label: 'Seyahat' },
+          ]}
+          value={kind}
+          onChange={setKind}
+        />
+      </div>
       <TextField
-        label="Tutar (₺)"
+        label="Tahmini tutar (₺)"
         required
         inputMode="decimal"
         placeholder="0,00"
@@ -64,27 +73,16 @@ export function IncomeForm({ onDone }: { onDone: () => void }) {
         onChange={(e) => setAmount(e.target.value)}
       />
       <TextField
-        label="Maaş günü (ayın kaçı?)"
-        required
-        type="number"
-        min={1}
-        max={31}
-        value={salaryDay}
-        onChange={(e) => setSalaryDay(e.target.value)}
-      />
-      <Switch
-        checked={autoRenew}
-        onChange={setAutoRenew}
-        label="Maaş gününde otomatik yenile"
+        label="Hedef tarih (isteğe bağlı)"
+        type="date"
+        min={new Date().toISOString().split('T')[0]}
+        value={targetDate}
+        onChange={(e) => setTargetDate(e.target.value)}
       />
 
       {error && <p className="text-sm text-red-600">{error}</p>}
 
-      <Button
-        type="submit"
-        isLoading={createIncome.isPending}
-        className="w-full"
-      >
+      <Button type="submit" isLoading={createItem.isPending} className="w-full">
         Kaydet
       </Button>
     </form>

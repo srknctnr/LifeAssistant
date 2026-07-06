@@ -263,7 +263,17 @@ export interface Database {
       }
     }
     Views: Record<string, never>
-    Functions: Record<string, never>
+    Functions: {
+      convert_wishlist_item: {
+        Args: {
+          p_wishlist_item_id: string
+          p_monthly_amount: number
+          p_target_date?: string | null
+          p_start_date?: string
+        }
+        Returns: string
+      }
+    }
     Enums: {
       expense_period: 'weekly' | 'monthly' | 'yearly'
       expense_source: 'manual' | 'savings_goal'
