@@ -15,10 +15,12 @@ export function Switch({ checked, onChange, label }: SwitchProps) {
       onClick={() => onChange(!checked)}
       className="flex w-full items-center justify-between py-1"
     >
-      <span className="text-sm font-medium text-zinc-700">{label}</span>
+      <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+        {label}
+      </span>
       <span
         className={`flex h-7 w-12 items-center rounded-full p-1 transition-colors ${
-          checked ? 'bg-indigo-600' : 'bg-zinc-200'
+          checked ? 'bg-indigo-600' : 'bg-zinc-200 dark:bg-zinc-700'
         }`}
       >
         <motion.span

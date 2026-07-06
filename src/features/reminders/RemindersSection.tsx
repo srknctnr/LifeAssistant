@@ -56,11 +56,13 @@ function ReminderRow({ reminder }: { reminder: Reminder }) {
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, x: -16 }}
-      className="flex items-center gap-3 rounded-2xl bg-white p-4 shadow-sm shadow-zinc-200/60"
+      className="flex items-center gap-3 rounded-2xl bg-white p-4 shadow-sm shadow-zinc-200/60 dark:bg-zinc-900 dark:shadow-none"
     >
       <span
         className={`rounded-xl p-2.5 ${
-          isOverdue ? 'bg-red-50 text-red-500' : 'bg-amber-50 text-amber-500'
+          isOverdue
+            ? 'bg-red-50 text-red-500 dark:bg-red-500/10 dark:text-red-400'
+            : 'bg-amber-50 text-amber-500 dark:bg-amber-500/10 dark:text-amber-400'
         }`}
       >
         <Bell size={18} />
@@ -68,7 +70,7 @@ function ReminderRow({ reminder }: { reminder: Reminder }) {
       <div className="min-w-0 flex-1">
         <p className="truncate font-medium">{reminder.title}</p>
         <p
-          className={`text-xs ${isOverdue ? 'font-medium text-red-500' : 'text-zinc-400'}`}
+          className={`text-xs ${isOverdue ? 'font-medium text-red-500 dark:text-red-400' : 'text-zinc-400'}`}
         >
           {formatDate(reminder.due_on)}
           {isOverdue ? ' · gecikti' : ''}
@@ -77,7 +79,7 @@ function ReminderRow({ reminder }: { reminder: Reminder }) {
       <button
         aria-label={`${reminder.title} hatırlatmasını tamamla`}
         onClick={() => setStatus.mutate({ id: reminder.id, status: 'done' })}
-        className="rounded-full p-2 text-zinc-300 transition-colors hover:bg-emerald-50 hover:text-emerald-600"
+        className="rounded-full p-2 text-zinc-300 transition-colors hover:bg-emerald-50 hover:text-emerald-600 dark:text-zinc-600 dark:hover:bg-emerald-500/10 dark:hover:text-emerald-400"
       >
         <Check size={17} strokeWidth={2.4} />
       </button>
@@ -86,7 +88,7 @@ function ReminderRow({ reminder }: { reminder: Reminder }) {
         onClick={() =>
           setStatus.mutate({ id: reminder.id, status: 'dismissed' })
         }
-        className="-ml-1 rounded-full p-2 text-zinc-300 transition-colors hover:bg-zinc-100 hover:text-zinc-500"
+        className="-ml-1 rounded-full p-2 text-zinc-300 transition-colors hover:bg-zinc-100 hover:text-zinc-500 dark:text-zinc-600 dark:hover:bg-zinc-800 dark:hover:text-zinc-400"
       >
         <X size={17} />
       </button>

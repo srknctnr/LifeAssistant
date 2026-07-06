@@ -1,6 +1,8 @@
 @import '@fontsource-variable/inter';
 @import 'tailwindcss';
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   --font-sans:
     'Inter Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI',
@@ -11,8 +13,12 @@
   color-scheme: light;
 }
 
+.dark {
+  color-scheme: dark;
+}
+
 @layer base {
   body {
-    @apply bg-zinc-50 font-sans text-zinc-900 antialiased;
+    @apply bg-zinc-50 font-sans text-zinc-900 antialiased dark:bg-zinc-950 dark:text-zinc-100;
   }
 }

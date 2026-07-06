@@ -11,7 +11,8 @@ interface ButtonProps extends Omit<HTMLMotionProps<'button'>, 'children'> {
 const variantStyles = {
   primary:
     'bg-indigo-600 text-white shadow-sm shadow-indigo-600/20 hover:bg-indigo-500',
-  ghost: 'text-zinc-600 hover:bg-zinc-100',
+  ghost:
+    'text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800',
 }
 
 export function Button({

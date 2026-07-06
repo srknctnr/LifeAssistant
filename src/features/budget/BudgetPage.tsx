@@ -74,42 +74,44 @@ export function BudgetPage() {
       </div>
 
       {hasError && (
-        <p className="mt-4 text-sm text-red-600">
+        <p className="mt-4 text-sm text-red-600 dark:text-red-400">
           Veriler yüklenemedi. Bağlantını kontrol edip sayfayı yenile.
         </p>
       )}
 
-      <Section title="Gelirler" onAdd={() => setOpenSheet('income')}>
-        {incomes.isPending ? (
-          <SkeletonRows />
-        ) : (incomes.data ?? []).length === 0 ? (
-          <EmptyState text="Henüz gelir eklemedin. Maaşını ekleyerek başla." />
-        ) : (
-          <ul className="space-y-2.5">
-            <AnimatePresence initial={false}>
-              {incomes.data?.map((income) => (
-                <IncomeRow key={income.id} income={income} />
-              ))}
-            </AnimatePresence>
-          </ul>
-        )}
-      </Section>
+      <div className="lg:grid lg:grid-cols-2 lg:items-start lg:gap-x-6">
+        <Section title="Gelirler" onAdd={() => setOpenSheet('income')}>
+          {incomes.isPending ? (
+            <SkeletonRows />
+          ) : (incomes.data ?? []).length === 0 ? (
+            <EmptyState text="Henüz gelir eklemedin. Maaşını ekleyerek başla." />
+          ) : (
+            <ul className="space-y-2.5">
+              <AnimatePresence initial={false}>
+                {incomes.data?.map((income) => (
+                  <IncomeRow key={income.id} income={income} />
+                ))}
+              </AnimatePresence>
+            </ul>
+          )}
+        </Section>
 
-      <Section title="Giderler" onAdd={() => setOpenSheet('expense')}>
-        {expenses.isPending ? (
-          <SkeletonRows />
-        ) : (expenses.data ?? []).length === 0 ? (
-          <EmptyState text="Henüz gider eklemedin. Kira, faturalar, abonelikler…" />
-        ) : (
-          <ul className="space-y-2.5">
-            <AnimatePresence initial={false}>
-              {expenses.data?.map((item) => (
-                <ExpenseRow key={item.id} item={item} />
-              ))}
-            </AnimatePresence>
-          </ul>
-        )}
-      </Section>
+        <Section title="Giderler" onAdd={() => setOpenSheet('expense')}>
+          {expenses.isPending ? (
+            <SkeletonRows />
+          ) : (expenses.data ?? []).length === 0 ? (
+            <EmptyState text="Henüz gider eklemedin. Kira, faturalar, abonelikler…" />
+          ) : (
+            <ul className="space-y-2.5">
+              <AnimatePresence initial={false}>
+                {expenses.data?.map((item) => (
+                  <ExpenseRow key={item.id} item={item} />
+                ))}
+              </AnimatePresence>
+            </ul>
+          )}
+        </Section>
+      </div>
 
       <Sheet
         open={openSheet === 'income'}
@@ -138,7 +140,7 @@ function IncomeRow({ income }: { income: Income }) {
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, x: -16 }}
-      className="flex items-center justify-between rounded-2xl bg-white p-4 shadow-sm shadow-zinc-200/60"
+      className="flex items-center justify-between rounded-2xl bg-white p-4 shadow-sm shadow-zinc-200/60 dark:bg-zinc-900 dark:shadow-none"
     >
       <div>
         <p className="font-medium">{income.name}</p>
@@ -154,7 +156,7 @@ function IncomeRow({ income }: { income: Income }) {
         <button
           aria-label={`${income.name} gelirini sil`}
           onClick={() => deleteIncome.mutate(income.id)}
-          className="rounded-full p-1.5 text-zinc-300 transition-colors hover:bg-red-50 hover:text-red-500"
+          className="rounded-full p-1.5 text-zinc-300 transition-colors hover:bg-red-50 hover:text-red-500 dark:text-zinc-600 dark:hover:bg-red-500/10 dark:hover:text-red-400"
         >
           <Trash2 size={15} />
         </button>
@@ -172,7 +174,7 @@ function ExpenseRow({ item }: { item: ExpenseItem }) {
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, x: -16 }}
-      className="flex items-center justify-between rounded-2xl bg-white p-4 shadow-sm shadow-zinc-200/60"
+      className="flex items-center justify-between rounded-2xl bg-white p-4 shadow-sm shadow-zinc-200/60 dark:bg-zinc-900 dark:shadow-none"
     >
       <div>
         <p className="font-medium">{item.name}</p>
@@ -201,7 +203,7 @@ function ExpenseRow({ item }: { item: ExpenseItem }) {
         <button
           aria-label={`${item.name} giderini sil`}
           onClick={() => deleteExpenseItem.mutate(item.id)}
-          className="rounded-full p-1.5 text-zinc-300 transition-colors hover:bg-red-50 hover:text-red-500"
+          className="rounded-full p-1.5 text-zinc-300 transition-colors hover:bg-red-50 hover:text-red-500 dark:text-zinc-600 dark:hover:bg-red-500/10 dark:hover:text-red-400"
         >
           <Trash2 size={15} />
         </button>

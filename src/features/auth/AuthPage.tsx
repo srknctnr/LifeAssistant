@@ -104,7 +104,7 @@ export function AuthPage() {
           <h1 className="mt-5 text-2xl font-semibold tracking-tight">
             Life Assistant
           </h1>
-          <p className="mt-1.5 text-sm text-zinc-500">
+          <p className="mt-1.5 text-sm text-zinc-500 dark:text-zinc-400">
             Hedeflerin, bütçenle buluşsun.
           </p>
         </motion.div>
@@ -167,7 +167,7 @@ export function AuthPage() {
                 initial={{ opacity: 0, y: -4 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0 }}
-                className="text-sm text-red-600"
+                className="text-sm text-red-600 dark:text-red-400"
               >
                 {error}
               </motion.p>
@@ -178,7 +178,7 @@ export function AuthPage() {
                 initial={{ opacity: 0, y: -4 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0 }}
-                className="text-sm text-emerald-600"
+                className="text-sm text-emerald-600 dark:text-emerald-400"
               >
                 {info}
               </motion.p>

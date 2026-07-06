@@ -59,9 +59,9 @@ export function ConvertForm({ item, onDone }: ConvertFormProps) {
 
   return (
     <form className="space-y-4" onSubmit={handleSubmit}>
-      <div className="rounded-2xl bg-zinc-50 p-4">
+      <div className="rounded-2xl bg-zinc-50 p-4 dark:bg-zinc-800">
         <p className="font-medium">{item.name}</p>
-        <p className="mt-0.5 text-sm text-zinc-500">
+        <p className="mt-0.5 text-sm text-zinc-500 dark:text-zinc-400">
           Hedef tutar: {formatMoney(item.estimated_amount, item.currency)}
         </p>
       </div>
@@ -88,15 +88,17 @@ export function ConvertForm({ item, onDone }: ConvertFormProps) {
       />
 
       {months !== null && parsedMonthly && (
-        <p className="text-sm text-zinc-500">
+        <p className="text-sm text-zinc-500 dark:text-zinc-400">
           {months} ay × {formatMoney(parsedMonthly)} ={' '}
-          <span className="font-medium text-zinc-700">
+          <span className="font-medium text-zinc-700 dark:text-zinc-300">
             {formatMoney(months * parsedMonthly)}
           </span>
         </p>
       )}
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && (
+        <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+      )}
 
       <Button type="submit" isLoading={convert.isPending} className="w-full">
         Bütçeme gider olarak ekle

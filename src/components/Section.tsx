@@ -16,7 +16,7 @@ export function Section({ title, onAdd, children }: SectionProps) {
           <button
             onClick={onAdd}
             aria-label={`${title} ekle`}
-            className="rounded-full bg-indigo-50 p-2 text-indigo-600 transition-colors hover:bg-indigo-100"
+            className="rounded-full bg-indigo-50 p-2 text-indigo-600 transition-colors hover:bg-indigo-100 dark:bg-indigo-500/10 dark:text-indigo-400 dark:hover:bg-indigo-500/20"
           >
             <Plus size={17} strokeWidth={2.4} />
           </button>

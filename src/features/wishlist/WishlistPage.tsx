@@ -49,7 +49,7 @@ export function WishlistPage() {
   return (
     <PageTransition>
       <h1 className="text-2xl font-semibold tracking-tight">İstek Listesi</h1>
-      <p className="mt-2 text-sm text-zinc-500">
+      <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
         Bir istek ekle, tarihini seç; aylık biriktirme tutarını hesaplayıp
         bütçene ekleyelim.
       </p>
@@ -147,10 +147,10 @@ function GoalCard({
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, x: -16 }}
-      className="rounded-2xl bg-white p-4 shadow-sm shadow-zinc-200/60"
+      className="rounded-2xl bg-white p-4 shadow-sm shadow-zinc-200/60 dark:bg-zinc-900 dark:shadow-none"
     >
       <div className="flex items-center gap-3">
-        <span className="rounded-xl bg-indigo-50 p-2.5 text-indigo-600">
+        <span className="rounded-xl bg-indigo-50 p-2.5 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400">
           <Icon size={18} />
         </span>
         <div className="min-w-0 flex-1">
@@ -161,13 +161,13 @@ function GoalCard({
           </p>
         </div>
         {isComplete ? (
-          <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-600">
+          <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400">
             Tamamlandı 🎉
           </span>
         ) : (
           <button
             onClick={onContribute}
-            className="flex items-center gap-1.5 rounded-full bg-indigo-50 px-3 py-1.5 text-xs font-semibold text-indigo-600 transition-colors hover:bg-indigo-100"
+            className="flex items-center gap-1.5 rounded-full bg-indigo-50 px-3 py-1.5 text-xs font-semibold text-indigo-600 transition-colors hover:bg-indigo-100 dark:bg-indigo-500/10 dark:text-indigo-400 dark:hover:bg-indigo-500/20"
           >
             <PiggyBank size={14} />
             Katkı ekle
@@ -175,7 +175,7 @@ function GoalCard({
         )}
       </div>
 
-      <div className="mt-3.5 h-2 overflow-hidden rounded-full bg-zinc-100">
+      <div className="mt-3.5 h-2 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">
         <motion.div
           className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-violet-500"
           initial={{ width: 0 }}
@@ -212,10 +212,10 @@ function WishRow({
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, x: -16 }}
-      className="rounded-2xl bg-white p-4 shadow-sm shadow-zinc-200/60"
+      className="rounded-2xl bg-white p-4 shadow-sm shadow-zinc-200/60 dark:bg-zinc-900 dark:shadow-none"
     >
       <div className="flex items-center gap-3">
-        <span className="rounded-xl bg-zinc-100 p-2.5 text-zinc-500">
+        <span className="rounded-xl bg-zinc-100 p-2.5 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">
           <Icon size={18} />
         </span>
         <div className="min-w-0 flex-1">
@@ -231,14 +231,14 @@ function WishRow({
         <button
           aria-label={`${item.name} isteğini sil`}
           onClick={() => deleteItem.mutate(item.id)}
-          className="rounded-full p-1.5 text-zinc-300 transition-colors hover:bg-red-50 hover:text-red-500"
+          className="rounded-full p-1.5 text-zinc-300 transition-colors hover:bg-red-50 hover:text-red-500 dark:text-zinc-600 dark:hover:bg-red-500/10 dark:hover:text-red-400"
         >
           <Trash2 size={15} />
         </button>
       </div>
       <button
         onClick={onConvert}
-        className="mt-3 w-full rounded-xl bg-indigo-50 py-2.5 text-sm font-semibold text-indigo-600 transition-colors hover:bg-indigo-100"
+        className="mt-3 w-full rounded-xl bg-indigo-50 py-2.5 text-sm font-semibold text-indigo-600 transition-colors hover:bg-indigo-100 dark:bg-indigo-500/10 dark:text-indigo-400 dark:hover:bg-indigo-500/20"
       >
         Tasarruf hedefine dönüştür
       </button>

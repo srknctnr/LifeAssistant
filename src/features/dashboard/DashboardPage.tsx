@@ -42,12 +42,12 @@ export function DashboardPage() {
   return (
     <PageTransition>
       <h1 className="text-2xl font-semibold tracking-tight">Özet</h1>
-      <p className="mt-1 text-sm text-zinc-500">
+      <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
         Merhaba{firstName ? ` ${firstName}` : ''} 👋 · {formatDate(new Date())}
       </p>
 
       {budgetLoading ? (
-        <div className="mt-5 h-32 animate-pulse rounded-3xl bg-zinc-100" />
+        <div className="mt-5 h-32 animate-pulse rounded-3xl bg-zinc-100 dark:bg-zinc-800" />
       ) : hasBudget ? (
         <div className="mt-5 rounded-3xl bg-gradient-to-br from-indigo-600 to-violet-600 p-6 text-white shadow-lg shadow-indigo-600/20">
           <p className="text-sm text-indigo-100">Bu ay kalan</p>
@@ -77,7 +77,7 @@ export function DashboardPage() {
         Hedeflerim
       </h2>
       {goals.isPending ? (
-        <div className="h-20 animate-pulse rounded-2xl bg-zinc-100" />
+        <div className="h-20 animate-pulse rounded-2xl bg-zinc-100 dark:bg-zinc-800" />
       ) : activeGoals.length === 0 ? (
         <CtaCard
           to="/wishlist"
@@ -92,7 +92,7 @@ export function DashboardPage() {
             return (
               <li
                 key={goal.id}
-                className="rounded-2xl bg-white p-4 shadow-sm shadow-zinc-200/60"
+                className="rounded-2xl bg-white p-4 shadow-sm shadow-zinc-200/60 dark:bg-zinc-900 dark:shadow-none"
               >
                 <div className="flex items-baseline justify-between gap-3">
                   <p className="truncate font-medium">
@@ -102,7 +102,7 @@ export function DashboardPage() {
                     %{Math.round(progress * 100)}
                   </p>
                 </div>
-                <div className="mt-2.5 h-2 overflow-hidden rounded-full bg-zinc-100">
+                <div className="mt-2.5 h-2 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">
                   <motion.div
                     className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-violet-500"
                     initial={{ width: 0 }}
@@ -116,7 +116,7 @@ export function DashboardPage() {
           <li>
             <Link
               to="/wishlist"
-              className="inline-flex items-center gap-1 text-sm font-medium text-indigo-600 transition-colors hover:text-indigo-500"
+              className="inline-flex items-center gap-1 text-sm font-medium text-indigo-600 transition-colors hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-300"
             >
               Tümünü gör <ArrowRight size={15} />
             </Link>
@@ -139,12 +139,12 @@ function CtaCard({
   return (
     <Link
       to={to}
-      className="mt-5 block rounded-3xl border border-dashed border-zinc-200 bg-white/60 p-5 transition-colors hover:border-indigo-300 hover:bg-indigo-50/40"
+      className="mt-5 block rounded-3xl border border-dashed border-zinc-200 bg-white/60 p-5 transition-colors hover:border-indigo-300 hover:bg-indigo-50/40 dark:border-zinc-800 dark:bg-zinc-900/60 dark:hover:border-indigo-700 dark:hover:bg-indigo-500/10"
     >
-      <p className="flex items-center gap-1.5 font-semibold text-indigo-600">
+      <p className="flex items-center gap-1.5 font-semibold text-indigo-600 dark:text-indigo-400">
         {title} <ArrowRight size={16} />
       </p>
-      <p className="mt-1 text-sm text-zinc-500">{text}</p>
+      <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">{text}</p>
     </Link>
   )
 }
