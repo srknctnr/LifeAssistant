@@ -62,7 +62,10 @@ export function AuthPage() {
         const { data, error: signUpError } = await supabase.auth.signUp({
           email,
           password,
-          options: { emailRedirectTo: window.location.origin },
+          options: {
+            // include the base path so confirmation links work on GitHub Pages too
+            emailRedirectTo: `${window.location.origin}${import.meta.env.BASE_URL}`,
+          },
         })
         if (signUpError) {
           setError(translateAuthError(signUpError))
@@ -97,7 +100,7 @@ export function AuthPage() {
           className="flex flex-col items-center text-center"
         >
           <img
-            src="/logo.svg"
+            src={`${import.meta.env.BASE_URL}logo.svg`}
             alt=""
             className="h-16 w-16 rounded-2xl shadow-lg shadow-indigo-600/25"
           />

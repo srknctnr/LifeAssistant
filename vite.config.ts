@@ -4,8 +4,13 @@ import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
+// '/' locally and on Netlify; '/LifeAssistant/' when the GitHub Pages
+// workflow sets BASE_PATH (the site lives under a subpath there)
+const base = process.env.BASE_PATH ?? '/'
+
 // https://vite.dev/config/
 export default defineConfig({
+  base,
   plugins: [
     react(),
     tailwindcss(),
@@ -18,7 +23,8 @@ export default defineConfig({
         description:
           'Kişisel yaşam asistanı: bütçe, istek listesi ve tasarruf hedefleri',
         lang: 'tr',
-        start_url: '/',
+        start_url: base,
+        scope: base,
         display: 'standalone',
         background_color: '#fafafa',
         theme_color: '#fafafa',

@@ -4,7 +4,7 @@ export function SplashScreen() {
   return (
     <div className="flex min-h-dvh items-center justify-center">
       <motion.img
-        src="/logo.svg"
+        src={`${import.meta.env.BASE_URL}logo.svg`}
         alt="Life Assistant"
         className="h-16 w-16 rounded-2xl"
         animate={{ scale: [1, 1.06, 1], opacity: [0.7, 1, 0.7] }}

@@ -24,4 +24,7 @@ export const routes: RouteObject[] = [
   },
 ]
 
-export const router = createBrowserRouter(routes)
+// '/LifeAssistant' on GitHub Pages, '/' elsewhere
+const basename = import.meta.env.BASE_URL.replace(/\/+$/, '') || '/'
+
+export const router = createBrowserRouter(routes, { basename })

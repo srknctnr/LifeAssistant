@@ -28,7 +28,11 @@ export function AppLayout() {
     <div className="min-h-dvh md:flex">
       <aside className="sticky top-0 hidden h-dvh w-60 flex-col border-r border-zinc-200/70 px-4 py-6 md:flex dark:border-zinc-800/70">
         <div className="flex items-center gap-2.5 px-2">
-          <img src="/logo.svg" alt="" className="h-8 w-8 rounded-lg" />
+          <img
+            src={`${import.meta.env.BASE_URL}logo.svg`}
+            alt=""
+            className="h-8 w-8 rounded-lg"
+          />
           <span className="font-semibold tracking-tight">Life Assistant</span>
         </div>
 
@@ -69,7 +73,11 @@ export function AppLayout() {
       <div className="flex-1">
         <header className="mx-auto flex max-w-md items-center justify-between px-5 pt-6 md:hidden">
           <div className="flex items-center gap-2.5">
-            <img src="/logo.svg" alt="" className="h-7 w-7 rounded-lg" />
+            <img
+              src={`${import.meta.env.BASE_URL}logo.svg`}
+              alt=""
+              className="h-7 w-7 rounded-lg"
+            />
             <span className="text-sm font-semibold tracking-tight">
               Life Assistant
             </span>
