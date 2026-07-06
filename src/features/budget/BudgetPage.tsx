@@ -19,9 +19,11 @@ import {
 import { IncomeForm } from '@/features/budget/IncomeForm'
 import {
   monthlyEquivalent,
+  monthlyExpenseTotal,
   PERIOD_LABELS,
   PERIOD_SUFFIX,
 } from '@/features/budget/money'
+import { formatDate } from '@/lib/dates'
 import { formatMoney } from '@/lib/money'
 
 type SheetKind = 'income' | 'expense' | null
@@ -35,10 +37,7 @@ export function BudgetPage() {
     (sum, income) => sum + income.amount,
     0,
   )
-  const totalExpense = (expenses.data ?? []).reduce(
-    (sum, item) => sum + monthlyEquivalent(item.amount, item.period),
-    0,
-  )
+  const totalExpense = monthlyExpenseTotal(expenses.data ?? [])
   const remaining = totalIncome - totalExpense
   const isLoading = incomes.isPending || expenses.isPending
   const hasError = incomes.isError || expenses.isError
@@ -66,7 +65,7 @@ export function BudgetPage() {
             </p>
           </div>
           <div>
-            <p className="text-indigo-200">Gider (aylık)</p>
+            <p className="text-indigo-200">Gider (bu ay)</p>
             <p className="font-semibold tabular-nums">
               {formatMoney(totalExpense)}
             </p>
@@ -178,7 +177,9 @@ function ExpenseRow({ item }: { item: ExpenseItem }) {
       <div>
         <p className="font-medium">{item.name}</p>
         <p className="mt-0.5 text-xs text-zinc-400">
-          {PERIOD_LABELS[item.period]}
+          {item.period === 'once' && item.expense_date
+            ? `${PERIOD_LABELS.once} · ${formatDate(item.expense_date)}`
+            : PERIOD_LABELS[item.period]}
           {item.category ? ` · ${item.category}` : ''}
         </p>
       </div>
@@ -190,7 +191,7 @@ function ExpenseRow({ item }: { item: ExpenseItem }) {
               {PERIOD_SUFFIX[item.period]}
             </span>
           </p>
-          {item.period !== 'monthly' && (
+          {item.period !== 'monthly' && item.period !== 'once' && (
             <p className="text-xs text-zinc-400 tabular-nums">
               ≈ {formatMoney(monthlyEquivalent(item.amount, item.period))}
               /ay

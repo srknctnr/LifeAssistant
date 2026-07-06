@@ -2,22 +2,28 @@ import { useState, type FormEvent } from 'react'
 
 import { Button } from '@/components/Button'
 import { Segmented } from '@/components/Segmented'
+import { Switch } from '@/components/Switch'
 import { TextField } from '@/components/TextField'
 import { useAuth } from '@/features/auth/useAuth'
 import { useCreateExpenseItem } from '@/features/budget/hooks'
 import { PERIOD_LABELS, type ExpensePeriod } from '@/features/budget/money'
+import { todayISO } from '@/lib/dates'
 import { parseAmountInput } from '@/lib/money'
 
-const periodOptions = (
-  Object.entries(PERIOD_LABELS) as [ExpensePeriod, string][]
-).map(([value, label]) => ({ value, label }))
+type RecurringPeriod = Exclude<ExpensePeriod, 'once'>
+
+const recurringOptions = (['weekly', 'monthly', 'yearly'] as const).map(
+  (value) => ({ value, label: PERIOD_LABELS[value] }),
+)
 
 export function ExpenseForm({ onDone }: { onDone: () => void }) {
   const { session } = useAuth()
   const createExpenseItem = useCreateExpenseItem()
   const [name, setName] = useState('')
   const [amount, setAmount] = useState('')
-  const [period, setPeriod] = useState<ExpensePeriod>('monthly')
+  const [isOnce, setIsOnce] = useState(false)
+  const [period, setPeriod] = useState<RecurringPeriod>('monthly')
+  const [expenseDate, setExpenseDate] = useState(todayISO())
   const [category, setCategory] = useState('')
   const [error, setError] = useState<string | null>(null)
 
@@ -30,6 +36,10 @@ export function ExpenseForm({ onDone }: { onDone: () => void }) {
       setError('Geçerli bir tutar gir (örn. 4500 veya 4500,50).')
       return
     }
+    if (isOnce && !expenseDate) {
+      setError('Harcamanın tarihini seç.')
+      return
+    }
     if (!session) return
 
     try {
@@ -37,7 +47,8 @@ export function ExpenseForm({ onDone }: { onDone: () => void }) {
         user_id: session.user.id,
         name: name.trim(),
         amount: parsedAmount,
-        period,
+        period: isOnce ? 'once' : period,
+        expense_date: isOnce ? expenseDate : null,
         category: category.trim() || null,
       })
       onDone()
@@ -51,7 +62,7 @@ export function ExpenseForm({ onDone }: { onDone: () => void }) {
       <TextField
         label="Ad"
         required
-        placeholder="Kira"
+        placeholder={isOnce ? 'Ayakkabı' : 'Kira'}
         value={name}
         onChange={(e) => setName(e.target.value)}
       />
@@ -63,14 +74,31 @@ export function ExpenseForm({ onDone }: { onDone: () => void }) {
         value={amount}
         onChange={(e) => setAmount(e.target.value)}
       />
-      <div className="space-y-1.5">
-        <span className="block text-sm font-medium text-zinc-700">Periyot</span>
-        <Segmented<ExpensePeriod>
-          options={periodOptions}
-          value={period}
-          onChange={setPeriod}
+      <Switch
+        checked={isOnce}
+        onChange={setIsOnce}
+        label="Tek seferlik harcama"
+      />
+      {isOnce ? (
+        <TextField
+          label="Tarih"
+          type="date"
+          required
+          value={expenseDate}
+          onChange={(e) => setExpenseDate(e.target.value)}
         />
-      </div>
+      ) : (
+        <div className="space-y-1.5">
+          <span className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+            Periyot
+          </span>
+          <Segmented<RecurringPeriod>
+            options={recurringOptions}
+            value={period}
+            onChange={setPeriod}
+          />
+        </div>
+      )}
       <TextField
         label="Kategori (isteğe bağlı)"
         placeholder="Konut, ulaşım, abonelik…"
@@ -78,7 +106,9 @@ export function ExpenseForm({ onDone }: { onDone: () => void }) {
         onChange={(e) => setCategory(e.target.value)}
       />
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && (
+        <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+      )}
 
       <Button
         type="submit"

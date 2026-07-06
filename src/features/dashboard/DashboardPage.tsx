@@ -6,7 +6,7 @@ import { AnimatedNumber } from '@/components/AnimatedNumber'
 import { PageTransition } from '@/components/PageTransition'
 import { useAuth } from '@/features/auth/useAuth'
 import { useExpenseItems, useIncomes } from '@/features/budget/hooks'
-import { monthlyEquivalent } from '@/features/budget/money'
+import { monthlyExpenseTotal } from '@/features/budget/money'
 import { useContributionReminderSync } from '@/features/reminders/hooks'
 import { RemindersSection } from '@/features/reminders/RemindersSection'
 import { useContributions, useGoals } from '@/features/wishlist/hooks'
@@ -24,10 +24,7 @@ export function DashboardPage() {
   const firstName = session?.user.email?.split('@')[0] ?? ''
 
   const totalIncome = (incomes.data ?? []).reduce((s, i) => s + i.amount, 0)
-  const totalExpense = (expenses.data ?? []).reduce(
-    (s, e) => s + monthlyEquivalent(e.amount, e.period),
-    0,
-  )
+  const totalExpense = monthlyExpenseTotal(expenses.data ?? [])
   const remaining = totalIncome - totalExpense
   const hasBudget =
     (incomes.data ?? []).length > 0 || (expenses.data ?? []).length > 0

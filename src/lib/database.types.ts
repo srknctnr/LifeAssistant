@@ -58,6 +58,7 @@ export interface Database {
           currency: string
           period: Database['public']['Enums']['expense_period']
           category: string | null
+          expense_date: string | null
           source: Database['public']['Enums']['expense_source']
           is_active: boolean
           created_at: string
@@ -71,6 +72,7 @@ export interface Database {
           currency?: string
           period?: Database['public']['Enums']['expense_period']
           category?: string | null
+          expense_date?: string | null
           source?: Database['public']['Enums']['expense_source']
           is_active?: boolean
           created_at?: string
@@ -84,6 +86,7 @@ export interface Database {
           currency?: string
           period?: Database['public']['Enums']['expense_period']
           category?: string | null
+          expense_date?: string | null
           source?: Database['public']['Enums']['expense_source']
           is_active?: boolean
           created_at?: string
@@ -275,7 +278,7 @@ export interface Database {
       }
     }
     Enums: {
-      expense_period: 'weekly' | 'monthly' | 'yearly'
+      expense_period: 'weekly' | 'monthly' | 'yearly' | 'once'
       expense_source: 'manual' | 'savings_goal'
       wishlist_kind: 'purchase' | 'travel'
       wishlist_status: 'active' | 'converted' | 'completed' | 'archived'
@@ -302,7 +305,7 @@ export type Enums<T extends keyof Database['public']['Enums']> =
 export const Constants = {
   public: {
     Enums: {
-      expense_period: ['weekly', 'monthly', 'yearly'],
+      expense_period: ['weekly', 'monthly', 'yearly', 'once'],
       expense_source: ['manual', 'savings_goal'],
       wishlist_kind: ['purchase', 'travel'],
       wishlist_status: ['active', 'converted', 'completed', 'archived'],

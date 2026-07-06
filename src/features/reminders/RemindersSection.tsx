@@ -9,14 +9,7 @@ import { SkeletonRows } from '@/components/SkeletonRows'
 import type { Reminder } from '@/features/reminders/api'
 import { ReminderForm } from '@/features/reminders/ReminderForm'
 import { useReminders, useSetReminderStatus } from '@/features/reminders/hooks'
-import { formatDate } from '@/lib/dates'
-
-function todayISO(): string {
-  const now = new Date()
-  const mm = String(now.getMonth() + 1).padStart(2, '0')
-  const dd = String(now.getDate()).padStart(2, '0')
-  return `${now.getFullYear()}-${mm}-${dd}`
-}
+import { formatDate, todayISO } from '@/lib/dates'
 
 export function RemindersSection() {
   const reminders = useReminders()
