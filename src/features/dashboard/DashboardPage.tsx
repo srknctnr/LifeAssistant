@@ -7,6 +7,8 @@ import { PageTransition } from '@/components/PageTransition'
 import { useAuth } from '@/features/auth/useAuth'
 import { useExpenseItems, useIncomes } from '@/features/budget/hooks'
 import { monthlyEquivalent } from '@/features/budget/money'
+import { useContributionReminderSync } from '@/features/reminders/hooks'
+import { RemindersSection } from '@/features/reminders/RemindersSection'
 import { useContributions, useGoals } from '@/features/wishlist/hooks'
 import { formatDate } from '@/lib/dates'
 import { formatMoney } from '@/lib/money'
@@ -17,6 +19,7 @@ export function DashboardPage() {
   const expenses = useExpenseItems()
   const goals = useGoals()
   const contributions = useContributions()
+  useContributionReminderSync()
 
   const firstName = session?.user.email?.split('@')[0] ?? ''
 
@@ -70,6 +73,8 @@ export function DashboardPage() {
           text="Maaşını ve düzenli giderlerini ekle; ay sonunda ne kalacağını görelim."
         />
       )}
+
+      <RemindersSection />
 
       <h2 className="mt-8 mb-3 text-base font-semibold tracking-tight">
         Hedeflerim
