@@ -1,7 +1,14 @@
-import { PiggyBank, Plane, ShoppingBag, Trash2 } from 'lucide-react'
+import {
+  MoreHorizontal,
+  PiggyBank,
+  Plane,
+  ShoppingBag,
+  Trash2,
+} from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useState } from 'react'
 
+import { Button } from '@/components/Button'
 import { EmptyState } from '@/components/EmptyState'
 import { PageTransition } from '@/components/PageTransition'
 import { Section } from '@/components/Section'
@@ -11,9 +18,12 @@ import type { GoalWithWish, WishlistItem } from '@/features/wishlist/api'
 import { ContributionForm } from '@/features/wishlist/ContributionForm'
 import { ConvertForm } from '@/features/wishlist/ConvertForm'
 import {
+  useCompleteGoal,
   useContributions,
+  useDeleteGoal,
   useDeleteWishlistItem,
   useGoals,
+  useSetGoalPaused,
   useWishlistItems,
 } from '@/features/wishlist/hooks'
 import { WishForm } from '@/features/wishlist/WishForm'
@@ -29,13 +39,17 @@ export function WishlistPage() {
   const contributions = useContributions()
 
   const [addOpen, setAddOpen] = useState(false)
+  const [editWish, setEditWish] = useState<WishlistItem | null>(null)
   const [convertItem, setConvertItem] = useState<WishlistItem | null>(null)
   const [contributeGoal, setContributeGoal] = useState<GoalWithWish | null>(
     null,
   )
+  const [manageGoal, setManageGoal] = useState<GoalWithWish | null>(null)
 
   const activeWishes = (wishes.data ?? []).filter((w) => w.status === 'active')
-  const activeGoals = (goals.data ?? []).filter((g) => g.status === 'active')
+  const visibleGoals = (goals.data ?? []).filter(
+    (g) => g.status === 'active' || g.status === 'paused',
+  )
 
   const savedByGoal = new Map<string, number>()
   for (const contribution of contributions.data ?? []) {
@@ -54,16 +68,17 @@ export function WishlistPage() {
         bütçene ekleyelim.
       </p>
 
-      {activeGoals.length > 0 && (
+      {visibleGoals.length > 0 && (
         <Section title="Hedeflerim">
           <ul className="space-y-2.5">
             <AnimatePresence initial={false}>
-              {activeGoals.map((goal) => (
+              {visibleGoals.map((goal) => (
                 <GoalCard
                   key={goal.id}
                   goal={goal}
                   saved={savedByGoal.get(goal.id) ?? 0}
                   onContribute={() => setContributeGoal(goal)}
+                  onManage={() => setManageGoal(goal)}
                 />
               ))}
             </AnimatePresence>
@@ -83,6 +98,7 @@ export function WishlistPage() {
                 <WishRow
                   key={item.id}
                   item={item}
+                  onEdit={() => setEditWish(item)}
                   onConvert={() => setConvertItem(item)}
                 />
               ))}
@@ -97,6 +113,16 @@ export function WishlistPage() {
         title="İstek ekle"
       >
         <WishForm onDone={() => setAddOpen(false)} />
+      </Sheet>
+
+      <Sheet
+        open={editWish !== null}
+        onClose={() => setEditWish(null)}
+        title="İsteği düzenle"
+      >
+        {editWish && (
+          <WishForm item={editWish} onDone={() => setEditWish(null)} />
+        )}
       </Sheet>
 
       <Sheet
@@ -121,6 +147,20 @@ export function WishlistPage() {
           />
         )}
       </Sheet>
+
+      <Sheet
+        open={manageGoal !== null}
+        onClose={() => setManageGoal(null)}
+        title="Hedefi yönet"
+      >
+        {manageGoal && (
+          <GoalManageActions
+            goal={manageGoal}
+            saved={savedByGoal.get(manageGoal.id) ?? 0}
+            onDone={() => setManageGoal(null)}
+          />
+        )}
+      </Sheet>
     </PageTransition>
   )
 }
@@ -129,10 +169,12 @@ function GoalCard({
   goal,
   saved,
   onContribute,
+  onManage,
 }: {
   goal: GoalWithWish
   saved: number
   onContribute: () => void
+  onManage: () => void
 }) {
   const name = goal.wishlist_items?.name ?? 'Hedef'
   const kind = goal.wishlist_items?.kind ?? 'purchase'
@@ -140,6 +182,7 @@ function GoalCard({
   const Icon = kindIcons[kind]
   const progress = Math.min(1, saved / goal.target_amount)
   const isComplete = saved >= goal.target_amount
+  const isPaused = goal.status === 'paused'
 
   return (
     <motion.li
@@ -147,7 +190,9 @@ function GoalCard({
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, x: -16 }}
-      className="rounded-2xl bg-white p-4 shadow-sm shadow-zinc-200/60 dark:bg-zinc-900 dark:shadow-none"
+      className={`rounded-2xl bg-white p-4 shadow-sm shadow-zinc-200/60 dark:bg-zinc-900 dark:shadow-none ${
+        isPaused ? 'opacity-70' : ''
+      }`}
     >
       <div className="flex items-center gap-3">
         <span className="rounded-xl bg-indigo-50 p-2.5 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400">
@@ -160,7 +205,11 @@ function GoalCard({
             {formatMoney(goal.monthly_amount, goal.currency)}
           </p>
         </div>
-        {isComplete ? (
+        {isPaused ? (
+          <span className="rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-semibold text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">
+            Duraklatıldı
+          </span>
+        ) : isComplete ? (
           <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400">
             Tamamlandı 🎉
           </span>
@@ -173,6 +222,13 @@ function GoalCard({
             Katkı ekle
           </button>
         )}
+        <button
+          onClick={onManage}
+          aria-label={`${name} hedefini yönet`}
+          className="-mr-1 rounded-full p-1.5 text-zinc-300 transition-colors hover:bg-zinc-100 hover:text-zinc-500 dark:text-zinc-600 dark:hover:bg-zinc-800 dark:hover:text-zinc-400"
+        >
+          <MoreHorizontal size={17} />
+        </button>
       </div>
 
       <div className="mt-3.5 h-2 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">
@@ -196,11 +252,96 @@ function GoalCard({
   )
 }
 
+function GoalManageActions({
+  goal,
+  saved,
+  onDone,
+}: {
+  goal: GoalWithWish
+  saved: number
+  onDone: () => void
+}) {
+  const setPaused = useSetGoalPaused()
+  const complete = useCompleteGoal()
+  const remove = useDeleteGoal()
+  const [error, setError] = useState<string | null>(null)
+
+  const isPaused = goal.status === 'paused'
+  const canComplete = saved >= goal.target_amount
+  const busy = setPaused.isPending || complete.isPending || remove.isPending
+
+  async function run(action: () => Promise<unknown>) {
+    setError(null)
+    try {
+      await action()
+      onDone()
+    } catch {
+      setError('İşlem tamamlanamadı. Tekrar dener misin?')
+    }
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="rounded-2xl bg-zinc-50 p-4 dark:bg-zinc-800">
+        <p className="font-medium">{goal.wishlist_items?.name ?? 'Hedef'}</p>
+        <p className="mt-0.5 text-sm text-zinc-500 dark:text-zinc-400">
+          {formatMoney(saved, goal.currency)} /{' '}
+          {formatMoney(goal.target_amount, goal.currency)} birikti
+        </p>
+      </div>
+
+      {canComplete && !isPaused && (
+        <Button
+          className="w-full"
+          isLoading={complete.isPending}
+          disabled={busy}
+          onClick={() => run(() => complete.mutateAsync(goal))}
+        >
+          Tamamlandı olarak işaretle 🎉
+        </Button>
+      )}
+
+      <Button
+        variant="ghost"
+        className="w-full bg-zinc-100 dark:bg-zinc-800"
+        isLoading={setPaused.isPending}
+        disabled={busy}
+        onClick={() =>
+          run(() => setPaused.mutateAsync({ goal, paused: !isPaused }))
+        }
+      >
+        {isPaused ? 'Hedefe devam et' : 'Hedefi duraklat'}
+      </Button>
+      <p className="text-center text-xs text-zinc-400">
+        Duraklatınca bütçendeki aylık tasarruf kalemi de duraklar.
+      </p>
+
+      <button
+        disabled={busy}
+        onClick={() => run(() => remove.mutateAsync(goal))}
+        className="w-full rounded-xl py-3 text-sm font-semibold text-red-600 transition-colors hover:bg-red-50 disabled:opacity-60 dark:text-red-400 dark:hover:bg-red-500/10"
+      >
+        Hedefi sil — istek listesine geri döner
+      </button>
+      <p className="text-center text-xs text-zinc-400">
+        Katkı geçmişi ve bütçedeki kalemi silinir; istek yeniden
+        dönüştürülebilir.
+      </p>
+
+      {error && (
+        <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+      )}
+    </div>
+  )
+}
+
 function WishRow({
   item,
+  onEdit,
   onConvert,
 }: {
   item: WishlistItem
+  onEdit: () => void
   onConvert: () => void
 }) {
   const deleteItem = useDeleteWishlistItem()
@@ -218,13 +359,13 @@ function WishRow({
         <span className="rounded-xl bg-zinc-100 p-2.5 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">
           <Icon size={18} />
         </span>
-        <div className="min-w-0 flex-1">
+        <button onClick={onEdit} className="min-w-0 flex-1 text-left">
           <p className="truncate font-medium">{item.name}</p>
           <p className="text-xs text-zinc-400">
             {kindLabels[item.kind]}
             {item.target_date ? ` · ${formatDate(item.target_date)}` : ''}
           </p>
-        </div>
+        </button>
         <p className="font-semibold tabular-nums">
           {formatMoney(item.estimated_amount, item.currency)}
         </p>

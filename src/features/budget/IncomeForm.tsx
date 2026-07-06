@@ -4,17 +4,28 @@ import { Button } from '@/components/Button'
 import { Switch } from '@/components/Switch'
 import { TextField } from '@/components/TextField'
 import { useAuth } from '@/features/auth/useAuth'
-import { useCreateIncome } from '@/features/budget/hooks'
+import type { Income } from '@/features/budget/api'
+import { useCreateIncome, useUpdateIncome } from '@/features/budget/hooks'
 import { parseAmountInput } from '@/lib/money'
 
-export function IncomeForm({ onDone }: { onDone: () => void }) {
+interface IncomeFormProps {
+  income?: Income
+  onDone: () => void
+}
+
+export function IncomeForm({ income, onDone }: IncomeFormProps) {
   const { session } = useAuth()
   const createIncome = useCreateIncome()
-  const [name, setName] = useState('')
-  const [amount, setAmount] = useState('')
-  const [salaryDay, setSalaryDay] = useState('1')
-  const [autoRenew, setAutoRenew] = useState(true)
+  const updateIncome = useUpdateIncome()
+  const [name, setName] = useState(income?.name ?? '')
+  const [amount, setAmount] = useState(income ? String(income.amount) : '')
+  const [salaryDay, setSalaryDay] = useState(
+    income ? String(income.salary_day) : '1',
+  )
+  const [autoRenew, setAutoRenew] = useState(income?.auto_renew ?? true)
   const [error, setError] = useState<string | null>(null)
+
+  const isPending = createIncome.isPending || updateIncome.isPending
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
@@ -32,14 +43,19 @@ export function IncomeForm({ onDone }: { onDone: () => void }) {
     }
     if (!session) return
 
+    const values = {
+      name: name.trim(),
+      amount: parsedAmount,
+      salary_day: day,
+      auto_renew: autoRenew,
+    }
+
     try {
-      await createIncome.mutateAsync({
-        user_id: session.user.id,
-        name: name.trim(),
-        amount: parsedAmount,
-        salary_day: day,
-        auto_renew: autoRenew,
-      })
+      if (income) {
+        await updateIncome.mutateAsync({ id: income.id, patch: values })
+      } else {
+        await createIncome.mutateAsync({ user_id: session.user.id, ...values })
+      }
       onDone()
     } catch {
       setError('Kaydedilemedi. Bağlantını kontrol edip tekrar dene.')
@@ -82,11 +98,7 @@ export function IncomeForm({ onDone }: { onDone: () => void }) {
         <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
       )}
 
-      <Button
-        type="submit"
-        isLoading={createIncome.isPending}
-        className="w-full"
-      >
+      <Button type="submit" isLoading={isPending} className="w-full">
         Kaydet
       </Button>
     </form>

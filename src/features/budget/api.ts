@@ -1,4 +1,4 @@
-import type { Tables, TablesInsert } from '@/lib/database.types'
+import type { Tables, TablesInsert, TablesUpdate } from '@/lib/database.types'
 import { supabase } from '@/lib/supabase'
 
 export type Income = Tables<'incomes'>
@@ -25,6 +25,20 @@ export async function createIncome(
   return data
 }
 
+export async function updateIncome(params: {
+  id: string
+  patch: TablesUpdate<'incomes'>
+}): Promise<Income> {
+  const { data, error } = await supabase
+    .from('incomes')
+    .update(params.patch)
+    .eq('id', params.id)
+    .select()
+    .single()
+  if (error) throw error
+  return data
+}
+
 export async function deleteIncome(id: string): Promise<void> {
   const { error } = await supabase.from('incomes').delete().eq('id', id)
   if (error) throw error
@@ -45,6 +59,20 @@ export async function createExpenseItem(
   const { data, error } = await supabase
     .from('expense_items')
     .insert(input)
+    .select()
+    .single()
+  if (error) throw error
+  return data
+}
+
+export async function updateExpenseItem(params: {
+  id: string
+  patch: TablesUpdate<'expense_items'>
+}): Promise<ExpenseItem> {
+  const { data, error } = await supabase
+    .from('expense_items')
+    .update(params.patch)
+    .eq('id', params.id)
     .select()
     .single()
   if (error) throw error

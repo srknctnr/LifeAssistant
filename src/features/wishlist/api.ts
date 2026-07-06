@@ -1,4 +1,4 @@
-import type { Tables, TablesInsert } from '@/lib/database.types'
+import type { Tables, TablesInsert, TablesUpdate } from '@/lib/database.types'
 import { supabase } from '@/lib/supabase'
 
 export type WishlistItem = Tables<'wishlist_items'>
@@ -24,6 +24,20 @@ export async function createWishlistItem(
   const { data, error } = await supabase
     .from('wishlist_items')
     .insert(input)
+    .select()
+    .single()
+  if (error) throw error
+  return data
+}
+
+export async function updateWishlistItem(params: {
+  id: string
+  patch: TablesUpdate<'wishlist_items'>
+}): Promise<WishlistItem> {
+  const { data, error } = await supabase
+    .from('wishlist_items')
+    .update(params.patch)
+    .eq('id', params.id)
     .select()
     .single()
   if (error) throw error
@@ -63,6 +77,75 @@ export async function addContribution(
     .single()
   if (error) throw error
   return data
+}
+
+// Pause/resume a goal; the linked budget expense item follows along so a
+// paused goal stops counting against the monthly budget
+export async function setGoalPaused(params: {
+  goal: GoalWithWish
+  paused: boolean
+}): Promise<void> {
+  const { goal, paused } = params
+  const { error } = await supabase
+    .from('savings_goals')
+    .update({ status: paused ? 'paused' : 'active' })
+    .eq('id', goal.id)
+  if (error) throw error
+
+  if (goal.expense_item_id) {
+    const { error: expenseError } = await supabase
+      .from('expense_items')
+      .update({ is_active: !paused })
+      .eq('id', goal.expense_item_id)
+    if (expenseError) throw expenseError
+  }
+}
+
+// Mark a reached goal as done: goal + wish completed, budget item deactivated
+export async function completeGoal(goal: GoalWithWish): Promise<void> {
+  const { error } = await supabase
+    .from('savings_goals')
+    .update({ status: 'completed' })
+    .eq('id', goal.id)
+  if (error) throw error
+
+  if (goal.expense_item_id) {
+    const { error: expenseError } = await supabase
+      .from('expense_items')
+      .update({ is_active: false })
+      .eq('id', goal.expense_item_id)
+    if (expenseError) throw expenseError
+  }
+
+  const { error: wishError } = await supabase
+    .from('wishlist_items')
+    .update({ status: 'completed' })
+    .eq('id', goal.wishlist_item_id)
+  if (wishError) throw wishError
+}
+
+// Undo a conversion: removes the goal (contributions cascade) and the
+// auto-created budget item, then puts the wish back on the active list
+export async function deleteGoal(goal: GoalWithWish): Promise<void> {
+  const { error } = await supabase
+    .from('savings_goals')
+    .delete()
+    .eq('id', goal.id)
+  if (error) throw error
+
+  if (goal.expense_item_id) {
+    const { error: expenseError } = await supabase
+      .from('expense_items')
+      .delete()
+      .eq('id', goal.expense_item_id)
+    if (expenseError) throw expenseError
+  }
+
+  const { error: wishError } = await supabase
+    .from('wishlist_items')
+    .update({ status: 'active' })
+    .eq('id', goal.wishlist_item_id)
+  if (wishError) throw wishError
 }
 
 export interface ConvertParams {

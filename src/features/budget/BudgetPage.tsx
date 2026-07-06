@@ -1,4 +1,4 @@
-import { Trash2 } from 'lucide-react'
+import { Sparkles, Trash2 } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useState } from 'react'
 
@@ -32,6 +32,8 @@ export function BudgetPage() {
   const incomes = useIncomes()
   const expenses = useExpenseItems()
   const [openSheet, setOpenSheet] = useState<SheetKind>(null)
+  const [editIncome, setEditIncome] = useState<Income | null>(null)
+  const [editExpense, setEditExpense] = useState<ExpenseItem | null>(null)
 
   const totalIncome = (incomes.data ?? []).reduce(
     (sum, income) => sum + income.amount,
@@ -89,7 +91,11 @@ export function BudgetPage() {
             <ul className="space-y-2.5">
               <AnimatePresence initial={false}>
                 {incomes.data?.map((income) => (
-                  <IncomeRow key={income.id} income={income} />
+                  <IncomeRow
+                    key={income.id}
+                    income={income}
+                    onEdit={() => setEditIncome(income)}
+                  />
                 ))}
               </AnimatePresence>
             </ul>
@@ -105,7 +111,11 @@ export function BudgetPage() {
             <ul className="space-y-2.5">
               <AnimatePresence initial={false}>
                 {expenses.data?.map((item) => (
-                  <ExpenseRow key={item.id} item={item} />
+                  <ExpenseRow
+                    key={item.id}
+                    item={item}
+                    onEdit={() => setEditExpense(item)}
+                  />
                 ))}
               </AnimatePresence>
             </ul>
@@ -127,11 +137,29 @@ export function BudgetPage() {
       >
         <ExpenseForm onDone={() => setOpenSheet(null)} />
       </Sheet>
+      <Sheet
+        open={editIncome !== null}
+        onClose={() => setEditIncome(null)}
+        title="Geliri düzenle"
+      >
+        {editIncome && (
+          <IncomeForm income={editIncome} onDone={() => setEditIncome(null)} />
+        )}
+      </Sheet>
+      <Sheet
+        open={editExpense !== null}
+        onClose={() => setEditExpense(null)}
+        title="Gideri düzenle"
+      >
+        {editExpense && (
+          <ExpenseForm item={editExpense} onDone={() => setEditExpense(null)} />
+        )}
+      </Sheet>
     </PageTransition>
   )
 }
 
-function IncomeRow({ income }: { income: Income }) {
+function IncomeRow({ income, onEdit }: { income: Income; onEdit: () => void }) {
   const deleteIncome = useDeleteIncome()
 
   return (
@@ -140,15 +168,15 @@ function IncomeRow({ income }: { income: Income }) {
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, x: -16 }}
-      className="flex items-center justify-between rounded-2xl bg-white p-4 shadow-sm shadow-zinc-200/60 dark:bg-zinc-900 dark:shadow-none"
+      className="flex items-center justify-between gap-2 rounded-2xl bg-white p-4 shadow-sm shadow-zinc-200/60 dark:bg-zinc-900 dark:shadow-none"
     >
-      <div>
-        <p className="font-medium">{income.name}</p>
+      <button onClick={onEdit} className="min-w-0 flex-1 text-left">
+        <p className="truncate font-medium">{income.name}</p>
         <p className="mt-0.5 text-xs text-zinc-400">
           her ayın {income.salary_day}. günü
           {income.auto_renew ? ' · otomatik' : ''}
         </p>
-      </div>
+      </button>
       <div className="flex items-center gap-1.5">
         <p className="font-semibold tabular-nums">
           {formatMoney(income.amount, income.currency)}
@@ -165,8 +193,25 @@ function IncomeRow({ income }: { income: Income }) {
   )
 }
 
-function ExpenseRow({ item }: { item: ExpenseItem }) {
+function ExpenseRow({
+  item,
+  onEdit,
+}: {
+  item: ExpenseItem
+  onEdit: () => void
+}) {
   const deleteExpenseItem = useDeleteExpenseItem()
+  const isGoalLinked = item.source === 'savings_goal'
+
+  const meta = (
+    <p className="mt-0.5 text-xs text-zinc-400">
+      {item.period === 'once' && item.expense_date
+        ? `${PERIOD_LABELS.once} · ${formatDate(item.expense_date)}`
+        : PERIOD_LABELS[item.period]}
+      {item.category ? ` · ${item.category}` : ''}
+      {!item.is_active ? ' · duraklatıldı' : ''}
+    </p>
+  )
 
   return (
     <motion.li
@@ -174,17 +219,28 @@ function ExpenseRow({ item }: { item: ExpenseItem }) {
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, x: -16 }}
-      className="flex items-center justify-between rounded-2xl bg-white p-4 shadow-sm shadow-zinc-200/60 dark:bg-zinc-900 dark:shadow-none"
+      className={`flex items-center justify-between gap-2 rounded-2xl bg-white p-4 shadow-sm shadow-zinc-200/60 dark:bg-zinc-900 dark:shadow-none ${
+        item.is_active ? '' : 'opacity-60'
+      }`}
     >
-      <div>
-        <p className="font-medium">{item.name}</p>
-        <p className="mt-0.5 text-xs text-zinc-400">
-          {item.period === 'once' && item.expense_date
-            ? `${PERIOD_LABELS.once} · ${formatDate(item.expense_date)}`
-            : PERIOD_LABELS[item.period]}
-          {item.category ? ` · ${item.category}` : ''}
-        </p>
-      </div>
+      {isGoalLinked ? (
+        // managed by the savings goal on the wishlist page; not editable here
+        <div className="min-w-0 flex-1">
+          <p className="flex items-center gap-1.5 truncate font-medium">
+            {item.name}
+            <span className="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-semibold text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400">
+              <Sparkles size={10} />
+              Hedef
+            </span>
+          </p>
+          {meta}
+        </div>
+      ) : (
+        <button onClick={onEdit} className="min-w-0 flex-1 text-left">
+          <p className="truncate font-medium">{item.name}</p>
+          {meta}
+        </button>
+      )}
       <div className="flex items-center gap-1.5">
         <div className="text-right">
           <p className="font-semibold tabular-nums">
@@ -200,13 +256,15 @@ function ExpenseRow({ item }: { item: ExpenseItem }) {
             </p>
           )}
         </div>
-        <button
-          aria-label={`${item.name} giderini sil`}
-          onClick={() => deleteExpenseItem.mutate(item.id)}
-          className="rounded-full p-1.5 text-zinc-300 transition-colors hover:bg-red-50 hover:text-red-500 dark:text-zinc-600 dark:hover:bg-red-500/10 dark:hover:text-red-400"
-        >
-          <Trash2 size={15} />
-        </button>
+        {!isGoalLinked && (
+          <button
+            aria-label={`${item.name} giderini sil`}
+            onClick={() => deleteExpenseItem.mutate(item.id)}
+            className="rounded-full p-1.5 text-zinc-300 transition-colors hover:bg-red-50 hover:text-red-500 dark:text-zinc-600 dark:hover:bg-red-500/10 dark:hover:text-red-400"
+          >
+            <Trash2 size={15} />
+          </button>
+        )}
       </div>
     </motion.li>
   )

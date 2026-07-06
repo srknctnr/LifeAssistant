@@ -7,6 +7,8 @@ import {
   deleteIncome,
   listExpenseItems,
   listIncomes,
+  updateExpenseItem,
+  updateIncome,
 } from '@/features/budget/api'
 
 const incomesKey = ['incomes'] as const
@@ -20,6 +22,14 @@ export function useCreateIncome() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: createIncome,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: incomesKey }),
+  })
+}
+
+export function useUpdateIncome() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: updateIncome,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: incomesKey }),
   })
 }
@@ -40,6 +50,15 @@ export function useCreateExpenseItem() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: createExpenseItem,
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: expenseItemsKey }),
+  })
+}
+
+export function useUpdateExpenseItem() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: updateExpenseItem,
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: expenseItemsKey }),
   })

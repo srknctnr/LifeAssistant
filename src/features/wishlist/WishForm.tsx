@@ -4,20 +4,34 @@ import { Button } from '@/components/Button'
 import { Segmented } from '@/components/Segmented'
 import { TextField } from '@/components/TextField'
 import { useAuth } from '@/features/auth/useAuth'
-import { useCreateWishlistItem } from '@/features/wishlist/hooks'
+import type { WishlistItem } from '@/features/wishlist/api'
+import {
+  useCreateWishlistItem,
+  useUpdateWishlistItem,
+} from '@/features/wishlist/hooks'
 import type { Enums } from '@/lib/database.types'
 import { parseAmountInput } from '@/lib/money'
 
 type WishlistKind = Enums<'wishlist_kind'>
 
-export function WishForm({ onDone }: { onDone: () => void }) {
+interface WishFormProps {
+  item?: WishlistItem
+  onDone: () => void
+}
+
+export function WishForm({ item, onDone }: WishFormProps) {
   const { session } = useAuth()
   const createItem = useCreateWishlistItem()
-  const [name, setName] = useState('')
-  const [kind, setKind] = useState<WishlistKind>('purchase')
-  const [amount, setAmount] = useState('')
-  const [targetDate, setTargetDate] = useState('')
+  const updateItem = useUpdateWishlistItem()
+  const [name, setName] = useState(item?.name ?? '')
+  const [kind, setKind] = useState<WishlistKind>(item?.kind ?? 'purchase')
+  const [amount, setAmount] = useState(
+    item ? String(item.estimated_amount) : '',
+  )
+  const [targetDate, setTargetDate] = useState(item?.target_date ?? '')
   const [error, setError] = useState<string | null>(null)
+
+  const isPending = createItem.isPending || updateItem.isPending
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
@@ -30,14 +44,19 @@ export function WishForm({ onDone }: { onDone: () => void }) {
     }
     if (!session) return
 
+    const values = {
+      name: name.trim(),
+      kind,
+      estimated_amount: parsedAmount,
+      target_date: targetDate || null,
+    }
+
     try {
-      await createItem.mutateAsync({
-        user_id: session.user.id,
-        name: name.trim(),
-        kind,
-        estimated_amount: parsedAmount,
-        target_date: targetDate || null,
-      })
+      if (item) {
+        await updateItem.mutateAsync({ id: item.id, patch: values })
+      } else {
+        await createItem.mutateAsync({ user_id: session.user.id, ...values })
+      }
       onDone()
     } catch {
       setError('Kaydedilemedi. Bağlantını kontrol edip tekrar dene.')
@@ -54,7 +73,9 @@ export function WishForm({ onDone }: { onDone: () => void }) {
         onChange={(e) => setName(e.target.value)}
       />
       <div className="space-y-1.5">
-        <span className="block text-sm font-medium text-zinc-700">Tür</span>
+        <span className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+          Tür
+        </span>
         <Segmented<WishlistKind>
           options={[
             { value: 'purchase', label: 'Harcama' },
@@ -84,7 +105,7 @@ export function WishForm({ onDone }: { onDone: () => void }) {
         <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
       )}
 
-      <Button type="submit" isLoading={createItem.isPending} className="w-full">
+      <Button type="submit" isLoading={isPending} className="w-full">
         Kaydet
       </Button>
     </form>

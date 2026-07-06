@@ -39,16 +39,19 @@ interface ExpenseLike {
   amount: number
   period: ExpensePeriod
   expense_date: string | null
+  is_active: boolean
 }
 
-// This month's total: recurring items normalized to monthly + one-time
-// items whose expense_date falls in the current month
+// This month's total: active recurring items normalized to monthly +
+// one-time items whose expense_date falls in the current month.
+// Inactive items (e.g. paused savings goals) don't count.
 export function monthlyExpenseTotal(
   items: ExpenseLike[],
   today: Date = new Date(),
 ): number {
   const month = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`
   return items.reduce((sum, item) => {
+    if (!item.is_active) return sum
     if (item.period === 'once') {
       return item.expense_date?.startsWith(month) ? sum + item.amount : sum
     }

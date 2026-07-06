@@ -26,8 +26,8 @@ describe('monthlyExpenseTotal', () => {
   it('normalizes recurring expenses to monthly', () => {
     const total = monthlyExpenseTotal(
       [
-        { amount: 100, period: 'monthly', expense_date: null },
-        { amount: 120, period: 'weekly', expense_date: null },
+        { amount: 100, period: 'monthly', expense_date: null, is_active: true },
+        { amount: 120, period: 'weekly', expense_date: null, is_active: true },
       ],
       today,
     )
@@ -37,8 +37,13 @@ describe('monthlyExpenseTotal', () => {
   it('counts one-time expenses dated in the current month', () => {
     const total = monthlyExpenseTotal(
       [
-        { amount: 100, period: 'monthly', expense_date: null },
-        { amount: 300, period: 'once', expense_date: '2026-07-10' },
+        { amount: 100, period: 'monthly', expense_date: null, is_active: true },
+        {
+          amount: 300,
+          period: 'once',
+          expense_date: '2026-07-10',
+          is_active: true,
+        },
       ],
       today,
     )
@@ -47,9 +52,32 @@ describe('monthlyExpenseTotal', () => {
 
   it('excludes one-time expenses from other months', () => {
     const total = monthlyExpenseTotal(
-      [{ amount: 300, period: 'once', expense_date: '2026-08-01' }],
+      [
+        {
+          amount: 300,
+          period: 'once',
+          expense_date: '2026-08-01',
+          is_active: true,
+        },
+      ],
       today,
     )
     expect(total).toBe(0)
+  })
+
+  it('excludes inactive items (e.g. paused savings goals)', () => {
+    const total = monthlyExpenseTotal(
+      [
+        { amount: 100, period: 'monthly', expense_date: null, is_active: true },
+        {
+          amount: 9000,
+          period: 'monthly',
+          expense_date: null,
+          is_active: false,
+        },
+      ],
+      today,
+    )
+    expect(total).toBe(100)
   })
 })

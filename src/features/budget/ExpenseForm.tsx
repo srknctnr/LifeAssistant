@@ -5,7 +5,11 @@ import { Segmented } from '@/components/Segmented'
 import { Switch } from '@/components/Switch'
 import { TextField } from '@/components/TextField'
 import { useAuth } from '@/features/auth/useAuth'
-import { useCreateExpenseItem } from '@/features/budget/hooks'
+import type { ExpenseItem } from '@/features/budget/api'
+import {
+  useCreateExpenseItem,
+  useUpdateExpenseItem,
+} from '@/features/budget/hooks'
 import { PERIOD_LABELS, type ExpensePeriod } from '@/features/budget/money'
 import { todayISO } from '@/lib/dates'
 import { parseAmountInput } from '@/lib/money'
@@ -16,16 +20,28 @@ const recurringOptions = (['weekly', 'monthly', 'yearly'] as const).map(
   (value) => ({ value, label: PERIOD_LABELS[value] }),
 )
 
-export function ExpenseForm({ onDone }: { onDone: () => void }) {
+interface ExpenseFormProps {
+  item?: ExpenseItem
+  onDone: () => void
+}
+
+export function ExpenseForm({ item, onDone }: ExpenseFormProps) {
   const { session } = useAuth()
   const createExpenseItem = useCreateExpenseItem()
-  const [name, setName] = useState('')
-  const [amount, setAmount] = useState('')
-  const [isOnce, setIsOnce] = useState(false)
-  const [period, setPeriod] = useState<RecurringPeriod>('monthly')
-  const [expenseDate, setExpenseDate] = useState(todayISO())
-  const [category, setCategory] = useState('')
+  const updateExpenseItem = useUpdateExpenseItem()
+  const [name, setName] = useState(item?.name ?? '')
+  const [amount, setAmount] = useState(item ? String(item.amount) : '')
+  const [isOnce, setIsOnce] = useState(item?.period === 'once')
+  const [period, setPeriod] = useState<RecurringPeriod>(
+    item && item.period !== 'once' ? item.period : 'monthly',
+  )
+  const [expenseDate, setExpenseDate] = useState(
+    item?.expense_date ?? todayISO(),
+  )
+  const [category, setCategory] = useState(item?.category ?? '')
   const [error, setError] = useState<string | null>(null)
+
+  const isPending = createExpenseItem.isPending || updateExpenseItem.isPending
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
@@ -42,15 +58,23 @@ export function ExpenseForm({ onDone }: { onDone: () => void }) {
     }
     if (!session) return
 
+    const values = {
+      name: name.trim(),
+      amount: parsedAmount,
+      period: (isOnce ? 'once' : period) as ExpensePeriod,
+      expense_date: isOnce ? expenseDate : null,
+      category: category.trim() || null,
+    }
+
     try {
-      await createExpenseItem.mutateAsync({
-        user_id: session.user.id,
-        name: name.trim(),
-        amount: parsedAmount,
-        period: isOnce ? 'once' : period,
-        expense_date: isOnce ? expenseDate : null,
-        category: category.trim() || null,
-      })
+      if (item) {
+        await updateExpenseItem.mutateAsync({ id: item.id, patch: values })
+      } else {
+        await createExpenseItem.mutateAsync({
+          user_id: session.user.id,
+          ...values,
+        })
+      }
       onDone()
     } catch {
       setError('Kaydedilemedi. Bağlantını kontrol edip tekrar dene.')
@@ -110,11 +134,7 @@ export function ExpenseForm({ onDone }: { onDone: () => void }) {
         <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
       )}
 
-      <Button
-        type="submit"
-        isLoading={createExpenseItem.isPending}
-        className="w-full"
-      >
+      <Button type="submit" isLoading={isPending} className="w-full">
         Kaydet
       </Button>
     </form>
