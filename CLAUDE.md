@@ -14,6 +14,8 @@ Kişisel yaşam asistanı uygulaması. Dört sütun: bütçe, film takibi, seyah
 
 Film, seyahat detayı, takvim entegrasyonu, ortak masraf paylaşımı = sonraki fazlar. MVP dışına çıkma, kullanıcı istese bile önce kapsam genişlemesi olduğunu hatırlat.
 
+**Durum (2026-07-07):** MVP + cila tamamlandı, Netlify'da yayında (lifeassistantai.netlify.app; ev ISS'i netlify.app'i engelliyor, GitHub Pages yapılandırması hazır bekliyor). Kullanıcı onayıyla Faz 2'ye geçildi — ilk modül: film listesi (izleme listesi + puanlama tamam; sıradaki dilim TMDB araması, sonra film günü hatırlatması). Kalan Faz 2: takvim/yaşam kategorileri, limit asistanı.
+
 ## Teknoloji Yığını
 
 - **Frontend:** React + Vite, mobil öncelikli PWA (vite-plugin-pwa)

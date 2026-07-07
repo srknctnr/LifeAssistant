@@ -1,4 +1,4 @@
-import { Home, LogOut, Sparkles, Wallet } from 'lucide-react'
+import { Clapperboard, Home, LogOut, Sparkles, Wallet } from 'lucide-react'
 import { motion } from 'motion/react'
 import { NavLink, Outlet } from 'react-router-dom'
 
@@ -9,6 +9,7 @@ const navItems = [
   { to: '/', label: 'Özet', icon: Home },
   { to: '/budget', label: 'Bütçe', icon: Wallet },
   { to: '/wishlist', label: 'İstekler', icon: Sparkles },
+  { to: '/movies', label: 'Filmler', icon: Clapperboard },
 ]
 
 export function AppLayout() {

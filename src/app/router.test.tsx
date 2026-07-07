@@ -64,4 +64,11 @@ describe('app routes (authenticated)', () => {
       await screen.findByRole('heading', { name: 'İstek Listesi' }),
     ).toBeInTheDocument()
   })
+
+  it('renders the movies page at /movies', async () => {
+    renderAt('/movies')
+    expect(
+      await screen.findByRole('heading', { name: 'Filmler' }),
+    ).toBeInTheDocument()
+  })
 })

@@ -19,6 +19,7 @@ import {
   monthlyExpenseTotal,
   monthlyIncomeTotal,
 } from '@/features/budget/money'
+import { useMovies } from '@/features/movies/hooks'
 import { useContributionReminderSync } from '@/features/reminders/hooks'
 import { RemindersSection } from '@/features/reminders/RemindersSection'
 import { useContributions, useGoals } from '@/features/wishlist/hooks'
@@ -43,11 +44,7 @@ export function DashboardPage() {
       <div className="mt-8 grid gap-4 md:grid-cols-2">
         <BudgetModule />
         <GoalsModule />
-        <ComingSoonModule
-          icon={Clapperboard}
-          title="Film Listesi"
-          text="İzleme listen, vizyondakiler ve film günü hatırlatmaları"
-        />
+        <MoviesModule />
         <ComingSoonModule
           icon={CalendarDays}
           title="Takvim"
@@ -203,6 +200,64 @@ function GoalsModule() {
       {activeGoals.length > 3 && (
         <p className="mt-3 text-xs text-zinc-400">
           +{activeGoals.length - 3} hedef daha
+        </p>
+      )}
+    </Link>
+  )
+}
+
+function MoviesModule() {
+  const movies = useMovies()
+
+  if (movies.isPending) {
+    return (
+      <div className="h-40 animate-pulse rounded-3xl bg-zinc-100 dark:bg-zinc-800" />
+    )
+  }
+
+  const list = movies.data ?? []
+  const toWatch = list.filter((m) => m.status === 'to_watch')
+
+  if (list.length === 0) {
+    return (
+      <CtaModule
+        to="/movies"
+        icon={Clapperboard}
+        title="Film listeni başlat"
+        text="İzlemek istediğin filmleri ekle; film gününü hatırlatalım."
+      />
+    )
+  }
+
+  const nextPlanned = toWatch
+    .filter((m) => m.planned_for)
+    .sort((a, b) => a.planned_for!.localeCompare(b.planned_for!))[0]
+
+  return (
+    <Link
+      to="/movies"
+      className="group block rounded-3xl bg-white p-5 shadow-sm shadow-zinc-200/60 transition-transform hover:-translate-y-0.5 dark:bg-zinc-900 dark:shadow-none"
+    >
+      <div className="flex items-center justify-between text-sm">
+        <span className="flex items-center gap-2 font-semibold tracking-tight">
+          <Clapperboard size={16} className="text-indigo-500" /> Film Listesi
+        </span>
+        <ArrowRight
+          size={16}
+          className="text-zinc-300 transition-transform group-hover:translate-x-0.5 dark:text-zinc-600"
+        />
+      </div>
+      <p className="mt-3 text-3xl font-bold tracking-tight tabular-nums">
+        {toWatch.length}
+      </p>
+      <p className="text-sm text-zinc-400">izlenecek film</p>
+      {nextPlanned && (
+        <p className="mt-3 text-xs text-zinc-400">
+          Sıradaki:{' '}
+          <span className="font-medium text-zinc-600 dark:text-zinc-300">
+            {nextPlanned.title}
+          </span>{' '}
+          · {formatDate(nextPlanned.planned_for!)}
         </p>
       )}
     </Link>

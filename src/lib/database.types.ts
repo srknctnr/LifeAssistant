@@ -231,6 +231,54 @@ export interface Database {
           },
         ]
       }
+      movies: {
+        Row: {
+          id: string
+          user_id: string
+          title: string
+          tmdb_id: number | null
+          poster_path: string | null
+          release_date: string | null
+          status: Database['public']['Enums']['movie_status']
+          rating: number | null
+          external_rating: number | null
+          watched_on: string | null
+          planned_for: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          title: string
+          tmdb_id?: number | null
+          poster_path?: string | null
+          release_date?: string | null
+          status?: Database['public']['Enums']['movie_status']
+          rating?: number | null
+          external_rating?: number | null
+          watched_on?: string | null
+          planned_for?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          title?: string
+          tmdb_id?: number | null
+          poster_path?: string | null
+          release_date?: string | null
+          status?: Database['public']['Enums']['movie_status']
+          rating?: number | null
+          external_rating?: number | null
+          watched_on?: string | null
+          planned_for?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       reminders: {
         Row: {
           id: string
@@ -282,6 +330,7 @@ export interface Database {
     }
     Enums: {
       expense_period: 'weekly' | 'monthly' | 'yearly' | 'once'
+      movie_status: 'to_watch' | 'watched'
       expense_source: 'manual' | 'savings_goal'
       wishlist_kind: 'purchase' | 'travel'
       wishlist_status: 'active' | 'converted' | 'completed' | 'archived'
@@ -309,6 +358,7 @@ export const Constants = {
   public: {
     Enums: {
       expense_period: ['weekly', 'monthly', 'yearly', 'once'],
+      movie_status: ['to_watch', 'watched'],
       expense_source: ['manual', 'savings_goal'],
       wishlist_kind: ['purchase', 'travel'],
       wishlist_status: ['active', 'converted', 'completed', 'archived'],
