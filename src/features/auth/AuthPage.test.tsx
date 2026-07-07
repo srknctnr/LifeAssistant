@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { createMemoryRouter, RouterProvider } from 'react-router-dom'
 import { describe, expect, it, vi } from 'vitest'
 
@@ -49,5 +50,36 @@ describe('auth flow (no session)', () => {
     ).toBeInTheDocument()
     // mode tab + submit button share the label in sign-in mode
     expect(screen.getAllByRole('button', { name: 'Giriş yap' })).toHaveLength(2)
+  })
+
+  it('asks for password confirmation in sign-up mode', async () => {
+    const user = userEvent.setup()
+    renderAt('/auth')
+    await user.click(
+      await screen.findByRole('button', { name: 'Hesap oluştur' }),
+    )
+    expect(screen.getByLabelText('Şifre (tekrar)')).toBeInTheDocument()
+    expect(screen.getByText(/en az 6 karakter/i)).toBeInTheDocument()
+  })
+
+  it('switches to the forgot-password form', async () => {
+    const user = userEvent.setup()
+    renderAt('/auth')
+    await user.click(
+      await screen.findByRole('button', { name: 'Şifremi unuttum' }),
+    )
+    expect(
+      screen.getByRole('heading', { name: 'Şifreni sıfırla' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'Sıfırlama bağlantısı gönder' }),
+    ).toBeInTheDocument()
+  })
+
+  it('shows an invalid-link message on /reset-password without a session', async () => {
+    renderAt('/reset-password')
+    expect(
+      await screen.findByRole('heading', { name: 'Bağlantı geçersiz' }),
+    ).toBeInTheDocument()
   })
 })

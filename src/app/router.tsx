@@ -3,12 +3,14 @@ import { createBrowserRouter, type RouteObject } from 'react-router-dom'
 import { AppLayout } from '@/app/layouts/AppLayout'
 import { AuthPage } from '@/features/auth/AuthPage'
 import { RequireAuth } from '@/features/auth/RequireAuth'
+import { ResetPasswordPage } from '@/features/auth/ResetPasswordPage'
 import { BudgetPage } from '@/features/budget/BudgetPage'
 import { DashboardPage } from '@/features/dashboard/DashboardPage'
 import { WishlistPage } from '@/features/wishlist/WishlistPage'
 
 export const routes: RouteObject[] = [
   { path: '/auth', element: <AuthPage /> },
+  { path: '/reset-password', element: <ResetPasswordPage /> },
   {
     element: <RequireAuth />,
     children: [
