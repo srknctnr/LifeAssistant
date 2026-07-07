@@ -242,6 +242,7 @@ export interface Database {
           status: Database['public']['Enums']['movie_status']
           rating: number | null
           external_rating: number | null
+          external_source: 'imdb' | 'tmdb' | null
           watched_on: string | null
           planned_for: string | null
           created_at: string
@@ -257,6 +258,7 @@ export interface Database {
           status?: Database['public']['Enums']['movie_status']
           rating?: number | null
           external_rating?: number | null
+          external_source?: 'imdb' | 'tmdb' | null
           watched_on?: string | null
           planned_for?: string | null
           created_at?: string
@@ -272,6 +274,7 @@ export interface Database {
           status?: Database['public']['Enums']['movie_status']
           rating?: number | null
           external_rating?: number | null
+          external_source?: 'imdb' | 'tmdb' | null
           watched_on?: string | null
           planned_for?: string | null
           created_at?: string

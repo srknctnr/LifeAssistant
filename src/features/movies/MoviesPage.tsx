@@ -27,7 +27,9 @@ import {
   SORT_LABELS,
   type MovieSort,
 } from '@/features/movies/movie-sort'
+import { AddMovieSearch } from '@/features/movies/AddMovieSearch'
 import { MovieForm } from '@/features/movies/MovieForm'
+import { tmdbPosterUrl } from '@/features/movies/tmdb'
 import { WatchedForm } from '@/features/movies/WatchedForm'
 import { formatDate } from '@/lib/dates'
 
@@ -133,7 +135,7 @@ export function MoviesPage() {
       )}
 
       <Sheet open={addOpen} onClose={() => setAddOpen(false)} title="Film ekle">
-        <MovieForm onDone={() => setAddOpen(false)} />
+        <AddMovieSearch onDone={() => setAddOpen(false)} />
       </Sheet>
 
       <Sheet
@@ -159,12 +161,52 @@ export function MoviesPage() {
   )
 }
 
-function ExternalBadge({ rating }: { rating: number | null }) {
+function ExternalBadge({
+  rating,
+  source,
+}: {
+  rating: number | null
+  source: 'imdb' | 'tmdb' | null
+}) {
   if (rating == null) return null
   return (
     <span className="flex shrink-0 items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-600 tabular-nums dark:bg-amber-500/10 dark:text-amber-400">
-      <Star size={11} fill="currentColor" strokeWidth={0} />
+      {source === 'imdb' ? (
+        <span className="text-[9px] font-black tracking-tight">IMDb</span>
+      ) : (
+        <Star size={11} fill="currentColor" strokeWidth={0} />
+      )}
       {rating.toLocaleString('tr-TR', { minimumFractionDigits: 1 })}
+    </span>
+  )
+}
+
+function MoviePoster({
+  posterPath,
+  tone,
+}: {
+  posterPath: string | null
+  tone: 'indigo' | 'emerald'
+}) {
+  const poster = tmdbPosterUrl(posterPath)
+  if (poster) {
+    return (
+      <img
+        src={poster}
+        alt=""
+        className="h-14 w-10 shrink-0 rounded-lg object-cover"
+      />
+    )
+  }
+  return (
+    <span
+      className={
+        tone === 'indigo'
+          ? 'rounded-xl bg-indigo-50 p-2.5 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400'
+          : 'rounded-xl bg-emerald-50 p-2.5 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400'
+      }
+    >
+      <Clapperboard size={18} />
     </span>
   )
 }
@@ -188,18 +230,21 @@ function WatchlistRow({
       exit={{ opacity: 0, x: -16 }}
       className="flex items-center gap-3 rounded-2xl bg-white p-4 shadow-sm shadow-zinc-200/60 dark:bg-zinc-900 dark:shadow-none"
     >
-      <span className="rounded-xl bg-indigo-50 p-2.5 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400">
-        <Clapperboard size={18} />
-      </span>
+      <MoviePoster posterPath={movie.poster_path} tone="indigo" />
       <button onClick={onEdit} className="min-w-0 flex-1 text-left">
         <p className="truncate font-medium">{movie.title}</p>
         <p className="mt-0.5 text-xs text-zinc-400">
           {movie.planned_for
             ? `Film günü · ${formatDate(movie.planned_for)}`
-            : 'İzlenecek'}
+            : movie.release_date
+              ? movie.release_date.slice(0, 4)
+              : 'İzlenecek'}
         </p>
       </button>
-      <ExternalBadge rating={movie.external_rating} />
+      <ExternalBadge
+        rating={movie.external_rating}
+        source={movie.external_source}
+      />
       <button
         aria-label={`${movie.title} filmini izledim`}
         onClick={onWatched}
@@ -230,9 +275,7 @@ function WatchedRow({ movie, onRate }: { movie: Movie; onRate: () => void }) {
       exit={{ opacity: 0, x: -16 }}
       className="flex items-center gap-3 rounded-2xl bg-white p-4 shadow-sm shadow-zinc-200/60 dark:bg-zinc-900 dark:shadow-none"
     >
-      <span className="rounded-xl bg-emerald-50 p-2.5 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400">
-        <Clapperboard size={18} />
-      </span>
+      <MoviePoster posterPath={movie.poster_path} tone="emerald" />
       <button onClick={onRate} className="min-w-0 flex-1 text-left">
         <p className="truncate font-medium">{movie.title}</p>
         <div className="mt-1 flex items-center gap-2">
@@ -244,7 +287,10 @@ function WatchedRow({ movie, onRate }: { movie: Movie; onRate: () => void }) {
           )}
         </div>
       </button>
-      <ExternalBadge rating={movie.external_rating} />
+      <ExternalBadge
+        rating={movie.external_rating}
+        source={movie.external_source}
+      />
       <button
         aria-label={`${movie.title} filmini listeye geri al`}
         onClick={() =>
