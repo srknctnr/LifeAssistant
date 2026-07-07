@@ -14,12 +14,17 @@ import { PageTransition } from '@/components/PageTransition'
 import { Section } from '@/components/Section'
 import { Sheet } from '@/components/Sheet'
 import { SkeletonRows } from '@/components/SkeletonRows'
-import type { GoalWithWish, WishlistItem } from '@/features/wishlist/api'
+import type {
+  GoalWithWish,
+  SavingsContribution,
+  WishlistItem,
+} from '@/features/wishlist/api'
 import { ContributionForm } from '@/features/wishlist/ContributionForm'
 import { ConvertForm } from '@/features/wishlist/ConvertForm'
 import {
   useCompleteGoal,
   useContributions,
+  useDeleteContribution,
   useDeleteGoal,
   useDeleteWishlistItem,
   useGoals,
@@ -157,6 +162,9 @@ export function WishlistPage() {
           <GoalManageActions
             goal={manageGoal}
             saved={savedByGoal.get(manageGoal.id) ?? 0}
+            history={(contributions.data ?? []).filter(
+              (c) => c.savings_goal_id === manageGoal.id,
+            )}
             onDone={() => setManageGoal(null)}
           />
         )}
@@ -255,15 +263,18 @@ function GoalCard({
 function GoalManageActions({
   goal,
   saved,
+  history,
   onDone,
 }: {
   goal: GoalWithWish
   saved: number
+  history: SavingsContribution[]
   onDone: () => void
 }) {
   const setPaused = useSetGoalPaused()
   const complete = useCompleteGoal()
   const remove = useDeleteGoal()
+  const deleteContribution = useDeleteContribution()
   const [error, setError] = useState<string | null>(null)
 
   const isPaused = goal.status === 'paused'
@@ -289,6 +300,44 @@ function GoalManageActions({
           {formatMoney(goal.target_amount, goal.currency)} birikti
         </p>
       </div>
+
+      {history.length > 0 && (
+        <div>
+          <p className="mb-2 text-sm font-semibold tracking-tight">
+            Katkı geçmişi
+          </p>
+          <ul className="max-h-44 space-y-1.5 overflow-y-auto pr-1">
+            <AnimatePresence initial={false}>
+              {history.map((contribution) => (
+                <motion.li
+                  key={contribution.id}
+                  layout
+                  exit={{ opacity: 0, x: -16 }}
+                  className="flex items-center justify-between gap-2 rounded-xl bg-zinc-50 px-3.5 py-2.5 dark:bg-zinc-800"
+                >
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium tabular-nums">
+                      {formatMoney(contribution.amount, goal.currency)}
+                    </p>
+                    <p className="truncate text-xs text-zinc-400">
+                      {formatDate(contribution.contributed_on)}
+                      {contribution.note ? ` · ${contribution.note}` : ''}
+                    </p>
+                  </div>
+                  <button
+                    aria-label="Katkıyı sil"
+                    disabled={deleteContribution.isPending}
+                    onClick={() => deleteContribution.mutate(contribution.id)}
+                    className="rounded-full p-1.5 text-zinc-300 transition-colors hover:bg-red-50 hover:text-red-500 disabled:opacity-60 dark:text-zinc-600 dark:hover:bg-red-500/10 dark:hover:text-red-400"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </motion.li>
+              ))}
+            </AnimatePresence>
+          </ul>
+        </div>
+      )}
 
       {canComplete && !isPaused && (
         <Button

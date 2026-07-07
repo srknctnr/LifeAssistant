@@ -5,6 +5,7 @@ import {
   completeGoal,
   convertWishlistItem,
   createWishlistItem,
+  deleteContribution,
   deleteGoal,
   deleteWishlistItem,
   listContributions,
@@ -58,6 +59,15 @@ export function useAddContribution() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: addContribution,
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: contributionsKey }),
+  })
+}
+
+export function useDeleteContribution() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: deleteContribution,
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: contributionsKey }),
   })

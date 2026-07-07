@@ -1,4 +1,4 @@
-import { Bell, Check, X } from 'lucide-react'
+import { Bell, Check, ChevronRight, X } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useState } from 'react'
 
@@ -9,13 +9,36 @@ import { SkeletonRows } from '@/components/SkeletonRows'
 import type { Reminder } from '@/features/reminders/api'
 import { ReminderForm } from '@/features/reminders/ReminderForm'
 import { useReminders, useSetReminderStatus } from '@/features/reminders/hooks'
+import type { GoalWithWish } from '@/features/wishlist/api'
+import { ContributionForm } from '@/features/wishlist/ContributionForm'
+import { useGoals } from '@/features/wishlist/hooks'
 import { formatDate, todayISO } from '@/lib/dates'
+
+interface ContributionTarget {
+  reminder: Reminder
+  goal: GoalWithWish
+}
 
 export function RemindersSection() {
   const reminders = useReminders()
+  const goals = useGoals()
+  const setStatus = useSetReminderStatus()
   const [addOpen, setAddOpen] = useState(false)
+  const [contributeFor, setContributeFor] = useState<ContributionTarget | null>(
+    null,
+  )
 
   const pending = (reminders.data ?? []).filter((r) => r.status === 'pending')
+
+  // savings-goal reminders open the contribution form directly
+  function goalFor(reminder: Reminder): GoalWithWish | undefined {
+    if (reminder.source_type !== 'savings_goal' || !reminder.source_id) {
+      return undefined
+    }
+    return (goals.data ?? []).find(
+      (g) => g.id === reminder.source_id && g.status === 'active',
+    )
+  }
 
   return (
     <>
@@ -27,9 +50,20 @@ export function RemindersSection() {
         ) : (
           <ul className="space-y-2">
             <AnimatePresence initial={false}>
-              {pending.map((reminder) => (
-                <ReminderRow key={reminder.id} reminder={reminder} />
-              ))}
+              {pending.map((reminder) => {
+                const goal = goalFor(reminder)
+                return (
+                  <ReminderRow
+                    key={reminder.id}
+                    reminder={reminder}
+                    onAction={
+                      goal
+                        ? () => setContributeFor({ reminder, goal })
+                        : undefined
+                    }
+                  />
+                )
+              })}
             </AnimatePresence>
           </ul>
         )}
@@ -42,22 +76,42 @@ export function RemindersSection() {
       >
         <ReminderForm onDone={() => setAddOpen(false)} />
       </Sheet>
+
+      <Sheet
+        open={contributeFor !== null}
+        onClose={() => setContributeFor(null)}
+        title="Katkı ekle"
+      >
+        {contributeFor && (
+          <ContributionForm
+            goal={contributeFor.goal}
+            onDone={() => {
+              // the contribution fulfils this month's nudge
+              setStatus.mutate({
+                id: contributeFor.reminder.id,
+                status: 'done',
+              })
+              setContributeFor(null)
+            }}
+          />
+        )}
+      </Sheet>
     </>
   )
 }
 
-function ReminderRow({ reminder }: { reminder: Reminder }) {
+function ReminderRow({
+  reminder,
+  onAction,
+}: {
+  reminder: Reminder
+  onAction?: () => void
+}) {
   const setStatus = useSetReminderStatus()
   const isOverdue = reminder.due_on < todayISO()
 
-  return (
-    <motion.li
-      layout
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, x: -16 }}
-      className="flex items-center gap-3 rounded-2xl bg-white p-4 shadow-sm shadow-zinc-200/60 dark:bg-zinc-900 dark:shadow-none"
-    >
+  const body = (
+    <>
       <span
         className={`rounded-xl p-2.5 ${
           isOverdue
@@ -76,6 +130,33 @@ function ReminderRow({ reminder }: { reminder: Reminder }) {
           {isOverdue ? ' · gecikti' : ''}
         </p>
       </div>
+      {onAction && (
+        <ChevronRight
+          size={16}
+          className="-ml-1 shrink-0 text-zinc-300 dark:text-zinc-600"
+        />
+      )}
+    </>
+  )
+
+  return (
+    <motion.li
+      layout
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, x: -16 }}
+      className="flex items-center gap-3 rounded-2xl bg-white p-4 shadow-sm shadow-zinc-200/60 dark:bg-zinc-900 dark:shadow-none"
+    >
+      {onAction ? (
+        <button
+          onClick={onAction}
+          className="flex min-w-0 flex-1 items-center gap-3 text-left"
+        >
+          {body}
+        </button>
+      ) : (
+        <div className="flex min-w-0 flex-1 items-center gap-3">{body}</div>
+      )}
       <button
         aria-label={`${reminder.title} hatırlatmasını tamamla`}
         onClick={() => setStatus.mutate({ id: reminder.id, status: 'done' })}

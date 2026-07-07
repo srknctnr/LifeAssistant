@@ -79,6 +79,14 @@ export async function addContribution(
   return data
 }
 
+export async function deleteContribution(id: string): Promise<void> {
+  const { error } = await supabase
+    .from('savings_contributions')
+    .delete()
+    .eq('id', id)
+  if (error) throw error
+}
+
 // Pause/resume a goal; the linked budget expense item follows along so a
 // paused goal stops counting against the monthly budget
 export async function setGoalPaused(params: {
