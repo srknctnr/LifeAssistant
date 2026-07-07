@@ -8,10 +8,11 @@ import { useCreateMovie } from '@/features/movies/hooks'
 import { MovieForm } from '@/features/movies/MovieForm'
 import {
   fetchExternalRating,
+  isSearchConfigured,
   isTmdbConfigured,
-  searchTmdbMovies,
+  searchMovies,
   tmdbPosterUrl,
-  type TmdbMovie,
+  type MovieSearchResult,
 } from '@/features/movies/tmdb'
 
 export function AddMovieSearch({ onDone }: { onDone: () => void }) {
@@ -19,8 +20,8 @@ export function AddMovieSearch({ onDone }: { onDone: () => void }) {
   const createMovie = useCreateMovie()
   const [query, setQuery] = useState('')
   const [debounced, setDebounced] = useState('')
-  const [manualMode, setManualMode] = useState(!isTmdbConfigured)
-  const [addingId, setAddingId] = useState<number | null>(null)
+  const [manualMode, setManualMode] = useState(!isSearchConfigured)
+  const [addingKey, setAddingKey] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -29,23 +30,23 @@ export function AddMovieSearch({ onDone }: { onDone: () => void }) {
   }, [query])
 
   const results = useQuery({
-    queryKey: ['tmdb-search', debounced],
-    queryFn: () => searchTmdbMovies(debounced),
-    enabled: isTmdbConfigured && debounced.length >= 2,
+    queryKey: ['movie-search', debounced],
+    queryFn: () => searchMovies(debounced),
+    enabled: isSearchConfigured && debounced.length >= 2,
     staleTime: 60_000,
   })
 
   if (manualMode) {
     return (
       <div className="space-y-4">
-        {!isTmdbConfigured && (
+        {!isSearchConfigured && (
           <p className="rounded-xl bg-amber-50 p-3.5 text-sm text-amber-700 dark:bg-amber-500/10 dark:text-amber-400">
-            TMDB anahtarı tanımlı olmadığı için arama kapalı; filmi elle
+            Arama için TMDB ya da OMDb anahtarı gerekiyor; şimdilik filmi elle
             ekleyebilirsin.
           </p>
         )}
         <MovieForm onDone={onDone} />
-        {isTmdbConfigured && (
+        {isSearchConfigured && (
           <button
             type="button"
             onClick={() => setManualMode(false)}
@@ -58,18 +59,19 @@ export function AddMovieSearch({ onDone }: { onDone: () => void }) {
     )
   }
 
-  async function handlePick(movie: TmdbMovie) {
-    if (!session || addingId !== null) return
+  async function handlePick(result: MovieSearchResult) {
+    if (!session || addingKey !== null) return
     setError(null)
-    setAddingId(movie.id)
+    const key = result.imdbId ?? String(result.tmdbId)
+    setAddingKey(key)
     try {
-      const external = await fetchExternalRating(movie)
+      const external = await fetchExternalRating(result)
       await createMovie.mutateAsync({
         user_id: session.user.id,
-        title: movie.title,
-        tmdb_id: movie.id,
-        poster_path: movie.poster_path,
-        release_date: movie.release_date || null,
+        title: result.title,
+        tmdb_id: result.tmdbId,
+        poster_path: result.posterPath,
+        release_date: result.releaseDate,
         external_rating: external.rating,
         external_source: external.source,
       })
@@ -77,7 +79,7 @@ export function AddMovieSearch({ onDone }: { onDone: () => void }) {
     } catch {
       setError('Eklenemedi — bu film zaten listende olabilir.')
     } finally {
-      setAddingId(null)
+      setAddingKey(null)
     }
   }
 
@@ -92,11 +94,20 @@ export function AddMovieSearch({ onDone }: { onDone: () => void }) {
           autoFocus
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="TMDB'de film ara…"
-          aria-label="TMDB'de film ara"
+          placeholder={
+            isTmdbConfigured ? 'TMDB’de film ara…' : 'IMDb’de film ara…'
+          }
+          aria-label="Film ara"
           className="w-full rounded-xl border border-zinc-200 bg-white py-2.5 pr-4 pl-10 text-sm text-zinc-900 transition placeholder:text-zinc-400 focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:border-indigo-500 dark:focus:ring-indigo-500/20"
         />
       </div>
+
+      {!isTmdbConfigured && (
+        <p className="text-xs text-zinc-400">
+          IMDb araması orijinal (İngilizce) film adlarıyla çalışır. TMDB
+          anahtarı eklenince Türkçe arama ve vizyondakiler açılır.
+        </p>
+      )}
 
       {results.isFetching && (
         <div className="space-y-2">
@@ -107,24 +118,24 @@ export function AddMovieSearch({ onDone }: { onDone: () => void }) {
 
       {results.isError && (
         <p className="text-sm text-red-600 dark:text-red-400">
-          Arama başarısız oldu. TMDB anahtarını ve bağlantını kontrol et.
+          Arama başarısız oldu. API anahtarını ve bağlantını kontrol et.
         </p>
       )}
 
       {!results.isFetching && results.data && results.data.length === 0 && (
-        <EmptyState text="Sonuç bulunamadı." />
+        <EmptyState text="Sonuç bulunamadı. Orijinal adıyla aramayı dene." />
       )}
 
       {!results.isFetching && results.data && results.data.length > 0 && (
         <ul className="max-h-80 space-y-2 overflow-y-auto pr-1">
-          {results.data.map((movie) => {
-            const poster = tmdbPosterUrl(movie.poster_path)
-            const year = movie.release_date?.slice(0, 4)
+          {results.data.map((result) => {
+            const poster = tmdbPosterUrl(result.posterPath)
+            const key = result.imdbId ?? String(result.tmdbId)
             return (
-              <li key={movie.id}>
+              <li key={key}>
                 <button
-                  onClick={() => handlePick(movie)}
-                  disabled={addingId !== null}
+                  onClick={() => handlePick(result)}
+                  disabled={addingKey !== null}
                   className="flex w-full items-center gap-3 rounded-xl bg-zinc-50 p-2.5 text-left transition-colors hover:bg-indigo-50 disabled:opacity-60 dark:bg-zinc-800 dark:hover:bg-indigo-500/10"
                 >
                   {poster ? (
@@ -140,11 +151,11 @@ export function AddMovieSearch({ onDone }: { onDone: () => void }) {
                   )}
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-sm font-medium">
-                      {movie.title}
+                      {result.title}
                     </span>
                     <span className="mt-0.5 flex items-center gap-2 text-xs text-zinc-400">
-                      {year && <span>{year}</span>}
-                      {movie.vote_average > 0 && (
+                      {result.year && <span>{result.year}</span>}
+                      {result.tmdbScore && (
                         <span className="flex items-center gap-0.5 tabular-nums">
                           <Star
                             size={10}
@@ -152,12 +163,12 @@ export function AddMovieSearch({ onDone }: { onDone: () => void }) {
                             strokeWidth={0}
                             className="text-amber-400"
                           />
-                          {movie.vote_average.toFixed(1)}
+                          {result.tmdbScore.toFixed(1)}
                         </span>
                       )}
                     </span>
                   </span>
-                  {addingId === movie.id && (
+                  {addingKey === key && (
                     <Loader2
                       size={16}
                       className="animate-spin text-indigo-500"
