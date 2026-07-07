@@ -104,3 +104,59 @@ export function monthlyIncomeTotal(
     return sum + item.amount
   }, 0)
 }
+
+export interface MonthFlow {
+  key: string // yyyy-mm
+  date: Date // first day of the month
+  income: number
+  expense: number
+}
+
+interface FlowSeriesInput {
+  incomes: (IncomeLike & { created_at: string })[]
+  expenses: (ExpenseLike & { created_at: string })[]
+  monthsBack?: number
+  monthsForward?: number
+  today?: Date
+}
+
+// Month-by-month planned flow. Recurring items count from the month they
+// were created onward (past months before an item existed stay empty);
+// one-time items land exactly in their own month.
+export function monthlyFlowSeries({
+  incomes,
+  expenses,
+  monthsBack = 4,
+  monthsForward = 7,
+  today = new Date(),
+}: FlowSeriesInput): MonthFlow[] {
+  const series: MonthFlow[] = []
+
+  for (let offset = -monthsBack; offset <= monthsForward; offset++) {
+    const date = new Date(today.getFullYear(), today.getMonth() + offset, 1)
+    const key = monthKey(date)
+
+    const income = incomes.reduce((sum, item) => {
+      if (item.income_date) {
+        return item.income_date.startsWith(key) ? sum + item.amount : sum
+      }
+      return monthKey(new Date(item.created_at)) <= key
+        ? sum + item.amount
+        : sum
+    }, 0)
+
+    const expense = expenses.reduce((sum, item) => {
+      if (!item.is_active) return sum
+      if (item.period === 'once') {
+        return item.expense_date?.startsWith(key) ? sum + item.amount : sum
+      }
+      return monthKey(new Date(item.created_at)) <= key
+        ? sum + monthlyEquivalent(item.amount, item.period)
+        : sum
+    }, 0)
+
+    series.push({ key, date, income, expense })
+  }
+
+  return series
+}

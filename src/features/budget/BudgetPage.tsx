@@ -17,6 +17,7 @@ import {
   useIncomes,
 } from '@/features/budget/hooks'
 import { IncomeForm } from '@/features/budget/IncomeForm'
+import { MonthlyTrend } from '@/features/budget/MonthlyTrend'
 import {
   expenseTotalsByCategory,
   monthlyEquivalent,
@@ -80,6 +81,11 @@ export function BudgetPage() {
           Veriler yüklenemedi. Bağlantını kontrol edip sayfayı yenile.
         </p>
       )}
+
+      <MonthlyTrend
+        incomes={incomes.data ?? []}
+        expenses={expenses.data ?? []}
+      />
 
       <div className="lg:grid lg:grid-cols-2 lg:items-start lg:gap-x-6">
         <Section title="Gelirler" onAdd={() => setOpenSheet('income')}>
