@@ -18,8 +18,10 @@ import {
 } from '@/features/budget/hooks'
 import { IncomeForm } from '@/features/budget/IncomeForm'
 import {
+  expenseTotalsByCategory,
   monthlyEquivalent,
   monthlyExpenseTotal,
+  monthlyIncomeTotal,
   PERIOD_LABELS,
   PERIOD_SUFFIX,
 } from '@/features/budget/money'
@@ -35,11 +37,9 @@ export function BudgetPage() {
   const [editIncome, setEditIncome] = useState<Income | null>(null)
   const [editExpense, setEditExpense] = useState<ExpenseItem | null>(null)
 
-  const totalIncome = (incomes.data ?? []).reduce(
-    (sum, income) => sum + income.amount,
-    0,
-  )
+  const totalIncome = monthlyIncomeTotal(incomes.data ?? [])
   const totalExpense = monthlyExpenseTotal(expenses.data ?? [])
+  const byCategory = expenseTotalsByCategory(expenses.data ?? [])
   const remaining = totalIncome - totalExpense
   const isLoading = incomes.isPending || expenses.isPending
   const hasError = incomes.isError || expenses.isError
@@ -61,7 +61,7 @@ export function BudgetPage() {
         )}
         <div className="mt-5 flex gap-8 text-sm">
           <div>
-            <p className="text-indigo-200">Gelir</p>
+            <p className="text-indigo-200">Gelir (bu ay)</p>
             <p className="font-semibold tabular-nums">
               {formatMoney(totalIncome)}
             </p>
@@ -123,6 +123,33 @@ export function BudgetPage() {
         </Section>
       </div>
 
+      {byCategory.length > 0 && (
+        <Section title="Kategori dökümü">
+          <div className="space-y-3 rounded-2xl bg-white p-4 shadow-sm shadow-zinc-200/60 dark:bg-zinc-900 dark:shadow-none">
+            {byCategory.map(({ category, total }) => (
+              <div key={category}>
+                <div className="flex items-baseline justify-between gap-3 text-sm">
+                  <span className="truncate font-medium">{category}</span>
+                  <span className="text-zinc-400 tabular-nums">
+                    {formatMoney(total)}
+                  </span>
+                </div>
+                <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">
+                  <motion.div
+                    className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-violet-500"
+                    initial={{ width: 0 }}
+                    animate={{
+                      width: `${(total / byCategory[0].total) * 100}%`,
+                    }}
+                    transition={{ type: 'spring', stiffness: 90, damping: 22 }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </Section>
+      )}
+
       <Sheet
         open={openSheet === 'income'}
         onClose={() => setOpenSheet(null)}
@@ -173,8 +200,11 @@ function IncomeRow({ income, onEdit }: { income: Income; onEdit: () => void }) {
       <button onClick={onEdit} className="min-w-0 flex-1 text-left">
         <p className="truncate font-medium">{income.name}</p>
         <p className="mt-0.5 text-xs text-zinc-400">
-          her ayın {income.salary_day}. günü
-          {income.auto_renew ? ' · otomatik' : ''}
+          {income.income_date
+            ? `Tek seferlik · ${formatDate(income.income_date)}`
+            : `her ayın ${income.salary_day}. günü${
+                income.auto_renew ? ' · otomatik' : ''
+              }`}
         </p>
       </button>
       <div className="flex items-center gap-1.5">

@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest'
 
-import { monthlyEquivalent, monthlyExpenseTotal } from '@/features/budget/money'
+import {
+  expenseTotalsByCategory,
+  monthlyEquivalent,
+  monthlyExpenseTotal,
+  monthlyIncomeTotal,
+} from '@/features/budget/money'
 
 describe('monthlyEquivalent', () => {
   it('converts weekly amounts using 52 weeks per year', () => {
@@ -79,5 +84,89 @@ describe('monthlyExpenseTotal', () => {
       today,
     )
     expect(total).toBe(100)
+  })
+})
+
+describe('expenseTotalsByCategory', () => {
+  const today = new Date(2026, 6, 6)
+
+  it('groups by category, largest first, with Diğer for uncategorized', () => {
+    const totals = expenseTotalsByCategory(
+      [
+        {
+          amount: 15000,
+          period: 'monthly',
+          expense_date: null,
+          is_active: true,
+          category: 'Konut',
+        },
+        {
+          amount: 1200,
+          period: 'monthly',
+          expense_date: null,
+          is_active: true,
+          category: null,
+        },
+        {
+          amount: 2000,
+          period: 'monthly',
+          expense_date: null,
+          is_active: true,
+          category: 'Konut',
+        },
+      ],
+      today,
+    )
+    expect(totals).toEqual([
+      { category: 'Konut', total: 17000 },
+      { category: 'Diğer', total: 1200 },
+    ])
+  })
+
+  it('skips inactive items and one-time items from other months', () => {
+    const totals = expenseTotalsByCategory(
+      [
+        {
+          amount: 500,
+          period: 'monthly',
+          expense_date: null,
+          is_active: false,
+          category: 'Konut',
+        },
+        {
+          amount: 300,
+          period: 'once',
+          expense_date: '2026-08-01',
+          is_active: true,
+          category: 'Alışveriş',
+        },
+      ],
+      today,
+    )
+    expect(totals).toEqual([])
+  })
+})
+
+describe('monthlyIncomeTotal', () => {
+  const today = new Date(2026, 6, 6)
+
+  it('counts recurring incomes every month', () => {
+    const total = monthlyIncomeTotal(
+      [{ amount: 60000, income_date: null }],
+      today,
+    )
+    expect(total).toBe(60000)
+  })
+
+  it('counts one-time incomes only in their own month', () => {
+    const total = monthlyIncomeTotal(
+      [
+        { amount: 60000, income_date: null },
+        { amount: 10000, income_date: '2026-07-15' },
+        { amount: 5000, income_date: '2026-08-15' },
+      ],
+      today,
+    )
+    expect(total).toBe(70000)
   })
 })
