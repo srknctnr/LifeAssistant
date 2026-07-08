@@ -28,6 +28,7 @@ import {
   type MovieSort,
 } from '@/features/movies/movie-sort'
 import { AddMovieSearch } from '@/features/movies/AddMovieSearch'
+import { DiscoverView } from '@/features/movies/DiscoverView'
 import { MovieForm } from '@/features/movies/MovieForm'
 import { genreTasteProfile } from '@/features/movies/taste'
 import { tmdbPosterUrl } from '@/features/movies/tmdb'
@@ -41,6 +42,7 @@ const sortOptions = (Object.keys(SORT_LABELS) as MovieSort[]).map((value) => ({
 
 export function MoviesPage() {
   const movies = useMovies()
+  const [view, setView] = useState<'list' | 'discover'>('list')
   const [search, setSearch] = useState('')
   const [sort, setSort] = useState<MovieSort>('added')
   const [genre, setGenre] = useState<string | null>(null)
@@ -73,129 +75,153 @@ export function MoviesPage() {
     <PageTransition>
       <h1 className="text-2xl font-semibold tracking-tight">Filmler</h1>
       <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
-        İzleme listen ve puanların. Vizyon taraması yakında geliyor.
+        İzleme listen, puanların ve vizyondakiler.
       </p>
 
-      <div className="relative mt-4">
-        <Search
-          size={16}
-          className="absolute top-1/2 left-3.5 -translate-y-1/2 text-zinc-400"
-        />
-        <input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Film ara…"
-          aria-label="Film ara"
-          className="w-full rounded-xl border border-zinc-200 bg-white py-2.5 pr-4 pl-10 text-sm text-zinc-900 transition placeholder:text-zinc-400 focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:border-indigo-500 dark:focus:ring-indigo-500/20"
-        />
-      </div>
-      <div className="mt-3">
-        <Segmented<MovieSort>
-          options={sortOptions}
-          value={sort}
-          onChange={setSort}
+      <div className="mt-4">
+        <Segmented<'list' | 'discover'>
+          options={[
+            { value: 'list', label: 'Listem' },
+            { value: 'discover', label: 'Keşfet' },
+          ]}
+          value={view}
+          onChange={setView}
         />
       </div>
 
-      {allGenres.length > 0 && (
-        <div className="mt-3 flex gap-1.5 overflow-x-auto pb-1">
-          <GenreChip
-            label="Tümü"
-            active={genre === null}
-            onClick={() => setGenre(null)}
-          />
-          {allGenres.map((g) => (
-            <GenreChip
-              key={g}
-              label={g}
-              active={genre === g}
-              onClick={() => setGenre(genre === g ? null : g)}
+      {view === 'discover' ? (
+        <DiscoverView />
+      ) : (
+        <>
+          <div className="relative mt-4">
+            <Search
+              size={16}
+              className="absolute top-1/2 left-3.5 -translate-y-1/2 text-zinc-400"
             />
-          ))}
-        </div>
-      )}
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Film ara…"
+              aria-label="Film ara"
+              className="w-full rounded-xl border border-zinc-200 bg-white py-2.5 pr-4 pl-10 text-sm text-zinc-900 transition placeholder:text-zinc-400 focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:border-indigo-500 dark:focus:ring-indigo-500/20"
+            />
+          </div>
+          <div className="mt-3">
+            <Segmented<MovieSort>
+              options={sortOptions}
+              value={sort}
+              onChange={setSort}
+            />
+          </div>
 
-      {favoriteGenres.length > 0 && (
-        <p className="mt-3 text-xs text-zinc-400">
-          En sevdiğin türler:{' '}
-          <span className="font-medium text-zinc-600 dark:text-zinc-300">
-            {favoriteGenres.map((g) => g.genre).join(' · ')}
-          </span>{' '}
-          — öneriler yakında bunlara göre gelecek.
-        </p>
-      )}
-
-      <Section title="İzleme listesi" onAdd={() => setAddOpen(true)}>
-        {movies.isPending ? (
-          <SkeletonRows />
-        ) : toWatch.length === 0 ? (
-          <EmptyState
-            text={
-              search
-                ? 'Aramana uyan film yok.'
-                : 'Listen boş. İzlemek istediğin ilk filmi ekle.'
-            }
-          />
-        ) : (
-          <ul className="space-y-2.5">
-            <AnimatePresence initial={false}>
-              {toWatch.map((movie) => (
-                <WatchlistRow
-                  key={movie.id}
-                  movie={movie}
-                  onEdit={() => setEditMovie(movie)}
-                  onWatched={() => setWatchMovie(movie)}
+          {allGenres.length > 0 && (
+            <div className="mt-3 flex gap-1.5 overflow-x-auto pb-1">
+              <GenreChip
+                label="Tümü"
+                active={genre === null}
+                onClick={() => setGenre(null)}
+              />
+              {allGenres.map((g) => (
+                <GenreChip
+                  key={g}
+                  label={g}
+                  active={genre === g}
+                  onClick={() => setGenre(genre === g ? null : g)}
                 />
               ))}
-            </AnimatePresence>
-          </ul>
-        )}
-      </Section>
-
-      {(watched.length > 0 ||
-        (search && all.some((m) => m.status === 'watched'))) && (
-        <Section title="İzlediklerim">
-          {watched.length === 0 ? (
-            <EmptyState text="Aramana uyan film yok." />
-          ) : (
-            <ul className="space-y-2.5">
-              <AnimatePresence initial={false}>
-                {watched.map((movie) => (
-                  <WatchedRow
-                    key={movie.id}
-                    movie={movie}
-                    onRate={() => setWatchMovie(movie)}
-                  />
-                ))}
-              </AnimatePresence>
-            </ul>
+            </div>
           )}
-        </Section>
+
+          {favoriteGenres.length > 0 && (
+            <p className="mt-3 text-xs text-zinc-400">
+              En sevdiğin türler:{' '}
+              <span className="font-medium text-zinc-600 dark:text-zinc-300">
+                {favoriteGenres.map((g) => g.genre).join(' · ')}
+              </span>{' '}
+              — öneriler yakında bunlara göre gelecek.
+            </p>
+          )}
+
+          <Section title="İzleme listesi" onAdd={() => setAddOpen(true)}>
+            {movies.isPending ? (
+              <SkeletonRows />
+            ) : toWatch.length === 0 ? (
+              <EmptyState
+                text={
+                  search
+                    ? 'Aramana uyan film yok.'
+                    : 'Listen boş. İzlemek istediğin ilk filmi ekle.'
+                }
+              />
+            ) : (
+              <ul className="space-y-2.5">
+                <AnimatePresence initial={false}>
+                  {toWatch.map((movie) => (
+                    <WatchlistRow
+                      key={movie.id}
+                      movie={movie}
+                      onEdit={() => setEditMovie(movie)}
+                      onWatched={() => setWatchMovie(movie)}
+                    />
+                  ))}
+                </AnimatePresence>
+              </ul>
+            )}
+          </Section>
+
+          {(watched.length > 0 ||
+            (search && all.some((m) => m.status === 'watched'))) && (
+            <Section title="İzlediklerim">
+              {watched.length === 0 ? (
+                <EmptyState text="Aramana uyan film yok." />
+              ) : (
+                <ul className="space-y-2.5">
+                  <AnimatePresence initial={false}>
+                    {watched.map((movie) => (
+                      <WatchedRow
+                        key={movie.id}
+                        movie={movie}
+                        onRate={() => setWatchMovie(movie)}
+                      />
+                    ))}
+                  </AnimatePresence>
+                </ul>
+              )}
+            </Section>
+          )}
+
+          <Sheet
+            open={addOpen}
+            onClose={() => setAddOpen(false)}
+            title="Film ekle"
+          >
+            <AddMovieSearch onDone={() => setAddOpen(false)} />
+          </Sheet>
+
+          <Sheet
+            open={editMovie !== null}
+            onClose={() => setEditMovie(null)}
+            title="Filmi düzenle"
+          >
+            {editMovie && (
+              <MovieForm movie={editMovie} onDone={() => setEditMovie(null)} />
+            )}
+          </Sheet>
+
+          <Sheet
+            open={watchMovie !== null}
+            onClose={() => setWatchMovie(null)}
+            title="Nasıldı?"
+          >
+            {watchMovie && (
+              <WatchedForm
+                movie={watchMovie}
+                onDone={() => setWatchMovie(null)}
+              />
+            )}
+          </Sheet>
+        </>
       )}
-
-      <Sheet open={addOpen} onClose={() => setAddOpen(false)} title="Film ekle">
-        <AddMovieSearch onDone={() => setAddOpen(false)} />
-      </Sheet>
-
-      <Sheet
-        open={editMovie !== null}
-        onClose={() => setEditMovie(null)}
-        title="Filmi düzenle"
-      >
-        {editMovie && (
-          <MovieForm movie={editMovie} onDone={() => setEditMovie(null)} />
-        )}
-      </Sheet>
-
-      <Sheet
-        open={watchMovie !== null}
-        onClose={() => setWatchMovie(null)}
-        title="Nasıldı?"
-      >
-        {watchMovie && (
-          <WatchedForm movie={watchMovie} onDone={() => setWatchMovie(null)} />
-        )}
-      </Sheet>
     </PageTransition>
   )
 }

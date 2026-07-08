@@ -3,26 +3,21 @@ import { Clapperboard, Loader2, Search, Star } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
 import { EmptyState } from '@/components/EmptyState'
-import { useAuth } from '@/features/auth/useAuth'
-import { useCreateMovie } from '@/features/movies/hooks'
 import { MovieForm } from '@/features/movies/MovieForm'
 import {
-  fetchMovieExtras,
   isSearchConfigured,
   isTmdbConfigured,
   searchMovies,
   tmdbPosterUrl,
   type MovieSearchResult,
 } from '@/features/movies/tmdb'
+import { resultKey, useAddFromSearch } from '@/features/movies/useAddFromSearch'
 
 export function AddMovieSearch({ onDone }: { onDone: () => void }) {
-  const { session } = useAuth()
-  const createMovie = useCreateMovie()
+  const { add, addingKey, error } = useAddFromSearch()
   const [query, setQuery] = useState('')
   const [debounced, setDebounced] = useState('')
   const [manualMode, setManualMode] = useState(!isSearchConfigured)
-  const [addingKey, setAddingKey] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     const timer = setTimeout(() => setDebounced(query.trim()), 400)
@@ -60,28 +55,8 @@ export function AddMovieSearch({ onDone }: { onDone: () => void }) {
   }
 
   async function handlePick(result: MovieSearchResult) {
-    if (!session || addingKey !== null) return
-    setError(null)
-    const key = result.imdbId ?? String(result.tmdbId)
-    setAddingKey(key)
-    try {
-      const extras = await fetchMovieExtras(result)
-      await createMovie.mutateAsync({
-        user_id: session.user.id,
-        title: result.title,
-        tmdb_id: result.tmdbId,
-        poster_path: result.posterPath,
-        release_date: result.releaseDate,
-        external_rating: extras.rating,
-        external_source: extras.source,
-        genres: extras.genres,
-      })
-      onDone()
-    } catch {
-      setError('Eklenemedi — bu film zaten listende olabilir.')
-    } finally {
-      setAddingKey(null)
-    }
+    const ok = await add(result)
+    if (ok) onDone()
   }
 
   return (
@@ -131,7 +106,7 @@ export function AddMovieSearch({ onDone }: { onDone: () => void }) {
         <ul className="max-h-80 space-y-2 overflow-y-auto pr-1">
           {results.data.map((result) => {
             const poster = tmdbPosterUrl(result.posterPath)
-            const key = result.imdbId ?? String(result.tmdbId)
+            const key = resultKey(result)
             return (
               <li key={key}>
                 <button

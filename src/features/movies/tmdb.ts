@@ -120,12 +120,8 @@ async function omdbFetch<T>(params: Record<string, string>): Promise<T> {
   return response.json() as Promise<T>
 }
 
-async function searchTmdb(query: string): Promise<MovieSearchResult[]> {
-  const data = await tmdbFetch<{ results: TmdbSearchItem[] }>('/search/movie', {
-    query,
-    include_adult: 'false',
-  })
-  return data.results.slice(0, 8).map((item) => ({
+function mapTmdbItem(item: TmdbSearchItem): MovieSearchResult {
+  return {
     provider: 'tmdb' as const,
     tmdbId: item.id,
     imdbId: null,
@@ -137,7 +133,28 @@ async function searchTmdb(query: string): Promise<MovieSearchResult[]> {
     genres: (item.genre_ids ?? [])
       .map((id) => TMDB_GENRES[id])
       .filter((g): g is string => Boolean(g)),
-  }))
+  }
+}
+
+async function searchTmdb(query: string): Promise<MovieSearchResult[]> {
+  const data = await tmdbFetch<{ results: TmdbSearchItem[] }>('/search/movie', {
+    query,
+    include_adult: 'false',
+  })
+  return data.results.slice(0, 8).map(mapTmdbItem)
+}
+
+export type DiscoverFeed = 'now_playing' | 'upcoming'
+
+// Turkish theatrical listings; the basis of the Keşfet view
+export async function discoverMovies(
+  feed: DiscoverFeed,
+): Promise<MovieSearchResult[]> {
+  const data = await tmdbFetch<{ results: TmdbSearchItem[] }>(
+    `/movie/${feed}`,
+    { region: 'TR' },
+  )
+  return data.results.slice(0, 12).map(mapTmdbItem)
 }
 
 interface OmdbSearchItem {

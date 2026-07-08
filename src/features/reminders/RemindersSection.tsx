@@ -6,6 +6,9 @@ import { EmptyState } from '@/components/EmptyState'
 import { Section } from '@/components/Section'
 import { Sheet } from '@/components/Sheet'
 import { SkeletonRows } from '@/components/SkeletonRows'
+import type { Movie } from '@/features/movies/api'
+import { useMovies } from '@/features/movies/hooks'
+import { WatchedForm } from '@/features/movies/WatchedForm'
 import type { Reminder } from '@/features/reminders/api'
 import { ReminderForm } from '@/features/reminders/ReminderForm'
 import { useReminders, useSetReminderStatus } from '@/features/reminders/hooks'
@@ -19,14 +22,21 @@ interface ContributionTarget {
   goal: GoalWithWish
 }
 
+interface MovieTarget {
+  reminder: Reminder
+  movie: Movie
+}
+
 export function RemindersSection() {
   const reminders = useReminders()
   const goals = useGoals()
+  const movies = useMovies()
   const setStatus = useSetReminderStatus()
   const [addOpen, setAddOpen] = useState(false)
   const [contributeFor, setContributeFor] = useState<ContributionTarget | null>(
     null,
   )
+  const [watchFor, setWatchFor] = useState<MovieTarget | null>(null)
 
   const pending = (reminders.data ?? []).filter((r) => r.status === 'pending')
 
@@ -37,6 +47,16 @@ export function RemindersSection() {
     }
     return (goals.data ?? []).find(
       (g) => g.id === reminder.source_id && g.status === 'active',
+    )
+  }
+
+  // movie-night reminders open the watched/rating form directly
+  function movieFor(reminder: Reminder): Movie | undefined {
+    if (reminder.source_type !== 'movie' || !reminder.source_id) {
+      return undefined
+    }
+    return (movies.data ?? []).find(
+      (m) => m.id === reminder.source_id && m.status === 'to_watch',
     )
   }
 
@@ -52,6 +72,7 @@ export function RemindersSection() {
             <AnimatePresence initial={false}>
               {pending.map((reminder) => {
                 const goal = goalFor(reminder)
+                const movie = movieFor(reminder)
                 return (
                   <ReminderRow
                     key={reminder.id}
@@ -59,7 +80,9 @@ export function RemindersSection() {
                     onAction={
                       goal
                         ? () => setContributeFor({ reminder, goal })
-                        : undefined
+                        : movie
+                          ? () => setWatchFor({ reminder, movie })
+                          : undefined
                     }
                   />
                 )
@@ -92,6 +115,23 @@ export function RemindersSection() {
                 status: 'done',
               })
               setContributeFor(null)
+            }}
+          />
+        )}
+      </Sheet>
+
+      <Sheet
+        open={watchFor !== null}
+        onClose={() => setWatchFor(null)}
+        title="Nasıldı?"
+      >
+        {watchFor && (
+          <WatchedForm
+            movie={watchFor.movie}
+            onDone={() => {
+              // watching the movie fulfils the movie-night reminder
+              setStatus.mutate({ id: watchFor.reminder.id, status: 'done' })
+              setWatchFor(null)
             }}
           />
         )}

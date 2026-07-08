@@ -2,13 +2,19 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useRef } from 'react'
 
 import { useAuth } from '@/features/auth/useAuth'
+import { useMovies } from '@/features/movies/hooks'
 import {
   createReminder,
+  isEmptyPlan,
   listReminders,
+  mergePlans,
   setReminderStatus,
   syncReminders,
 } from '@/features/reminders/api'
-import { planContributionReminders } from '@/features/reminders/reminder-sync'
+import {
+  planContributionReminders,
+  planMovieReminders,
+} from '@/features/reminders/reminder-sync'
 import { useContributions, useGoals } from '@/features/wishlist/hooks'
 
 const remindersKey = ['reminders'] as const
@@ -33,12 +39,14 @@ export function useSetReminderStatus() {
   })
 }
 
-// Materializes this month's contribution reminders (and completes satisfied
-// ones) once per mount, as soon as all three datasets are loaded
-export function useContributionReminderSync() {
+// Materializes contribution and movie-night reminders (and completes or
+// dismisses satisfied/stale ones) once per mount, as soon as all datasets
+// are loaded
+export function useReminderSync() {
   const { session } = useAuth()
   const goals = useGoals()
   const contributions = useContributions()
+  const movies = useMovies()
   const reminders = useReminders()
   const queryClient = useQueryClient()
   const hasRun = useRef(false)
@@ -51,20 +59,40 @@ export function useContributionReminderSync() {
 
   useEffect(() => {
     if (hasRun.current) return
-    if (!session || !goals.data || !contributions.data || !reminders.data) {
+    if (
+      !session ||
+      !goals.data ||
+      !contributions.data ||
+      !movies.data ||
+      !reminders.data
+    ) {
       return
     }
 
-    const plan = planContributionReminders({
-      userId: session.user.id,
-      goals: goals.data,
-      contributions: contributions.data,
-      reminders: reminders.data,
-    })
+    const plan = mergePlans(
+      planContributionReminders({
+        userId: session.user.id,
+        goals: goals.data,
+        contributions: contributions.data,
+        reminders: reminders.data,
+      }),
+      planMovieReminders({
+        userId: session.user.id,
+        movies: movies.data,
+        reminders: reminders.data,
+      }),
+    )
 
-    if (plan.toInsert.length > 0 || plan.toComplete.length > 0) {
+    if (!isEmptyPlan(plan)) {
       hasRun.current = true
       mutate(plan)
     }
-  }, [session, goals.data, contributions.data, reminders.data, mutate])
+  }, [
+    session,
+    goals.data,
+    contributions.data,
+    movies.data,
+    reminders.data,
+    mutate,
+  ])
 }

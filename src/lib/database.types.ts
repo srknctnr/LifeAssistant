@@ -341,7 +341,7 @@ export interface Database {
       wishlist_kind: 'purchase' | 'travel'
       wishlist_status: 'active' | 'converted' | 'completed' | 'archived'
       savings_goal_status: 'active' | 'paused' | 'completed' | 'cancelled'
-      reminder_source: 'manual' | 'savings_goal' | 'wishlist_item'
+      reminder_source: 'manual' | 'savings_goal' | 'wishlist_item' | 'movie'
       reminder_status: 'pending' | 'done' | 'dismissed'
     }
     CompositeTypes: Record<string, never>
@@ -369,7 +369,7 @@ export const Constants = {
       wishlist_kind: ['purchase', 'travel'],
       wishlist_status: ['active', 'converted', 'completed', 'archived'],
       savings_goal_status: ['active', 'paused', 'completed', 'cancelled'],
-      reminder_source: ['manual', 'savings_goal', 'wishlist_item'],
+      reminder_source: ['manual', 'savings_goal', 'wishlist_item', 'movie'],
       reminder_status: ['pending', 'done', 'dismissed'],
     },
   },

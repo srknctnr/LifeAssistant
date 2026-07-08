@@ -20,7 +20,7 @@ import {
   monthlyIncomeTotal,
 } from '@/features/budget/money'
 import { useMovies } from '@/features/movies/hooks'
-import { useContributionReminderSync } from '@/features/reminders/hooks'
+import { useReminderSync } from '@/features/reminders/hooks'
 import { RemindersSection } from '@/features/reminders/RemindersSection'
 import { useContributions, useGoals } from '@/features/wishlist/hooks'
 import { formatDate } from '@/lib/dates'
@@ -28,7 +28,7 @@ import { formatMoney } from '@/lib/money'
 
 export function DashboardPage() {
   const { session } = useAuth()
-  useContributionReminderSync()
+  useReminderSync()
 
   const firstName = session?.user.email?.split('@')[0] ?? ''
 

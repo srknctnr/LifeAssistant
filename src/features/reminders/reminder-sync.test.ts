@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest'
 
 import type { Reminder } from '@/features/reminders/api'
-import { planContributionReminders } from '@/features/reminders/reminder-sync'
+import {
+  planContributionReminders,
+  planMovieReminders,
+} from '@/features/reminders/reminder-sync'
 import type { GoalWithWish, SavingsContribution } from '@/features/wishlist/api'
 
 const today = new Date(2026, 6, 6) // 6 Temmuz 2026
@@ -146,6 +149,87 @@ describe('planContributionReminders', () => {
       contributions: [],
       reminders: [],
       today,
+    })
+    expect(plan.toInsert).toEqual([])
+  })
+})
+
+describe('planMovieReminders', () => {
+  const movie = {
+    id: 'movie-1',
+    title: 'Dune',
+    status: 'to_watch',
+    planned_for: '2026-07-12',
+  }
+
+  function movieReminder(overrides: Partial<Reminder> = {}): Reminder {
+    return makeReminder({
+      id: 'movie-reminder-1',
+      title: 'Film günü: Dune',
+      due_on: '2026-07-12',
+      source_type: 'movie',
+      source_id: 'movie-1',
+      ...overrides,
+    })
+  }
+
+  it('creates a reminder for a planned movie night', () => {
+    const plan = planMovieReminders({
+      userId: 'user-1',
+      movies: [movie],
+      reminders: [],
+    })
+    expect(plan.toInsert).toHaveLength(1)
+    expect(plan.toInsert[0]).toMatchObject({
+      title: 'Film günü: Dune',
+      due_on: '2026-07-12',
+      source_type: 'movie',
+      source_id: 'movie-1',
+    })
+  })
+
+  it('does not duplicate or recreate dismissed reminders', () => {
+    const plan = planMovieReminders({
+      userId: 'user-1',
+      movies: [movie],
+      reminders: [movieReminder({ status: 'dismissed' })],
+    })
+    expect(plan.toInsert).toEqual([])
+  })
+
+  it('completes the reminder once the movie is watched', () => {
+    const plan = planMovieReminders({
+      userId: 'user-1',
+      movies: [{ ...movie, status: 'watched' }],
+      reminders: [movieReminder()],
+    })
+    expect(plan.toComplete).toEqual(['movie-reminder-1'])
+  })
+
+  it('dismisses stale reminders when the date moves and creates the new one', () => {
+    const plan = planMovieReminders({
+      userId: 'user-1',
+      movies: [{ ...movie, planned_for: '2026-07-20' }],
+      reminders: [movieReminder()],
+    })
+    expect(plan.toDismiss).toEqual(['movie-reminder-1'])
+    expect(plan.toInsert[0]).toMatchObject({ due_on: '2026-07-20' })
+  })
+
+  it('dismisses reminders of deleted movies', () => {
+    const plan = planMovieReminders({
+      userId: 'user-1',
+      movies: [],
+      reminders: [movieReminder()],
+    })
+    expect(plan.toDismiss).toEqual(['movie-reminder-1'])
+  })
+
+  it('skips movies without a planned date', () => {
+    const plan = planMovieReminders({
+      userId: 'user-1',
+      movies: [{ ...movie, planned_for: null }],
+      reminders: [],
     })
     expect(plan.toInsert).toEqual([])
   })

@@ -39,6 +39,23 @@ export async function setReminderStatus(params: {
 export interface ReminderSyncPlan {
   toInsert: TablesInsert<'reminders'>[]
   toComplete: string[]
+  toDismiss: string[]
+}
+
+export function mergePlans(...plans: ReminderSyncPlan[]): ReminderSyncPlan {
+  return {
+    toInsert: plans.flatMap((p) => p.toInsert),
+    toComplete: plans.flatMap((p) => p.toComplete),
+    toDismiss: plans.flatMap((p) => p.toDismiss),
+  }
+}
+
+export function isEmptyPlan(plan: ReminderSyncPlan): boolean {
+  return (
+    plan.toInsert.length === 0 &&
+    plan.toComplete.length === 0 &&
+    plan.toDismiss.length === 0
+  )
 }
 
 // Idempotent: inserts rely on the reminders_user_source_due_unique index,
@@ -46,6 +63,7 @@ export interface ReminderSyncPlan {
 export async function syncReminders({
   toInsert,
   toComplete,
+  toDismiss,
 }: ReminderSyncPlan): Promise<void> {
   if (toInsert.length > 0) {
     const { error } = await supabase.from('reminders').upsert(toInsert, {
@@ -59,6 +77,13 @@ export async function syncReminders({
       .from('reminders')
       .update({ status: 'done' })
       .in('id', toComplete)
+    if (error) throw error
+  }
+  if (toDismiss.length > 0) {
+    const { error } = await supabase
+      .from('reminders')
+      .update({ status: 'dismissed' })
+      .in('id', toDismiss)
     if (error) throw error
   }
 }

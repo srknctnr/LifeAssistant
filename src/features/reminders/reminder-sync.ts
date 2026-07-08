@@ -33,7 +33,7 @@ export function planContributionReminders({
   today = new Date(),
 }: PlanInput): ReminderSyncPlan {
   const month = monthKey(today)
-  const plan: ReminderSyncPlan = { toInsert: [], toComplete: [] }
+  const plan: ReminderSyncPlan = { toInsert: [], toComplete: [], toDismiss: [] }
 
   const savedByGoal = new Map<string, number>()
   for (const c of contributions) {
@@ -72,6 +72,65 @@ export function planContributionReminders({
         due_on: endOfMonthISO(today),
         source_type: 'savings_goal',
         source_id: goal.id,
+      })
+    }
+  }
+
+  return plan
+}
+
+interface MovieLike {
+  id: string
+  title: string
+  status: string
+  planned_for: string | null
+}
+
+interface MoviePlanInput {
+  userId: string
+  movies: MovieLike[]
+  reminders: Reminder[]
+}
+
+// A to-watch movie with a planned date gets a movie-night reminder for that
+// exact date. Watching the movie completes the reminder; deleting the movie
+// or moving the date dismisses the stale one. A reminder the user dismissed
+// is not recreated for the same date.
+export function planMovieReminders({
+  userId,
+  movies,
+  reminders,
+}: MoviePlanInput): ReminderSyncPlan {
+  const plan: ReminderSyncPlan = { toInsert: [], toComplete: [], toDismiss: [] }
+  const movieById = new Map(movies.map((m) => [m.id, m]))
+  const movieReminders = reminders.filter(
+    (r) => r.source_type === 'movie' && r.source_id,
+  )
+
+  for (const reminder of movieReminders) {
+    if (reminder.status !== 'pending') continue
+    const movie = movieById.get(reminder.source_id!)
+    if (!movie) {
+      plan.toDismiss.push(reminder.id)
+    } else if (movie.status === 'watched') {
+      plan.toComplete.push(reminder.id)
+    } else if (movie.planned_for !== reminder.due_on) {
+      plan.toDismiss.push(reminder.id)
+    }
+  }
+
+  for (const movie of movies) {
+    if (movie.status !== 'to_watch' || !movie.planned_for) continue
+    const exists = movieReminders.some(
+      (r) => r.source_id === movie.id && r.due_on === movie.planned_for,
+    )
+    if (!exists) {
+      plan.toInsert.push({
+        user_id: userId,
+        title: `Film günü: ${movie.title}`,
+        due_on: movie.planned_for,
+        source_type: 'movie',
+        source_id: movie.id,
       })
     }
   }
