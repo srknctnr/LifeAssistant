@@ -21,11 +21,67 @@ export interface MovieSearchResult {
   posterPath: string | null
   releaseDate: string | null
   tmdbScore: number | null
+  genres: string[]
 }
 
-export interface ExternalRating {
+export interface MovieExtras {
   rating: number | null
   source: 'imdb' | 'tmdb' | null
+  genres: string[]
+}
+
+// Both providers funnel into one canonical Turkish genre list so filtering
+// and the taste profile work regardless of where a movie came from
+const TMDB_GENRES: Record<number, string> = {
+  28: 'Aksiyon',
+  12: 'Macera',
+  16: 'Animasyon',
+  35: 'Komedi',
+  80: 'Suç',
+  99: 'Belgesel',
+  18: 'Dram',
+  10751: 'Aile',
+  14: 'Fantastik',
+  36: 'Tarih',
+  27: 'Korku',
+  10402: 'Müzik',
+  9648: 'Gizem',
+  10749: 'Romantik',
+  878: 'Bilim Kurgu',
+  10770: 'TV Filmi',
+  53: 'Gerilim',
+  10752: 'Savaş',
+  37: 'Western',
+}
+
+const OMDB_GENRES: Record<string, string> = {
+  Action: 'Aksiyon',
+  Adventure: 'Macera',
+  Animation: 'Animasyon',
+  Biography: 'Biyografi',
+  Comedy: 'Komedi',
+  Crime: 'Suç',
+  Documentary: 'Belgesel',
+  Drama: 'Dram',
+  Family: 'Aile',
+  Fantasy: 'Fantastik',
+  'Film-Noir': 'Kara Film',
+  History: 'Tarih',
+  Horror: 'Korku',
+  Music: 'Müzik',
+  Musical: 'Müzikal',
+  Mystery: 'Gizem',
+  Romance: 'Romantik',
+  'Sci-Fi': 'Bilim Kurgu',
+  Sport: 'Spor',
+  Thriller: 'Gerilim',
+  War: 'Savaş',
+  Western: 'Western',
+}
+
+function omdbGenresToCanonical(genre: string | undefined): string[] {
+  if (!genre || genre === 'N/A') return []
+  return genre.split(',').map((g) => OMDB_GENRES[g.trim()] ?? g.trim())
 }
 
 interface TmdbSearchItem {
@@ -34,6 +90,7 @@ interface TmdbSearchItem {
   release_date: string | null
   poster_path: string | null
   vote_average: number
+  genre_ids: number[]
 }
 
 async function tmdbFetch<T>(
@@ -77,6 +134,9 @@ async function searchTmdb(query: string): Promise<MovieSearchResult[]> {
     posterPath: item.poster_path,
     releaseDate: item.release_date || null,
     tmdbScore: item.vote_average > 0 ? item.vote_average : null,
+    genres: (item.genre_ids ?? [])
+      .map((id) => TMDB_GENRES[id])
+      .filter((g): g is string => Boolean(g)),
   }))
 }
 
@@ -103,6 +163,7 @@ async function searchOmdb(query: string): Promise<MovieSearchResult[]> {
       posterPath: item.Poster && item.Poster !== 'N/A' ? item.Poster : null,
       releaseDate: year ? `${year}-01-01` : null,
       tmdbScore: null,
+      genres: [],
     }
   })
 }
@@ -113,21 +174,20 @@ export function searchMovies(query: string): Promise<MovieSearchResult[]> {
   return Promise.resolve([])
 }
 
-async function imdbRatingById(imdbId: string): Promise<number | null> {
-  const data = await omdbFetch<{ imdbRating?: string }>({ i: imdbId })
-  const parsed = Number.parseFloat(data.imdbRating ?? '')
-  return Number.isFinite(parsed) ? parsed : null
-}
-
-// Real IMDb rating when reachable; TMDB community score as fallback
-export async function fetchExternalRating(
+// Real IMDb rating when reachable (TMDB community score as fallback) plus
+// genres — a single OMDb detail call provides both for IMDb entries
+export async function fetchMovieExtras(
   result: MovieSearchResult,
-): Promise<ExternalRating> {
-  const tmdbFallback: ExternalRating = result.tmdbScore
-    ? { rating: Math.round(result.tmdbScore * 10) / 10, source: 'tmdb' }
-    : { rating: null, source: null }
+): Promise<MovieExtras> {
+  const fallback: MovieExtras = result.tmdbScore
+    ? {
+        rating: Math.round(result.tmdbScore * 10) / 10,
+        source: 'tmdb',
+        genres: result.genres,
+      }
+    : { rating: null, source: null, genres: result.genres }
 
-  if (!isOmdbConfigured) return tmdbFallback
+  if (!isOmdbConfigured) return fallback
 
   try {
     let imdbId = result.imdbId
@@ -137,12 +197,21 @@ export async function fetchExternalRating(
       )
       imdbId = ids.imdb_id
     }
-    if (!imdbId) return tmdbFallback
+    if (!imdbId) return fallback
 
-    const rating = await imdbRatingById(imdbId)
-    return rating !== null ? { rating, source: 'imdb' } : tmdbFallback
+    const data = await omdbFetch<{ imdbRating?: string; Genre?: string }>({
+      i: imdbId,
+    })
+    const genres =
+      result.genres.length > 0
+        ? result.genres
+        : omdbGenresToCanonical(data.Genre)
+    const parsed = Number.parseFloat(data.imdbRating ?? '')
+    return Number.isFinite(parsed)
+      ? { rating: parsed, source: 'imdb', genres }
+      : { ...fallback, genres }
   } catch {
-    return tmdbFallback
+    return fallback
   }
 }
 

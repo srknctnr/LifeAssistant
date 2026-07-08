@@ -243,6 +243,7 @@ export interface Database {
           rating: number | null
           external_rating: number | null
           external_source: 'imdb' | 'tmdb' | null
+          genres: string[]
           watched_on: string | null
           planned_for: string | null
           created_at: string
@@ -259,6 +260,7 @@ export interface Database {
           rating?: number | null
           external_rating?: number | null
           external_source?: 'imdb' | 'tmdb' | null
+          genres?: string[]
           watched_on?: string | null
           planned_for?: string | null
           created_at?: string
@@ -275,6 +277,7 @@ export interface Database {
           rating?: number | null
           external_rating?: number | null
           external_source?: 'imdb' | 'tmdb' | null
+          genres?: string[]
           watched_on?: string | null
           planned_for?: string | null
           created_at?: string

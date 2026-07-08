@@ -29,6 +29,7 @@ import {
 } from '@/features/movies/movie-sort'
 import { AddMovieSearch } from '@/features/movies/AddMovieSearch'
 import { MovieForm } from '@/features/movies/MovieForm'
+import { genreTasteProfile } from '@/features/movies/taste'
 import { tmdbPosterUrl } from '@/features/movies/tmdb'
 import { WatchedForm } from '@/features/movies/WatchedForm'
 import { formatDate } from '@/lib/dates'
@@ -42,6 +43,7 @@ export function MoviesPage() {
   const movies = useMovies()
   const [search, setSearch] = useState('')
   const [sort, setSort] = useState<MovieSort>('added')
+  const [genre, setGenre] = useState<string | null>(null)
   const [addOpen, setAddOpen] = useState(false)
   const [editMovie, setEditMovie] = useState<Movie | null>(null)
   const [watchMovie, setWatchMovie] = useState<Movie | null>(null)
@@ -51,12 +53,21 @@ export function MoviesPage() {
     all.filter((m) => m.status === 'to_watch'),
     search,
     sort,
+    genre,
   )
   const watched = filterAndSortMovies(
     all.filter((m) => m.status === 'watched'),
     search,
     sort,
+    genre,
   )
+
+  const allGenres = [...new Set(all.flatMap((m) => m.genres))].sort((a, b) =>
+    a.localeCompare(b, 'tr'),
+  )
+  const favoriteGenres = genreTasteProfile(all)
+    .filter((g) => g.score > 0)
+    .slice(0, 3)
 
   return (
     <PageTransition>
@@ -85,6 +96,34 @@ export function MoviesPage() {
           onChange={setSort}
         />
       </div>
+
+      {allGenres.length > 0 && (
+        <div className="mt-3 flex gap-1.5 overflow-x-auto pb-1">
+          <GenreChip
+            label="Tümü"
+            active={genre === null}
+            onClick={() => setGenre(null)}
+          />
+          {allGenres.map((g) => (
+            <GenreChip
+              key={g}
+              label={g}
+              active={genre === g}
+              onClick={() => setGenre(genre === g ? null : g)}
+            />
+          ))}
+        </div>
+      )}
+
+      {favoriteGenres.length > 0 && (
+        <p className="mt-3 text-xs text-zinc-400">
+          En sevdiğin türler:{' '}
+          <span className="font-medium text-zinc-600 dark:text-zinc-300">
+            {favoriteGenres.map((g) => g.genre).join(' · ')}
+          </span>{' '}
+          — öneriler yakında bunlara göre gelecek.
+        </p>
+      )}
 
       <Section title="İzleme listesi" onAdd={() => setAddOpen(true)}>
         {movies.isPending ? (
@@ -158,6 +197,29 @@ export function MoviesPage() {
         )}
       </Sheet>
     </PageTransition>
+  )
+}
+
+function GenreChip({
+  label,
+  active,
+  onClick,
+}: {
+  label: string
+  active: boolean
+  onClick: () => void
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+        active
+          ? 'bg-indigo-600 text-white'
+          : 'bg-zinc-100 text-zinc-500 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700'
+      }`}
+    >
+      {label}
+    </button>
   )
 }
 
@@ -239,6 +301,8 @@ function WatchlistRow({
             : movie.release_date
               ? movie.release_date.slice(0, 4)
               : 'İzlenecek'}
+          {movie.genres.length > 0 &&
+            ` · ${movie.genres.slice(0, 2).join(', ')}`}
         </p>
       </button>
       <ExternalBadge

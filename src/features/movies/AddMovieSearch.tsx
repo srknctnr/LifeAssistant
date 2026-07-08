@@ -7,7 +7,7 @@ import { useAuth } from '@/features/auth/useAuth'
 import { useCreateMovie } from '@/features/movies/hooks'
 import { MovieForm } from '@/features/movies/MovieForm'
 import {
-  fetchExternalRating,
+  fetchMovieExtras,
   isSearchConfigured,
   isTmdbConfigured,
   searchMovies,
@@ -65,15 +65,16 @@ export function AddMovieSearch({ onDone }: { onDone: () => void }) {
     const key = result.imdbId ?? String(result.tmdbId)
     setAddingKey(key)
     try {
-      const external = await fetchExternalRating(result)
+      const extras = await fetchMovieExtras(result)
       await createMovie.mutateAsync({
         user_id: session.user.id,
         title: result.title,
         tmdb_id: result.tmdbId,
         poster_path: result.posterPath,
         release_date: result.releaseDate,
-        external_rating: external.rating,
-        external_source: external.source,
+        external_rating: extras.rating,
+        external_source: extras.source,
+        genres: extras.genres,
       })
       onDone()
     } catch {

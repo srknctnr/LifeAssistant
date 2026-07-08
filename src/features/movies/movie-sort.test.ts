@@ -8,18 +8,21 @@ const movies = [
     created_at: '2026-07-01T00:00:00Z',
     rating: 4,
     external_rating: 8.1,
+    genres: ['Bilim Kurgu', 'Macera'],
   },
   {
     title: 'Esaretin Bedeli',
     created_at: '2026-07-03T00:00:00Z',
     rating: 5,
     external_rating: 9.3,
+    genres: ['Dram'],
   },
   {
     title: 'İlk Film',
     created_at: '2026-07-05T00:00:00Z',
     rating: null,
     external_rating: null,
+    genres: [],
   },
 ]
 
@@ -54,5 +57,10 @@ describe('filterAndSortMovies', () => {
   it('filters by title, Turkish case-insensitively', () => {
     const result = filterAndSortMovies(movies, 'iLK', 'added')
     expect(result.map((m) => m.title)).toEqual(['İlk Film'])
+  })
+
+  it('filters by genre', () => {
+    const result = filterAndSortMovies(movies, '', 'added', 'Dram')
+    expect(result.map((m) => m.title)).toEqual(['Esaretin Bedeli'])
   })
 })
