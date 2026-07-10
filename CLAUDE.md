@@ -14,7 +14,11 @@ Kişisel yaşam asistanı uygulaması. Dört sütun: bütçe, film takibi, seyah
 
 Film, seyahat detayı, takvim entegrasyonu, ortak masraf paylaşımı = sonraki fazlar. MVP dışına çıkma, kullanıcı istese bile önce kapsam genişlemesi olduğunu hatırlat.
 
-**Durum (2026-07-07):** MVP + cila tamamlandı, Netlify'da yayında (lifeassistantai.netlify.app; ev ISS'i netlify.app'i engelliyor, GitHub Pages yapılandırması hazır bekliyor). Kullanıcı onayıyla Faz 2'ye geçildi — ilk modül: film listesi (izleme listesi + puanlama tamam; sıradaki dilim TMDB araması, sonra film günü hatırlatması). Kalan Faz 2: takvim/yaşam kategorileri, limit asistanı.
+**Durum (2026-07-08):** MVP + cila tamamlandı, Netlify'da yayında (lifeassistantai.netlify.app; ev ISS'i netlify.app'i engelliyor, GitHub Pages yapılandırması hazır bekliyor). Faz 2 film modülü bitti: izleme listesi + 5 yıldız puanlama, OMDb/IMDb arama ve puan rozetleri, türler + tür filtresi, zevk profili, Keşfet (TMDB anahtarı yoksa zevke göre küratörlü öneriler; varsa vizyondakiler/yakında), film günü hatırlatmaları. Kalan Faz 2: takvim/yaşam kategorileri, limit asistanı.
+
+**Çalışma düzeni:** Kaynak GitHub (`srknctnr/LifeAssistant`), kullanıcı farklı bilgisayarlardan çalışıyor. Her oturuma `git pull` ile başla, her anlamlı adımda commit + push et. `.env.local` git'e girmez; her makinede elle oluşturulur (VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY, VITE_OMDB_KEY, opsiyonel VITE_TMDB_TOKEN). Gerçek anahtarlar asla `.env.example`'a yazılmaz.
+
+**Kullanıcıda bekleyenler:** SQL Editor'de `20260708010000_add_movie_reminder_source.sql` migration'ı; Netlify ortam değişkeni `VITE_OMDB_KEY` (+ Trigger deploy); isteğe bağlı TMDB "API Read Access Token".
 
 ## Teknoloji Yığını
 
