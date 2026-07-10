@@ -191,6 +191,41 @@ export function searchMovies(query: string): Promise<MovieSearchResult[]> {
   return Promise.resolve([])
 }
 
+// Detail lookup for the curated suggestions; tmdbScore doubles as the
+// generic star-badge score and carries the IMDb rating here. Returns null
+// for unknown/failed ids so a bad pool entry degrades silently.
+export async function omdbMovieByImdbId(
+  imdbId: string,
+): Promise<MovieSearchResult | null> {
+  try {
+    const data = await omdbFetch<{
+      Response: string
+      Title?: string
+      Year?: string
+      Poster?: string
+      Genre?: string
+      imdbRating?: string
+    }>({ i: imdbId })
+    if (data.Response !== 'True' || !data.Title) return null
+
+    const year = /^\d{4}/.exec(data.Year ?? '')?.[0] ?? null
+    const rating = Number.parseFloat(data.imdbRating ?? '')
+    return {
+      provider: 'omdb',
+      tmdbId: null,
+      imdbId,
+      title: data.Title,
+      year,
+      posterPath: data.Poster && data.Poster !== 'N/A' ? data.Poster : null,
+      releaseDate: year ? `${year}-01-01` : null,
+      tmdbScore: Number.isFinite(rating) ? rating : null,
+      genres: omdbGenresToCanonical(data.Genre),
+    }
+  } catch {
+    return null
+  }
+}
+
 // Real IMDb rating when reachable (TMDB community score as fallback) plus
 // genres — a single OMDb detail call provides both for IMDb entries
 export async function fetchMovieExtras(
