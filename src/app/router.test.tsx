@@ -71,4 +71,11 @@ describe('app routes (authenticated)', () => {
       await screen.findByRole('heading', { name: 'Filmler' }),
     ).toBeInTheDocument()
   })
+
+  it('renders the calendar page at /calendar', async () => {
+    renderAt('/calendar')
+    expect(
+      await screen.findByRole('heading', { name: 'Takvim' }),
+    ).toBeInTheDocument()
+  })
 })

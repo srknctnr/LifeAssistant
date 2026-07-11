@@ -231,6 +231,71 @@ export interface Database {
           },
         ]
       }
+      life_categories: {
+        Row: {
+          id: string
+          user_id: string
+          name: string
+          emoji: string | null
+          weekly_target: number | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          name: string
+          emoji?: string | null
+          weekly_target?: number | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          name?: string
+          emoji?: string | null
+          weekly_target?: number | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      category_entries: {
+        Row: {
+          id: string
+          user_id: string
+          category_id: string
+          done_on: string
+          note: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          category_id: string
+          done_on?: string
+          note?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          category_id?: string
+          done_on?: string
+          note?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'category_entries_category_id_fkey'
+            columns: ['category_id']
+            isOneToOne: false
+            referencedRelation: 'life_categories'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       movies: {
         Row: {
           id: string

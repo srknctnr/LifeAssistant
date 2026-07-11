@@ -16,6 +16,11 @@ import { PageTransition } from '@/components/PageTransition'
 import { useAuth } from '@/features/auth/useAuth'
 import { useExpenseItems, useIncomes } from '@/features/budget/hooks'
 import {
+  useCategoryEntries,
+  useLifeCategories,
+} from '@/features/calendar/hooks'
+import { weekDays } from '@/features/calendar/week-math'
+import {
   monthlyExpenseTotal,
   monthlyIncomeTotal,
 } from '@/features/budget/money'
@@ -23,7 +28,7 @@ import { useMovies } from '@/features/movies/hooks'
 import { useReminderSync } from '@/features/reminders/hooks'
 import { RemindersSection } from '@/features/reminders/RemindersSection'
 import { useContributions, useGoals } from '@/features/wishlist/hooks'
-import { formatDate } from '@/lib/dates'
+import { formatDate, toISODate } from '@/lib/dates'
 import { formatMoney } from '@/lib/money'
 
 export function DashboardPage() {
@@ -45,11 +50,7 @@ export function DashboardPage() {
         <BudgetModule />
         <GoalsModule />
         <MoviesModule />
-        <ComingSoonModule
-          icon={CalendarDays}
-          title="Takvim"
-          text="Yaşam kategorilerin ve planların tek bakışta"
-        />
+        <CalendarModule />
         <ComingSoonModule
           icon={Plane}
           title="Seyahat"
@@ -260,6 +261,73 @@ function MoviesModule() {
           · {formatDate(nextPlanned.planned_for!)}
         </p>
       )}
+    </Link>
+  )
+}
+
+function CalendarModule() {
+  const categories = useLifeCategories()
+  const entries = useCategoryEntries()
+
+  if (categories.isPending || entries.isPending) {
+    return (
+      <div className="h-40 animate-pulse rounded-3xl bg-zinc-100 dark:bg-zinc-800" />
+    )
+  }
+
+  const list = categories.data ?? []
+  if (list.length === 0) {
+    return (
+      <CtaModule
+        to="/calendar"
+        icon={CalendarDays}
+        title="Kategorilerini oluştur"
+        text="Spor, kitap, sosyalleşme… haftalık hedefler koy, günleri işaretle."
+      />
+    )
+  }
+
+  const weekIsoDays = new Set(weekDays(new Date()).map(toISODate))
+  const countFor = (categoryId: string) =>
+    (entries.data ?? []).filter(
+      (e) => e.category_id === categoryId && weekIsoDays.has(e.done_on),
+    ).length
+
+  return (
+    <Link
+      to="/calendar"
+      className="group block rounded-3xl bg-white p-5 shadow-sm shadow-zinc-200/60 transition-transform hover:-translate-y-0.5 dark:bg-zinc-900 dark:shadow-none"
+    >
+      <div className="flex items-center justify-between text-sm">
+        <span className="flex items-center gap-2 font-semibold tracking-tight">
+          <CalendarDays size={16} className="text-indigo-500" /> Bu Hafta
+        </span>
+        <ArrowRight
+          size={16}
+          className="text-zinc-300 transition-transform group-hover:translate-x-0.5 dark:text-zinc-600"
+        />
+      </div>
+      <ul className="mt-4 flex flex-wrap gap-2">
+        {list.slice(0, 6).map((category) => {
+          const count = countFor(category.id)
+          const met =
+            category.weekly_target !== null && count >= category.weekly_target
+          return (
+            <li
+              key={category.id}
+              className={`rounded-full px-3 py-1.5 text-xs font-medium tabular-nums ${
+                met
+                  ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400'
+                  : 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300'
+              }`}
+            >
+              {category.emoji ? `${category.emoji} ` : ''}
+              {category.name} {count}
+              {category.weekly_target ? `/${category.weekly_target}` : ''}
+            </li>
+          )
+        })}
+      </ul>
     </Link>
   )
 }

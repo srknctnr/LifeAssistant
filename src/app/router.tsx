@@ -5,6 +5,7 @@ import { AuthPage } from '@/features/auth/AuthPage'
 import { RequireAuth } from '@/features/auth/RequireAuth'
 import { ResetPasswordPage } from '@/features/auth/ResetPasswordPage'
 import { BudgetPage } from '@/features/budget/BudgetPage'
+import { CalendarPage } from '@/features/calendar/CalendarPage'
 import { DashboardPage } from '@/features/dashboard/DashboardPage'
 import { MoviesPage } from '@/features/movies/MoviesPage'
 import { WishlistPage } from '@/features/wishlist/WishlistPage'
@@ -22,6 +23,7 @@ export const routes: RouteObject[] = [
           { path: '/budget', element: <BudgetPage /> },
           { path: '/wishlist', element: <WishlistPage /> },
           { path: '/movies', element: <MoviesPage /> },
+          { path: '/calendar', element: <CalendarPage /> },
         ],
       },
     ],

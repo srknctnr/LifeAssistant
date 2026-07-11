@@ -9,9 +9,12 @@ export function formatDate(isoDate: string | Date): string {
   return dateFormatter.format(date)
 }
 
+export function toISODate(date: Date): string {
+  const mm = String(date.getMonth() + 1).padStart(2, '0')
+  const dd = String(date.getDate()).padStart(2, '0')
+  return `${date.getFullYear()}-${mm}-${dd}`
+}
+
 export function todayISO(): string {
-  const now = new Date()
-  const mm = String(now.getMonth() + 1).padStart(2, '0')
-  const dd = String(now.getDate()).padStart(2, '0')
-  return `${now.getFullYear()}-${mm}-${dd}`
+  return toISODate(new Date())
 }
