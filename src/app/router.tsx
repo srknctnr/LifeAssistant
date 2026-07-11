@@ -1,18 +1,28 @@
+import { Suspense, type ReactNode } from 'react'
 import { createBrowserRouter, type RouteObject } from 'react-router-dom'
 
+import {
+  AuthPage,
+  BudgetPage,
+  CalendarPage,
+  DashboardPage,
+  MoviesPage,
+  ResetPasswordPage,
+  WishlistPage,
+} from '@/app/lazy-pages'
 import { AppLayout } from '@/app/layouts/AppLayout'
-import { AuthPage } from '@/features/auth/AuthPage'
+import { SplashScreen } from '@/components/SplashScreen'
 import { RequireAuth } from '@/features/auth/RequireAuth'
-import { ResetPasswordPage } from '@/features/auth/ResetPasswordPage'
-import { BudgetPage } from '@/features/budget/BudgetPage'
-import { CalendarPage } from '@/features/calendar/CalendarPage'
-import { DashboardPage } from '@/features/dashboard/DashboardPage'
-import { MoviesPage } from '@/features/movies/MoviesPage'
-import { WishlistPage } from '@/features/wishlist/WishlistPage'
+
+// Pages inside AppLayout suspend into the layout's skeleton fallback; the
+// standalone auth pages get a full-screen one
+function fullScreen(node: ReactNode) {
+  return <Suspense fallback={<SplashScreen />}>{node}</Suspense>
+}
 
 export const routes: RouteObject[] = [
-  { path: '/auth', element: <AuthPage /> },
-  { path: '/reset-password', element: <ResetPasswordPage /> },
+  { path: '/auth', element: fullScreen(<AuthPage />) },
+  { path: '/reset-password', element: fullScreen(<ResetPasswordPage />) },
   {
     element: <RequireAuth />,
     children: [

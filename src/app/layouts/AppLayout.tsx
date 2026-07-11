@@ -7,6 +7,7 @@ import {
   Wallet,
 } from 'lucide-react'
 import { motion } from 'motion/react'
+import { Suspense } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
 
 import { ThemeToggle } from '@/components/ThemeToggle'
@@ -98,7 +99,16 @@ export function AppLayout() {
         </header>
 
         <main className="mx-auto max-w-md px-5 pt-6 pb-28 md:max-w-3xl md:px-10 md:pt-10 md:pb-16">
-          <Outlet />
+          <Suspense
+            fallback={
+              <div className="mt-2 space-y-4">
+                <div className="h-8 w-40 animate-pulse rounded-xl bg-zinc-100 dark:bg-zinc-800" />
+                <div className="h-40 animate-pulse rounded-3xl bg-zinc-100 dark:bg-zinc-800" />
+              </div>
+            }
+          >
+            <Outlet />
+          </Suspense>
         </main>
       </div>
 
