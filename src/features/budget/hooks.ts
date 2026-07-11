@@ -3,16 +3,21 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   createExpenseItem,
   createIncome,
+  createTransaction,
   deleteExpenseItem,
   deleteIncome,
+  deleteTransaction,
   listExpenseItems,
   listIncomes,
+  listTransactions,
   updateExpenseItem,
   updateIncome,
+  updateTransaction,
 } from '@/features/budget/api'
 
 const incomesKey = ['incomes'] as const
 const expenseItemsKey = ['expense_items'] as const
+const transactionsKey = ['transactions'] as const
 
 export function useIncomes() {
   return useQuery({ queryKey: incomesKey, queryFn: listIncomes })
@@ -61,6 +66,37 @@ export function useUpdateExpenseItem() {
     mutationFn: updateExpenseItem,
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: expenseItemsKey }),
+  })
+}
+
+export function useTransactions() {
+  return useQuery({ queryKey: transactionsKey, queryFn: listTransactions })
+}
+
+export function useCreateTransaction() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: createTransaction,
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: transactionsKey }),
+  })
+}
+
+export function useUpdateTransaction() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: updateTransaction,
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: transactionsKey }),
+  })
+}
+
+export function useDeleteTransaction() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: deleteTransaction,
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: transactionsKey }),
   })
 }
 

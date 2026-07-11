@@ -8,16 +8,20 @@ import { PageTransition } from '@/components/PageTransition'
 import { Section } from '@/components/Section'
 import { Sheet } from '@/components/Sheet'
 import { SkeletonRows } from '@/components/SkeletonRows'
-import type { ExpenseItem, Income } from '@/features/budget/api'
+import type { ExpenseItem, Income, Transaction } from '@/features/budget/api'
 import { ExpenseForm } from '@/features/budget/ExpenseForm'
 import {
   useDeleteExpenseItem,
   useDeleteIncome,
+  useDeleteTransaction,
   useExpenseItems,
   useIncomes,
+  useTransactions,
 } from '@/features/budget/hooks'
 import { IncomeForm } from '@/features/budget/IncomeForm'
 import { MonthlyTrend } from '@/features/budget/MonthlyTrend'
+import { PaceCard } from '@/features/budget/PaceCard'
+import { TransactionForm } from '@/features/budget/TransactionForm'
 import {
   expenseTotalsByCategory,
   monthlyEquivalent,
@@ -26,24 +30,35 @@ import {
   PERIOD_LABELS,
   PERIOD_SUFFIX,
 } from '@/features/budget/money'
-import { formatDate } from '@/lib/dates'
+import { formatDate, todayISO } from '@/lib/dates'
 import { formatMoney } from '@/lib/money'
 
-type SheetKind = 'income' | 'expense' | null
+type SheetKind = 'income' | 'expense' | 'transaction' | null
 
 export function BudgetPage() {
   const incomes = useIncomes()
   const expenses = useExpenseItems()
+  const transactions = useTransactions()
   const [openSheet, setOpenSheet] = useState<SheetKind>(null)
   const [editIncome, setEditIncome] = useState<Income | null>(null)
   const [editExpense, setEditExpense] = useState<ExpenseItem | null>(null)
+  const [editTransaction, setEditTransaction] = useState<Transaction | null>(
+    null,
+  )
+
+  const month = todayISO().slice(0, 7)
+  const monthTransactions = (transactions.data ?? []).filter((t) =>
+    t.spent_on.startsWith(month),
+  )
+  const spentThisMonth = monthTransactions.reduce((s, t) => s + t.amount, 0)
 
   const totalIncome = monthlyIncomeTotal(incomes.data ?? [])
   const totalExpense = monthlyExpenseTotal(expenses.data ?? [])
   const byCategory = expenseTotalsByCategory(expenses.data ?? [])
-  const remaining = totalIncome - totalExpense
-  const isLoading = incomes.isPending || expenses.isPending
-  const hasError = incomes.isError || expenses.isError
+  const remaining = totalIncome - totalExpense - spentThisMonth
+  const isLoading =
+    incomes.isPending || expenses.isPending || transactions.isPending
+  const hasError = incomes.isError || expenses.isError || transactions.isError
 
   return (
     <PageTransition>
@@ -60,21 +75,35 @@ export function BudgetPage() {
             format={(v) => formatMoney(v)}
           />
         )}
-        <div className="mt-5 flex gap-8 text-sm">
+        <div className="mt-5 flex gap-6 text-sm">
           <div>
-            <p className="text-indigo-200">Gelir (bu ay)</p>
+            <p className="text-indigo-200">Gelir</p>
             <p className="font-semibold tabular-nums">
               {formatMoney(totalIncome)}
             </p>
           </div>
           <div>
-            <p className="text-indigo-200">Gider (bu ay)</p>
+            <p className="text-indigo-200">Planlı gider</p>
             <p className="font-semibold tabular-nums">
               {formatMoney(totalExpense)}
             </p>
           </div>
+          <div>
+            <p className="text-indigo-200">Harcanan</p>
+            <p className="font-semibold tabular-nums">
+              {formatMoney(spentThisMonth)}
+            </p>
+          </div>
         </div>
       </div>
+
+      {!isLoading && (
+        <PaceCard
+          monthlyIncome={totalIncome}
+          plannedExpense={totalExpense}
+          transactions={transactions.data ?? []}
+        />
+      )}
 
       {hasError && (
         <p className="mt-4 text-sm text-red-600 dark:text-red-400">
@@ -86,6 +115,36 @@ export function BudgetPage() {
         incomes={incomes.data ?? []}
         expenses={expenses.data ?? []}
       />
+
+      <Section
+        title="Harcamalar · bu ay"
+        onAdd={() => setOpenSheet('transaction')}
+      >
+        {transactions.isPending ? (
+          <SkeletonRows />
+        ) : monthTransactions.length === 0 ? (
+          <EmptyState text="Bu ay henüz harcama girmedin. Kahve, market, ulaşım… + ile saniyeler içinde ekle." />
+        ) : (
+          <>
+            <ul className="space-y-2.5">
+              <AnimatePresence initial={false}>
+                {monthTransactions.slice(0, 8).map((transaction) => (
+                  <TransactionRow
+                    key={transaction.id}
+                    transaction={transaction}
+                    onEdit={() => setEditTransaction(transaction)}
+                  />
+                ))}
+              </AnimatePresence>
+            </ul>
+            {monthTransactions.length > 8 && (
+              <p className="mt-2 text-xs text-zinc-400">
+                +{monthTransactions.length - 8} harcama daha bu ay
+              </p>
+            )}
+          </>
+        )}
+      </Section>
 
       <div className="lg:grid lg:grid-cols-2 lg:items-start lg:gap-x-6">
         <Section title="Gelirler" onAdd={() => setOpenSheet('income')}>
@@ -188,7 +247,70 @@ export function BudgetPage() {
           <ExpenseForm item={editExpense} onDone={() => setEditExpense(null)} />
         )}
       </Sheet>
+      <Sheet
+        open={openSheet === 'transaction'}
+        onClose={() => setOpenSheet(null)}
+        title="Harcama gir"
+      >
+        <TransactionForm onDone={() => setOpenSheet(null)} />
+      </Sheet>
+      <Sheet
+        open={editTransaction !== null}
+        onClose={() => setEditTransaction(null)}
+        title="Harcamayı düzenle"
+      >
+        {editTransaction && (
+          <TransactionForm
+            transaction={editTransaction}
+            onDone={() => setEditTransaction(null)}
+          />
+        )}
+      </Sheet>
     </PageTransition>
+  )
+}
+
+function TransactionRow({
+  transaction,
+  onEdit,
+}: {
+  transaction: Transaction
+  onEdit: () => void
+}) {
+  const deleteTransaction = useDeleteTransaction()
+
+  return (
+    <motion.li
+      layout
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, x: -16 }}
+      className="flex items-center justify-between gap-2 rounded-2xl bg-white p-4 shadow-sm shadow-zinc-200/60 dark:bg-zinc-900 dark:shadow-none"
+    >
+      <button onClick={onEdit} className="min-w-0 flex-1 text-left">
+        <p className="truncate font-medium">
+          {transaction.category || transaction.note || 'Harcama'}
+        </p>
+        <p className="mt-0.5 text-xs text-zinc-400">
+          {formatDate(transaction.spent_on)}
+          {transaction.category && transaction.note
+            ? ` · ${transaction.note}`
+            : ''}
+        </p>
+      </button>
+      <div className="flex items-center gap-1.5">
+        <p className="font-semibold tabular-nums">
+          {formatMoney(transaction.amount, transaction.currency)}
+        </p>
+        <button
+          aria-label="Harcamayı sil"
+          onClick={() => deleteTransaction.mutate(transaction.id)}
+          className="rounded-full p-1.5 text-zinc-300 transition-colors hover:bg-red-50 hover:text-red-500 dark:text-zinc-600 dark:hover:bg-red-500/10 dark:hover:text-red-400"
+        >
+          <Trash2 size={15} />
+        </button>
+      </div>
+    </motion.li>
   )
 }
 

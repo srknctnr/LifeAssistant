@@ -97,6 +97,42 @@ export interface Database {
         }
         Relationships: []
       }
+      transactions: {
+        Row: {
+          id: string
+          user_id: string
+          amount: number
+          currency: string
+          category: string | null
+          note: string | null
+          spent_on: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          amount: number
+          currency?: string
+          category?: string | null
+          note?: string | null
+          spent_on?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          amount?: number
+          currency?: string
+          category?: string | null
+          note?: string | null
+          spent_on?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       wishlist_items: {
         Row: {
           id: string

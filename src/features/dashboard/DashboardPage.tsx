@@ -14,16 +14,21 @@ import type { ReactNode } from 'react'
 import { AnimatedNumber } from '@/components/AnimatedNumber'
 import { PageTransition } from '@/components/PageTransition'
 import { useAuth } from '@/features/auth/useAuth'
-import { useExpenseItems, useIncomes } from '@/features/budget/hooks'
+import {
+  useExpenseItems,
+  useIncomes,
+  useTransactions,
+} from '@/features/budget/hooks'
+import {
+  monthlyExpenseTotal,
+  monthlyIncomeTotal,
+  paceReport,
+} from '@/features/budget/money'
 import {
   useCategoryEntries,
   useLifeCategories,
 } from '@/features/calendar/hooks'
 import { weekDays } from '@/features/calendar/week-math'
-import {
-  monthlyExpenseTotal,
-  monthlyIncomeTotal,
-} from '@/features/budget/money'
 import { useMovies } from '@/features/movies/hooks'
 import { useReminderSync } from '@/features/reminders/hooks'
 import { RemindersSection } from '@/features/reminders/RemindersSection'
@@ -64,8 +69,10 @@ export function DashboardPage() {
 function BudgetModule() {
   const incomes = useIncomes()
   const expenses = useExpenseItems()
+  const transactions = useTransactions()
 
-  const isLoading = incomes.isPending || expenses.isPending
+  const isLoading =
+    incomes.isPending || expenses.isPending || transactions.isPending
   const hasBudget =
     (incomes.data ?? []).length > 0 || (expenses.data ?? []).length > 0
 
@@ -88,6 +95,11 @@ function BudgetModule() {
 
   const totalIncome = monthlyIncomeTotal(incomes.data ?? [])
   const totalExpense = monthlyExpenseTotal(expenses.data ?? [])
+  const report = paceReport({
+    monthlyIncome: totalIncome,
+    plannedExpense: totalExpense,
+    transactions: transactions.data ?? [],
+  })
 
   return (
     <Link
@@ -106,23 +118,28 @@ function BudgetModule() {
       <p className="mt-3 text-sm text-indigo-100">Bu ay kalan</p>
       <AnimatedNumber
         className="mt-0.5 block text-3xl font-bold tracking-tight tabular-nums"
-        value={totalIncome - totalExpense}
+        value={report.remaining}
         format={(v) => formatMoney(v)}
       />
       <div className="mt-4 flex gap-6 text-sm">
         <div>
-          <p className="text-indigo-200">Gelir</p>
+          <p className="text-indigo-200">Günlük güvenli</p>
           <p className="font-semibold tabular-nums">
-            {formatMoney(totalIncome)}
+            {formatMoney(report.dailyAllowance)}
           </p>
         </div>
         <div>
-          <p className="text-indigo-200">Gider</p>
+          <p className="text-indigo-200">Harcanan</p>
           <p className="font-semibold tabular-nums">
-            {formatMoney(totalExpense)}
+            {formatMoney(report.spent)}
           </p>
         </div>
       </div>
+      {!report.onTrack && (
+        <p className="mt-3 rounded-xl bg-white/15 px-3 py-2 text-xs font-medium">
+          ⚠️ Bu hızla ay sonunu getirmek zor — Bütçe&apos;deki asistana göz at.
+        </p>
+      )}
     </Link>
   )
 }

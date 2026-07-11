@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase'
 
 export type Income = Tables<'incomes'>
 export type ExpenseItem = Tables<'expense_items'>
+export type Transaction = Tables<'transactions'>
 
 export async function listIncomes(): Promise<Income[]> {
   const { data, error } = await supabase
@@ -81,5 +82,45 @@ export async function updateExpenseItem(params: {
 
 export async function deleteExpenseItem(id: string): Promise<void> {
   const { error } = await supabase.from('expense_items').delete().eq('id', id)
+  if (error) throw error
+}
+
+export async function listTransactions(): Promise<Transaction[]> {
+  const { data, error } = await supabase
+    .from('transactions')
+    .select('*')
+    .order('spent_on', { ascending: false })
+  if (error) throw error
+  return data
+}
+
+export async function createTransaction(
+  input: TablesInsert<'transactions'>,
+): Promise<Transaction> {
+  const { data, error } = await supabase
+    .from('transactions')
+    .insert(input)
+    .select()
+    .single()
+  if (error) throw error
+  return data
+}
+
+export async function updateTransaction(params: {
+  id: string
+  patch: TablesUpdate<'transactions'>
+}): Promise<Transaction> {
+  const { data, error } = await supabase
+    .from('transactions')
+    .update(params.patch)
+    .eq('id', params.id)
+    .select()
+    .single()
+  if (error) throw error
+  return data
+}
+
+export async function deleteTransaction(id: string): Promise<void> {
+  const { error } = await supabase.from('transactions').delete().eq('id', id)
   if (error) throw error
 }

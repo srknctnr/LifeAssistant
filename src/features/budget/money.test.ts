@@ -6,6 +6,7 @@ import {
   monthlyExpenseTotal,
   monthlyFlowSeries,
   monthlyIncomeTotal,
+  paceReport,
 } from '@/features/budget/money'
 
 describe('monthlyEquivalent', () => {
@@ -169,6 +170,53 @@ describe('monthlyIncomeTotal', () => {
       today,
     )
     expect(total).toBe(70000)
+  })
+})
+
+describe('paceReport', () => {
+  // 10 Temmuz 2026: 31 günlük ayın 10. günü, 22 gün kaldı
+  const today = new Date(2026, 6, 10)
+
+  it('computes remaining, daily allowance and an on-track projection', () => {
+    const report = paceReport({
+      monthlyIncome: 60000,
+      plannedExpense: 29000,
+      transactions: [
+        { amount: 5000, spent_on: '2026-07-03' },
+        { amount: 3000, spent_on: '2026-07-08' },
+        { amount: 1000, spent_on: '2026-06-30' }, // önceki ay, sayılmaz
+      ],
+      today,
+    })
+    expect(report.spendable).toBe(31000)
+    expect(report.spent).toBe(8000)
+    expect(report.remaining).toBe(23000)
+    expect(report.daysLeft).toBe(22)
+    expect(report.dailyAllowance).toBeCloseTo(23000 / 22)
+    expect(report.projectedTotal).toBeCloseTo(24800)
+    expect(report.onTrack).toBe(true)
+  })
+
+  it('flags an unsustainable burn rate', () => {
+    const report = paceReport({
+      monthlyIncome: 60000,
+      plannedExpense: 29000,
+      transactions: [{ amount: 15000, spent_on: '2026-07-05' }],
+      today,
+    })
+    expect(report.projectedTotal).toBeCloseTo(46500)
+    expect(report.onTrack).toBe(false)
+  })
+
+  it('clamps the daily allowance at zero when over budget', () => {
+    const report = paceReport({
+      monthlyIncome: 10000,
+      plannedExpense: 8000,
+      transactions: [{ amount: 5000, spent_on: '2026-07-02' }],
+      today,
+    })
+    expect(report.remaining).toBe(-3000)
+    expect(report.dailyAllowance).toBe(0)
   })
 })
 

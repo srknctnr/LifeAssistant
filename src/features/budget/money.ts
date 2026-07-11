@@ -105,6 +105,61 @@ export function monthlyIncomeTotal(
   }, 0)
 }
 
+export interface PaceReport {
+  spendable: number // ay bütçesi: gelir − planlı giderler
+  spent: number // bu ayki gerçek harcamalar (transactions)
+  remaining: number
+  dailyAllowance: number // kalan güne bölünmüş güvenli günlük harcama
+  projectedTotal: number // bu hızla ay sonu tahmini toplam harcama
+  onTrack: boolean
+  daysLeft: number
+}
+
+interface PaceInput {
+  monthlyIncome: number
+  plannedExpense: number
+  transactions: { amount: number; spent_on: string }[]
+  today?: Date
+}
+
+// PocketGuard-style pace: how much is safe to spend per remaining day, and
+// whether the current burn rate fits the month's budget
+export function paceReport({
+  monthlyIncome,
+  plannedExpense,
+  transactions,
+  today = new Date(),
+}: PaceInput): PaceReport {
+  const month = monthKey(today)
+  const spent = transactions
+    .filter((t) => t.spent_on.startsWith(month))
+    .reduce((sum, t) => sum + t.amount, 0)
+
+  const daysInMonth = new Date(
+    today.getFullYear(),
+    today.getMonth() + 1,
+    0,
+  ).getDate()
+  const dayOfMonth = today.getDate()
+  const daysLeft = daysInMonth - dayOfMonth + 1
+
+  const spendable = monthlyIncome - plannedExpense
+  const remaining = spendable - spent
+  const dailyAllowance = Math.max(0, remaining / daysLeft)
+  const projectedTotal = (spent / dayOfMonth) * daysInMonth
+  const onTrack = projectedTotal <= spendable
+
+  return {
+    spendable,
+    spent,
+    remaining,
+    dailyAllowance,
+    projectedTotal,
+    onTrack,
+    daysLeft,
+  }
+}
+
 export interface MonthFlow {
   key: string // yyyy-mm
   date: Date // first day of the month
