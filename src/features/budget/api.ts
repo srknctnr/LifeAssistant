@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase'
 export type Income = Tables<'incomes'>
 export type ExpenseItem = Tables<'expense_items'>
 export type Transaction = Tables<'transactions'>
+export type BudgetCategory = Tables<'budget_categories'>
 
 export async function listIncomes(): Promise<Income[]> {
   const { data, error } = await supabase
@@ -123,4 +124,25 @@ export async function updateTransaction(params: {
 export async function deleteTransaction(id: string): Promise<void> {
   const { error } = await supabase.from('transactions').delete().eq('id', id)
   if (error) throw error
+}
+
+export async function listBudgetCategories(): Promise<BudgetCategory[]> {
+  const { data, error } = await supabase
+    .from('budget_categories')
+    .select('*')
+    .order('name', { ascending: true })
+  if (error) throw error
+  return data
+}
+
+export async function createBudgetCategory(
+  input: TablesInsert<'budget_categories'>,
+): Promise<BudgetCategory> {
+  const { data, error } = await supabase
+    .from('budget_categories')
+    .insert(input)
+    .select()
+    .single()
+  if (error) throw error
+  return data
 }

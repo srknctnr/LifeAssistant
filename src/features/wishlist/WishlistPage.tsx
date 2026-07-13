@@ -32,7 +32,7 @@ import {
   useWishlistItems,
 } from '@/features/wishlist/hooks'
 import { WishForm } from '@/features/wishlist/WishForm'
-import { formatDate } from '@/lib/dates'
+import { formatDate, todayISO } from '@/lib/dates'
 import { formatMoney } from '@/lib/money'
 
 const kindLabels = { purchase: 'Harcama', travel: 'Seyahat' } as const
@@ -52,8 +52,17 @@ export function WishlistPage() {
   const [manageGoal, setManageGoal] = useState<GoalWithWish | null>(null)
 
   const activeWishes = (wishes.data ?? []).filter((w) => w.status === 'active')
+  // goals completed this month stay in the main list; older completed ones
+  // move to the archive section at the bottom (updated_at ≈ completion time)
+  const currentMonth = todayISO().slice(0, 7)
   const visibleGoals = (goals.data ?? []).filter(
-    (g) => g.status === 'active' || g.status === 'paused',
+    (g) =>
+      g.status === 'active' ||
+      g.status === 'paused' ||
+      (g.status === 'completed' && g.updated_at.startsWith(currentMonth)),
+  )
+  const archivedGoals = (goals.data ?? []).filter(
+    (g) => g.status === 'completed' && !g.updated_at.startsWith(currentMonth),
   )
 
   const savedByGoal = new Map<string, number>()
@@ -111,6 +120,33 @@ export function WishlistPage() {
           </ul>
         )}
       </Section>
+
+      {archivedGoals.length > 0 && (
+        <Section title="Tamamlanan hedefler">
+          <ul className="space-y-1.5">
+            {archivedGoals.map((goal) => (
+              <li key={goal.id}>
+                <button
+                  onClick={() => setManageGoal(goal)}
+                  className="flex w-full items-center justify-between gap-3 rounded-xl bg-white px-3.5 py-2.5 text-left opacity-75 shadow-sm shadow-zinc-200/60 transition-opacity hover:opacity-100 dark:bg-zinc-900 dark:shadow-none"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium">
+                      🎉 {goal.wishlist_items?.name ?? 'Hedef'}
+                    </p>
+                    <p className="text-xs text-zinc-400">
+                      {formatDate(goal.updated_at)} · tamamlandı
+                    </p>
+                  </div>
+                  <p className="shrink-0 text-sm font-semibold tabular-nums">
+                    {formatMoney(goal.target_amount, goal.currency)}
+                  </p>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </Section>
+      )}
 
       <Sheet
         open={addOpen}
@@ -188,8 +224,9 @@ function GoalCard({
   const kind = goal.wishlist_items?.kind ?? 'purchase'
   const targetDate = goal.wishlist_items?.target_date
   const Icon = kindIcons[kind]
-  const progress = Math.min(1, saved / goal.target_amount)
-  const isComplete = saved >= goal.target_amount
+  const progress =
+    goal.status === 'completed' ? 1 : Math.min(1, saved / goal.target_amount)
+  const isComplete = goal.status === 'completed' || saved >= goal.target_amount
   const isPaused = goal.status === 'paused'
 
   return (
@@ -339,7 +376,7 @@ function GoalManageActions({
         </div>
       )}
 
-      {canComplete && !isPaused && (
+      {canComplete && !isPaused && goal.status !== 'completed' && (
         <Button
           className="w-full"
           isLoading={complete.isPending}
@@ -350,20 +387,24 @@ function GoalManageActions({
         </Button>
       )}
 
-      <Button
-        variant="ghost"
-        className="w-full bg-zinc-100 dark:bg-zinc-800"
-        isLoading={setPaused.isPending}
-        disabled={busy}
-        onClick={() =>
-          run(() => setPaused.mutateAsync({ goal, paused: !isPaused }))
-        }
-      >
-        {isPaused ? 'Hedefe devam et' : 'Hedefi duraklat'}
-      </Button>
-      <p className="text-center text-xs text-zinc-400">
-        Duraklatınca bütçendeki aylık tasarruf kalemi de duraklar.
-      </p>
+      {goal.status !== 'completed' && (
+        <>
+          <Button
+            variant="ghost"
+            className="w-full bg-zinc-100 dark:bg-zinc-800"
+            isLoading={setPaused.isPending}
+            disabled={busy}
+            onClick={() =>
+              run(() => setPaused.mutateAsync({ goal, paused: !isPaused }))
+            }
+          >
+            {isPaused ? 'Hedefe devam et' : 'Hedefi duraklat'}
+          </Button>
+          <p className="text-center text-xs text-zinc-400">
+            Duraklatınca bütçendeki aylık tasarruf kalemi de duraklar.
+          </p>
+        </>
+      )}
 
       <button
         disabled={busy}

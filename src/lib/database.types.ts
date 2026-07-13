@@ -13,6 +13,27 @@ export type Json =
 export interface Database {
   public: {
     Tables: {
+      budget_categories: {
+        Row: {
+          id: string
+          user_id: string
+          name: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          name: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          name?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
       incomes: {
         Row: {
           id: string

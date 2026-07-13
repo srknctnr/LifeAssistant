@@ -4,11 +4,13 @@ import { Button } from '@/components/Button'
 import { TextField } from '@/components/TextField'
 import { useAuth } from '@/features/auth/useAuth'
 import type { Transaction } from '@/features/budget/api'
+import { CategoryPicker } from '@/features/budget/CategoryPicker'
 import {
   useCreateTransaction,
   useUpdateTransaction,
 } from '@/features/budget/hooks'
 import { todayISO } from '@/lib/dates'
+import { saveErrorMessage } from '@/lib/errors'
 import { parseAmountInput } from '@/lib/money'
 
 interface TransactionFormProps {
@@ -61,8 +63,8 @@ export function TransactionForm({ transaction, onDone }: TransactionFormProps) {
         })
       }
       onDone()
-    } catch {
-      setError('Kaydedilemedi. Bağlantını kontrol edip tekrar dene.')
+    } catch (saveError) {
+      setError(saveErrorMessage(saveError))
     }
   }
 
@@ -77,12 +79,7 @@ export function TransactionForm({ transaction, onDone }: TransactionFormProps) {
         value={amount}
         onChange={(e) => setAmount(e.target.value)}
       />
-      <TextField
-        label="Kategori (isteğe bağlı)"
-        placeholder="Market, yemek, ulaşım…"
-        value={category}
-        onChange={(e) => setCategory(e.target.value)}
-      />
+      <CategoryPicker value={category} onChange={setCategory} />
       <TextField
         label="Not (isteğe bağlı)"
         placeholder="Öğle yemeği"

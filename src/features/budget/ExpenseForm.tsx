@@ -6,12 +6,14 @@ import { Switch } from '@/components/Switch'
 import { TextField } from '@/components/TextField'
 import { useAuth } from '@/features/auth/useAuth'
 import type { ExpenseItem } from '@/features/budget/api'
+import { CategoryPicker } from '@/features/budget/CategoryPicker'
 import {
   useCreateExpenseItem,
   useUpdateExpenseItem,
 } from '@/features/budget/hooks'
 import { PERIOD_LABELS, type ExpensePeriod } from '@/features/budget/money'
 import { todayISO } from '@/lib/dates'
+import { saveErrorMessage } from '@/lib/errors'
 import { parseAmountInput } from '@/lib/money'
 
 type RecurringPeriod = Exclude<ExpensePeriod, 'once'>
@@ -76,8 +78,8 @@ export function ExpenseForm({ item, onDone }: ExpenseFormProps) {
         })
       }
       onDone()
-    } catch {
-      setError('Kaydedilemedi. Bağlantını kontrol edip tekrar dene.')
+    } catch (saveError) {
+      setError(saveErrorMessage(saveError))
     }
   }
 
@@ -123,12 +125,7 @@ export function ExpenseForm({ item, onDone }: ExpenseFormProps) {
           />
         </div>
       )}
-      <TextField
-        label="Kategori (isteğe bağlı)"
-        placeholder="Konut, ulaşım, abonelik…"
-        value={category}
-        onChange={(e) => setCategory(e.target.value)}
-      />
+      <CategoryPicker value={category} onChange={setCategory} />
 
       {error && (
         <p className="text-sm text-red-600 dark:text-red-400">{error}</p>

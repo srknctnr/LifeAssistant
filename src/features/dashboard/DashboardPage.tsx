@@ -8,8 +8,8 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { motion } from 'motion/react'
+import { useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
-import type { ReactNode } from 'react'
 
 import { AnimatedNumber } from '@/components/AnimatedNumber'
 import { PageTransition } from '@/components/PageTransition'
@@ -29,6 +29,7 @@ import {
   useLifeCategories,
 } from '@/features/calendar/hooks'
 import { weekDays } from '@/features/calendar/week-math'
+import { BudgetDetailSheet } from '@/features/dashboard/BudgetDetailSheet'
 import { useMovies } from '@/features/movies/hooks'
 import { useReminderSync } from '@/features/reminders/hooks'
 import { RemindersSection } from '@/features/reminders/RemindersSection'
@@ -70,6 +71,7 @@ function BudgetModule() {
   const incomes = useIncomes()
   const expenses = useExpenseItems()
   const transactions = useTransactions()
+  const [detailOpen, setDetailOpen] = useState(false)
 
   const isLoading =
     incomes.isPending || expenses.isPending || transactions.isPending
@@ -102,45 +104,55 @@ function BudgetModule() {
   })
 
   return (
-    <Link
-      to="/budget"
-      className="group block rounded-3xl bg-gradient-to-br from-indigo-600 to-violet-600 p-5 text-white shadow-lg shadow-indigo-600/20 transition-transform hover:-translate-y-0.5"
-    >
-      <div className="flex items-center justify-between text-sm text-indigo-100">
-        <span className="flex items-center gap-2">
-          <Wallet size={16} /> Bütçe
-        </span>
-        <ArrowRight
-          size={16}
-          className="transition-transform group-hover:translate-x-0.5"
+    <>
+      <button
+        onClick={() => setDetailOpen(true)}
+        className="group block w-full rounded-3xl bg-gradient-to-br from-indigo-600 to-violet-600 p-5 text-left text-white shadow-lg shadow-indigo-600/20 transition-transform hover:-translate-y-0.5"
+      >
+        <div className="flex items-center justify-between text-sm text-indigo-100">
+          <span className="flex items-center gap-2">
+            <Wallet size={16} /> Bütçe
+          </span>
+          <span className="flex items-center gap-1 text-xs">
+            döküm{' '}
+            <ArrowRight
+              size={14}
+              className="transition-transform group-hover:translate-x-0.5"
+            />
+          </span>
+        </div>
+        <p className="mt-3 text-sm text-indigo-100">Günlük güvenli harcama</p>
+        <AnimatedNumber
+          className="mt-0.5 block text-4xl font-bold tracking-tight tabular-nums"
+          value={report.dailyAllowance}
+          format={(v) => formatMoney(v)}
         />
-      </div>
-      <p className="mt-3 text-sm text-indigo-100">Bu ay kalan</p>
-      <AnimatedNumber
-        className="mt-0.5 block text-3xl font-bold tracking-tight tabular-nums"
-        value={report.remaining}
-        format={(v) => formatMoney(v)}
+        <div className="mt-4 flex gap-6 text-sm">
+          <div>
+            <p className="text-indigo-200">Bu ay kalan</p>
+            <p className="font-semibold tabular-nums">
+              {formatMoney(report.remaining)}
+            </p>
+          </div>
+          <div>
+            <p className="text-indigo-200">Harcanan</p>
+            <p className="font-semibold tabular-nums">
+              {formatMoney(report.spent)}
+            </p>
+          </div>
+        </div>
+        {!report.onTrack && (
+          <p className="mt-3 rounded-xl bg-white/15 px-3 py-2 text-xs font-medium">
+            ⚠️ Bu hızla ay sonunu getirmek zor — Bütçe&apos;deki asistana göz
+            at.
+          </p>
+        )}
+      </button>
+      <BudgetDetailSheet
+        open={detailOpen}
+        onClose={() => setDetailOpen(false)}
       />
-      <div className="mt-4 flex gap-6 text-sm">
-        <div>
-          <p className="text-indigo-200">Günlük güvenli</p>
-          <p className="font-semibold tabular-nums">
-            {formatMoney(report.dailyAllowance)}
-          </p>
-        </div>
-        <div>
-          <p className="text-indigo-200">Harcanan</p>
-          <p className="font-semibold tabular-nums">
-            {formatMoney(report.spent)}
-          </p>
-        </div>
-      </div>
-      {!report.onTrack && (
-        <p className="mt-3 rounded-xl bg-white/15 px-3 py-2 text-xs font-medium">
-          ⚠️ Bu hızla ay sonunu getirmek zor — Bütçe&apos;deki asistana göz at.
-        </p>
-      )}
-    </Link>
+    </>
   )
 }
 

@@ -18,7 +18,9 @@ Film, seyahat detayı, takvim entegrasyonu, ortak masraf paylaşımı = sonraki 
 
 **Çalışma düzeni:** Kaynak GitHub (`srknctnr/LifeAssistant`), kullanıcı farklı bilgisayarlardan çalışıyor. Her oturuma `git pull` ile başla, her anlamlı adımda commit + push et. `.env.local` git'e girmez; her makinede elle oluşturulur (VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY, VITE_OMDB_KEY, opsiyonel VITE_TMDB_TOKEN). Gerçek anahtarlar asla `.env.example`'a yazılmaz.
 
-**Kullanıcıda bekleyenler:** SQL Editor'de `20260711020000_add_transactions.sql`; isteğe bağlı TMDB "API Read Access Token".
+**Kullanıcıda bekleyenler:** SQL Editor'de sırayla `20260706040000_add_one_time_expenses.sql` (atlanmış — gider ekleme hatasının kökü) ve `20260712010000_add_budget_categories.sql`; isteğe bağlı TMDB "API Read Access Token".
+
+**Sıradaki büyük iş — Takvim v2 (kullanıcı geri bildirimi):** hafta/ay görünümü tek takvimde, seçili günün altında o günün planları; saat destekli genel etkinlik oluşturma (`events` tablosu: kind 'general'|'movie', starts_on+starts_at, movie_id bağlantısı); etkinlikler hatırlatma üretir; film-tipi etkinlik filmle bağlanır (movie.planned_for senkron) ve filmsiz film-gecesi etkinliği Filmler sekmesinde öneri bandı gösterir.
 
 ## Teknoloji Yığını
 

@@ -1,9 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import {
+  createBudgetCategory,
   createExpenseItem,
   createIncome,
   createTransaction,
+  listBudgetCategories,
   deleteExpenseItem,
   deleteIncome,
   deleteTransaction,
@@ -18,6 +20,7 @@ import {
 const incomesKey = ['incomes'] as const
 const expenseItemsKey = ['expense_items'] as const
 const transactionsKey = ['transactions'] as const
+const budgetCategoriesKey = ['budget_categories'] as const
 
 export function useIncomes() {
   return useQuery({ queryKey: incomesKey, queryFn: listIncomes })
@@ -66,6 +69,22 @@ export function useUpdateExpenseItem() {
     mutationFn: updateExpenseItem,
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: expenseItemsKey }),
+  })
+}
+
+export function useBudgetCategories() {
+  return useQuery({
+    queryKey: budgetCategoriesKey,
+    queryFn: listBudgetCategories,
+  })
+}
+
+export function useCreateBudgetCategory() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: createBudgetCategory,
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: budgetCategoriesKey }),
   })
 }
 

@@ -7,6 +7,7 @@ import { useAuth } from '@/features/auth/useAuth'
 import type { Income } from '@/features/budget/api'
 import { useCreateIncome, useUpdateIncome } from '@/features/budget/hooks'
 import { todayISO } from '@/lib/dates'
+import { saveErrorMessage } from '@/lib/errors'
 import { parseAmountInput } from '@/lib/money'
 
 interface IncomeFormProps {
@@ -72,8 +73,8 @@ export function IncomeForm({ income, onDone }: IncomeFormProps) {
         await createIncome.mutateAsync({ user_id: session.user.id, ...values })
       }
       onDone()
-    } catch {
-      setError('Kaydedilemedi. Bağlantını kontrol edip tekrar dene.')
+    } catch (saveError) {
+      setError(saveErrorMessage(saveError))
     }
   }
 
