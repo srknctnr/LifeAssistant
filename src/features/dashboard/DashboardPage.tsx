@@ -4,6 +4,7 @@ import {
   Clapperboard,
   Plane,
   Sparkles,
+  Users,
   Wallet,
   type LucideIcon,
 } from 'lucide-react'
@@ -30,6 +31,7 @@ import {
 } from '@/features/calendar/hooks'
 import { weekDays } from '@/features/calendar/week-math'
 import { BudgetDetailSheet } from '@/features/dashboard/BudgetDetailSheet'
+import { useMemberships } from '@/features/family/hooks'
 import { useMovies } from '@/features/movies/hooks'
 import { useReminderSync } from '@/features/reminders/hooks'
 import { RemindersSection } from '@/features/reminders/RemindersSection'
@@ -57,6 +59,7 @@ export function DashboardPage() {
         <GoalsModule />
         <MoviesModule />
         <CalendarModule />
+        <FamilyModule />
         <ComingSoonModule
           icon={Plane}
           title="Seyahat"
@@ -356,6 +359,76 @@ function CalendarModule() {
             </li>
           )
         })}
+      </ul>
+    </Link>
+  )
+}
+
+function FamilyModule() {
+  const { session } = useAuth()
+  const memberships = useMemberships()
+
+  if (memberships.isPending) {
+    return (
+      <div className="h-40 animate-pulse rounded-3xl bg-zinc-100 dark:bg-zinc-800" />
+    )
+  }
+
+  const allRows = memberships.data ?? []
+  const myFamilyIds = new Set(
+    allRows
+      .filter((m) => m.user_id === session?.user.id)
+      .map((m) => m.family_id),
+  )
+
+  if (myFamilyIds.size === 0) {
+    return (
+      <CtaModule
+        to="/family"
+        icon={Users}
+        title="Aileni kur"
+        text="Sevdiklerini davet et; bütçeni, listelerini ve planlarını seçtiğin ayrıntıda paylaş."
+      />
+    )
+  }
+
+  const families = new Map<string, { name: string; count: number }>()
+  for (const row of allRows) {
+    if (!myFamilyIds.has(row.family_id)) continue
+    const entry = families.get(row.family_id) ?? {
+      name: row.families?.name ?? 'Aile',
+      count: 0,
+    }
+    entry.count += 1
+    families.set(row.family_id, entry)
+  }
+
+  return (
+    <Link
+      to="/family"
+      className="group block rounded-3xl bg-white p-5 shadow-sm shadow-zinc-200/60 transition-transform hover:-translate-y-0.5 dark:bg-zinc-900 dark:shadow-none"
+    >
+      <div className="flex items-center justify-between text-sm">
+        <span className="flex items-center gap-2 font-semibold tracking-tight">
+          <Users size={16} className="text-indigo-500" /> Ailem
+        </span>
+        <ArrowRight
+          size={16}
+          className="text-zinc-300 transition-transform group-hover:translate-x-0.5 dark:text-zinc-600"
+        />
+      </div>
+      <ul className="mt-4 space-y-2">
+        {[...families.values()].map((family) => (
+          <li
+            key={family.name}
+            className="flex items-baseline justify-between gap-3"
+          >
+            <p className="truncate text-sm font-medium">{family.name}</p>
+            <p className="text-xs text-zinc-400 tabular-nums">
+              {family.count} üye
+            </p>
+          </li>
+        ))}
       </ul>
     </Link>
   )

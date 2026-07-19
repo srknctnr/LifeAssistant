@@ -42,3 +42,9 @@ export const CalendarPage = lazy(() =>
     default: m.CalendarPage,
   })),
 )
+
+export const FamilyPage = lazy(() =>
+  import('@/features/family/FamilyPage').then((m) => ({
+    default: m.FamilyPage,
+  })),
+)

@@ -20,11 +20,14 @@ vi.mock('@/lib/supabase', () => {
         }),
         signOut: () => Promise.resolve({ error: null }),
       },
-      from: () => ({
-        select: () => ({
-          order: () => Promise.resolve({ data: [], error: null }),
-        }),
-      }),
+      from: () => {
+        const builder: Record<string, unknown> = {}
+        builder.select = () => builder
+        builder.eq = () => builder
+        builder.order = () => Promise.resolve({ data: [], error: null })
+        builder.maybeSingle = () => Promise.resolve({ data: null, error: null })
+        return builder
+      },
     },
   }
 })
@@ -76,6 +79,13 @@ describe('app routes (authenticated)', () => {
     renderAt('/calendar')
     expect(
       await screen.findByRole('heading', { name: 'Takvim' }),
+    ).toBeInTheDocument()
+  })
+
+  it('renders the family page at /family', async () => {
+    renderAt('/family')
+    expect(
+      await screen.findByRole('heading', { name: 'Ailem' }),
     ).toBeInTheDocument()
   })
 })

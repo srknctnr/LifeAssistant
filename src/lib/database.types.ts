@@ -34,6 +34,169 @@ export interface Database {
         }
         Relationships: []
       }
+      profiles: {
+        Row: {
+          user_id: string
+          display_name: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          user_id: string
+          display_name: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          user_id?: string
+          display_name?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      families: {
+        Row: {
+          id: string
+          name: string
+          created_by: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          created_by: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          created_by?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      family_members: {
+        Row: {
+          id: string
+          family_id: string
+          user_id: string
+          role: 'owner' | 'member'
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          family_id: string
+          user_id: string
+          role?: 'owner' | 'member'
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          family_id?: string
+          user_id?: string
+          role?: 'owner' | 'member'
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'family_members_family_id_fkey'
+            columns: ['family_id']
+            isOneToOne: false
+            referencedRelation: 'families'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'family_members_profile_fkey'
+            columns: ['user_id']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['user_id']
+          },
+        ]
+      }
+      family_invites: {
+        Row: {
+          id: string
+          family_id: string
+          invited_email: string
+          code: string
+          invited_by: string
+          status: 'pending' | 'accepted' | 'declined' | 'cancelled'
+          created_at: string
+          expires_at: string
+        }
+        Insert: {
+          id?: string
+          family_id: string
+          invited_email: string
+          code: string
+          invited_by: string
+          status?: 'pending' | 'accepted' | 'declined' | 'cancelled'
+          created_at?: string
+          expires_at?: string
+        }
+        Update: {
+          id?: string
+          family_id?: string
+          invited_email?: string
+          code?: string
+          invited_by?: string
+          status?: 'pending' | 'accepted' | 'declined' | 'cancelled'
+          created_at?: string
+          expires_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'family_invites_family_id_fkey'
+            columns: ['family_id']
+            isOneToOne: false
+            referencedRelation: 'families'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      module_shares: {
+        Row: {
+          id: string
+          family_id: string
+          user_id: string
+          module: 'budget' | 'wishlist' | 'movies' | 'calendar'
+          level: 'summary' | 'full'
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          family_id: string
+          user_id: string
+          module: 'budget' | 'wishlist' | 'movies' | 'calendar'
+          level?: 'summary' | 'full'
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          family_id?: string
+          user_id?: string
+          module?: 'budget' | 'wishlist' | 'movies' | 'calendar'
+          level?: 'summary' | 'full'
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'module_shares_family_id_fkey'
+            columns: ['family_id']
+            isOneToOne: false
+            referencedRelation: 'families'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       incomes: {
         Row: {
           id: string
@@ -446,6 +609,10 @@ export interface Database {
     }
     Views: Record<string, never>
     Functions: {
+      accept_family_invite: {
+        Args: { p_code: string }
+        Returns: string
+      }
       convert_wishlist_item: {
         Args: {
           p_wishlist_item_id: string
