@@ -3,6 +3,9 @@ import { useState, type FormEvent } from 'react'
 import { Button } from '@/components/Button'
 import { TextField } from '@/components/TextField'
 import { useAuth } from '@/features/auth/useAuth'
+import { FamilyVisibilityField } from '@/features/family/FamilyVisibilityField'
+import { useMyShareMode } from '@/features/family/hooks'
+import { resolveFamilyVisibility } from '@/features/family/share-utils'
 import type { Movie } from '@/features/movies/api'
 import { useCreateMovie, useUpdateMovie } from '@/features/movies/hooks'
 import { parseAmountInput } from '@/lib/money'
@@ -20,6 +23,10 @@ export function MovieForm({ movie, onDone }: MovieFormProps) {
   const [plannedFor, setPlannedFor] = useState(movie?.planned_for ?? '')
   const [externalRating, setExternalRating] = useState(
     movie?.external_rating != null ? String(movie.external_rating) : '',
+  )
+  const shareMode = useMyShareMode('movies')
+  const [familyVisible, setFamilyVisible] = useState(
+    movie?.is_family_visible ?? false,
   )
   const [error, setError] = useState<string | null>(null)
 
@@ -43,6 +50,11 @@ export function MovieForm({ movie, onDone }: MovieFormProps) {
       title: title.trim(),
       planned_for: plannedFor || null,
       external_rating: parsedExternal,
+      is_family_visible: resolveFamilyVisibility(
+        shareMode,
+        familyVisible,
+        movie?.is_family_visible,
+      ),
     }
 
     try {
@@ -79,6 +91,12 @@ export function MovieForm({ movie, onDone }: MovieFormProps) {
         value={externalRating}
         onChange={(e) => setExternalRating(e.target.value)}
       />
+      {shareMode === 'ask' && (
+        <FamilyVisibilityField
+          value={familyVisible}
+          onChange={setFamilyVisible}
+        />
+      )}
 
       {error && (
         <p className="text-sm text-red-600 dark:text-red-400">{error}</p>

@@ -5,6 +5,9 @@ import { TextField } from '@/components/TextField'
 import { useAuth } from '@/features/auth/useAuth'
 import type { LifeCategory } from '@/features/calendar/api'
 import { useCreateCategory, useUpdateCategory } from '@/features/calendar/hooks'
+import { FamilyVisibilityField } from '@/features/family/FamilyVisibilityField'
+import { useMyShareMode } from '@/features/family/hooks'
+import { resolveFamilyVisibility } from '@/features/family/share-utils'
 
 interface CategoryFormProps {
   category?: LifeCategory
@@ -19,6 +22,10 @@ export function CategoryForm({ category, onDone }: CategoryFormProps) {
   const [emoji, setEmoji] = useState(category?.emoji ?? '')
   const [weeklyTarget, setWeeklyTarget] = useState(
     category?.weekly_target ? String(category.weekly_target) : '',
+  )
+  const shareMode = useMyShareMode('calendar')
+  const [familyVisible, setFamilyVisible] = useState(
+    category?.is_family_visible ?? false,
   )
   const [error, setError] = useState<string | null>(null)
 
@@ -42,6 +49,11 @@ export function CategoryForm({ category, onDone }: CategoryFormProps) {
       name: name.trim(),
       emoji: emoji.trim() || null,
       weekly_target: target,
+      is_family_visible: resolveFamilyVisibility(
+        shareMode,
+        familyVisible,
+        category?.is_family_visible,
+      ),
     }
 
     try {
@@ -84,6 +96,12 @@ export function CategoryForm({ category, onDone }: CategoryFormProps) {
         value={weeklyTarget}
         onChange={(e) => setWeeklyTarget(e.target.value)}
       />
+      {shareMode === 'ask' && (
+        <FamilyVisibilityField
+          value={familyVisible}
+          onChange={setFamilyVisible}
+        />
+      )}
 
       {error && (
         <p className="text-sm text-red-600 dark:text-red-400">{error}</p>

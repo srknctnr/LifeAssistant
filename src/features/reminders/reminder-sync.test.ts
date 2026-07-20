@@ -26,6 +26,7 @@ function makeGoal(overrides: Partial<GoalWithWish> = {}): GoalWithWish {
       name: 'Kapadokya gezisi',
       kind: 'travel',
       target_date: '2026-12-15',
+      is_family_visible: false,
     },
     ...overrides,
   }

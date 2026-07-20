@@ -4,6 +4,7 @@ import {
   Home,
   LogOut,
   Sparkles,
+  Users,
   Wallet,
 } from 'lucide-react'
 import { motion } from 'motion/react'
@@ -19,6 +20,7 @@ const navItems = [
   { to: '/wishlist', label: 'İstekler', icon: Sparkles },
   { to: '/movies', label: 'Filmler', icon: Clapperboard },
   { to: '/calendar', label: 'Takvim', icon: CalendarDays },
+  { to: '/family', label: 'Ailem', icon: Users },
 ]
 
 export function AppLayout() {

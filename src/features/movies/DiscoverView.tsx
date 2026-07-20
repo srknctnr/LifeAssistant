@@ -3,6 +3,7 @@ import { Check, Clapperboard, Loader2, Plus, Star } from 'lucide-react'
 import { useState } from 'react'
 
 import { Segmented } from '@/components/Segmented'
+import { FamilyVisibilityToggle } from '@/features/family/FamilyVisibilityField'
 import { CURATED_POOL } from '@/features/movies/curated-pool'
 import { useMovies } from '@/features/movies/hooks'
 import { rankCurated } from '@/features/movies/suggest'
@@ -45,7 +46,8 @@ const feedOptions: { value: DiscoverFeed; label: string }[] = [
 function TheatricalFeeds() {
   const [feed, setFeed] = useState<DiscoverFeed>('now_playing')
   const movies = useMovies()
-  const { add, addingKey, error } = useAddFromSearch()
+  const { add, addingKey, error, askMode, familyVisible, setFamilyVisible } =
+    useAddFromSearch()
 
   const results = useQuery({
     queryKey: ['tmdb-discover', feed],
@@ -66,6 +68,15 @@ function TheatricalFeeds() {
         value={feed}
         onChange={setFeed}
       />
+
+      {askMode && (
+        <div className="mt-3">
+          <FamilyVisibilityToggle
+            value={familyVisible}
+            onChange={setFamilyVisible}
+          />
+        </div>
+      )}
 
       {results.isPending && <DiscoverSkeleton />}
 
@@ -105,7 +116,8 @@ function TheatricalFeeds() {
 // Each pick is cached per id, so adding a movie only fetches its replacement.
 function CuratedSuggestions() {
   const movies = useMovies()
-  const { add, addingKey, error } = useAddFromSearch()
+  const { add, addingKey, error, askMode, familyVisible, setFamilyVisible } =
+    useAddFromSearch()
 
   const all = movies.data ?? []
   const ownedTitles = new Set(all.map((m) => m.title.toLocaleLowerCase('tr')))
@@ -133,6 +145,15 @@ function CuratedSuggestions() {
         Zevk profiline göre IMDb klasikleri havuzundan seçildi — puan verdikçe
         isabet artar. Vizyondakiler için TMDB anahtarı gerekmeye devam ediyor.
       </p>
+
+      {askMode && (
+        <div className="mt-3">
+          <FamilyVisibilityToggle
+            value={familyVisible}
+            onChange={setFamilyVisible}
+          />
+        </div>
+      )}
 
       {isLoading && <DiscoverSkeleton />}
 

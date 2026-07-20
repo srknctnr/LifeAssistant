@@ -32,6 +32,13 @@ import {
 import { weekDays } from '@/features/calendar/week-math'
 import { BudgetDetailSheet } from '@/features/dashboard/BudgetDetailSheet'
 import { useMemberships } from '@/features/family/hooks'
+import {
+  moduleMembers,
+  useFamilyBudget,
+  useFamilyContext,
+  useFamilyMovies,
+  type ModuleMember,
+} from '@/features/family/space-data'
 import { useMovies } from '@/features/movies/hooks'
 import { useReminderSync } from '@/features/reminders/hooks'
 import { RemindersSection } from '@/features/reminders/RemindersSection'
@@ -70,14 +77,79 @@ export function DashboardPage() {
   )
 }
 
+type CardSource = 'personal' | 'family'
+
+// Tiny pill switch on dashboard cards: personal data or the family space
+function SourceToggle({
+  value,
+  onChange,
+  light,
+}: {
+  value: CardSource
+  onChange: (value: CardSource) => void
+  light?: boolean
+}) {
+  return (
+    <div
+      className={`flex rounded-full p-0.5 text-[11px] font-semibold ${
+        light ? 'bg-white/15' : 'bg-zinc-100 dark:bg-zinc-800'
+      }`}
+    >
+      {(
+        [
+          { value: 'personal', label: 'Kişisel' },
+          { value: 'family', label: 'Aile' },
+        ] as const
+      ).map((option) => (
+        <button
+          key={option.value}
+          onClick={() => onChange(option.value)}
+          className={`rounded-full px-2.5 py-1 transition-colors ${
+            value === option.value
+              ? light
+                ? 'bg-white text-indigo-600'
+                : 'bg-white text-zinc-900 shadow-sm dark:bg-zinc-700 dark:text-zinc-50'
+              : light
+                ? 'text-indigo-100'
+                : 'text-zinc-500 dark:text-zinc-400'
+          }`}
+        >
+          {option.label}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+function useCardSource(key: string): [CardSource, (next: CardSource) => void] {
+  const [source, setSource] = useState<CardSource>(() =>
+    localStorage.getItem(key) === 'family' ? 'family' : 'personal',
+  )
+  function update(next: CardSource) {
+    setSource(next)
+    localStorage.setItem(key, next)
+  }
+  return [source, update]
+}
+
 function BudgetModule() {
   const incomes = useIncomes()
   const expenses = useExpenseItems()
   const transactions = useTransactions()
   const [detailOpen, setDetailOpen] = useState(false)
+  const family = useFamilyContext()
+  const [source, setSource] = useCardSource('la-card-budget')
+
+  const budgetMembers = family.family
+    ? moduleMembers(family.members, family.shares, 'budget', family.userId)
+    : []
+  const canFamily = budgetMembers.length > 0
 
   const isLoading =
-    incomes.isPending || expenses.isPending || transactions.isPending
+    incomes.isPending ||
+    expenses.isPending ||
+    transactions.isPending ||
+    (source === 'family' && family.isPending)
   const hasBudget =
     (incomes.data ?? []).length > 0 || (expenses.data ?? []).length > 0
 
@@ -85,6 +157,10 @@ function BudgetModule() {
     return (
       <div className="h-40 animate-pulse rounded-3xl bg-zinc-100 dark:bg-zinc-800" />
     )
+  }
+
+  if (source === 'family' && canFamily) {
+    return <FamilyBudgetCard members={budgetMembers} onSwitch={setSource} />
   }
 
   if (!hasBudget) {
@@ -108,54 +184,109 @@ function BudgetModule() {
 
   return (
     <>
-      <button
-        onClick={() => setDetailOpen(true)}
-        className="group block w-full rounded-3xl bg-gradient-to-br from-indigo-600 to-violet-600 p-5 text-left text-white shadow-lg shadow-indigo-600/20 transition-transform hover:-translate-y-0.5"
-      >
+      <div className="rounded-3xl bg-gradient-to-br from-indigo-600 to-violet-600 p-5 text-white shadow-lg shadow-indigo-600/20 transition-transform hover:-translate-y-0.5">
         <div className="flex items-center justify-between text-sm text-indigo-100">
           <span className="flex items-center gap-2">
             <Wallet size={16} /> Bütçe
           </span>
-          <span className="flex items-center gap-1 text-xs">
-            döküm{' '}
-            <ArrowRight
-              size={14}
-              className="transition-transform group-hover:translate-x-0.5"
-            />
-          </span>
+          {canFamily ? (
+            <SourceToggle value="personal" onChange={setSource} light />
+          ) : (
+            <span className="flex items-center gap-1 text-xs">
+              döküm <ArrowRight size={14} />
+            </span>
+          )}
         </div>
-        <p className="mt-3 text-sm text-indigo-100">Günlük güvenli harcama</p>
-        <AnimatedNumber
-          className="mt-0.5 block text-4xl font-bold tracking-tight tabular-nums"
-          value={report.dailyAllowance}
-          format={(v) => formatMoney(v)}
-        />
-        <div className="mt-4 flex gap-6 text-sm">
-          <div>
-            <p className="text-indigo-200">Bu ay kalan</p>
-            <p className="font-semibold tabular-nums">
-              {formatMoney(report.remaining)}
-            </p>
+        <button
+          onClick={() => setDetailOpen(true)}
+          className="mt-3 block w-full text-left"
+        >
+          <p className="text-sm text-indigo-100">Günlük güvenli harcama</p>
+          <AnimatedNumber
+            className="mt-0.5 block text-4xl font-bold tracking-tight tabular-nums"
+            value={report.dailyAllowance}
+            format={(v) => formatMoney(v)}
+          />
+          <div className="mt-4 flex gap-6 text-sm">
+            <div>
+              <p className="text-indigo-200">Bu ay kalan</p>
+              <p className="font-semibold tabular-nums">
+                {formatMoney(report.remaining)}
+              </p>
+            </div>
+            <div>
+              <p className="text-indigo-200">Harcanan</p>
+              <p className="font-semibold tabular-nums">
+                {formatMoney(report.spent)}
+              </p>
+            </div>
           </div>
-          <div>
-            <p className="text-indigo-200">Harcanan</p>
-            <p className="font-semibold tabular-nums">
-              {formatMoney(report.spent)}
+          {!report.onTrack && (
+            <p className="mt-3 rounded-xl bg-white/15 px-3 py-2 text-xs font-medium">
+              ⚠️ Bu hızla ay sonunu getirmek zor — Bütçe&apos;deki asistana göz
+              at.
             </p>
-          </div>
-        </div>
-        {!report.onTrack && (
-          <p className="mt-3 rounded-xl bg-white/15 px-3 py-2 text-xs font-medium">
-            ⚠️ Bu hızla ay sonunu getirmek zor — Bütçe&apos;deki asistana göz
-            at.
-          </p>
-        )}
-      </button>
+          )}
+        </button>
+      </div>
       <BudgetDetailSheet
         open={detailOpen}
         onClose={() => setDetailOpen(false)}
       />
     </>
+  )
+}
+
+// Family variant of the budget card; tapping it goes to the family page
+function FamilyBudgetCard({
+  members,
+  onSwitch,
+}: {
+  members: ModuleMember[]
+  onSwitch: (value: CardSource) => void
+}) {
+  const budget = useFamilyBudget(members)
+
+  if (budget.isPending) {
+    return (
+      <div className="h-40 animate-pulse rounded-3xl bg-zinc-100 dark:bg-zinc-800" />
+    )
+  }
+
+  return (
+    <div className="rounded-3xl bg-gradient-to-br from-violet-600 to-fuchsia-600 p-5 text-white shadow-lg shadow-violet-600/20 transition-transform hover:-translate-y-0.5">
+      <div className="flex items-center justify-between text-sm text-violet-100">
+        <span className="flex items-center gap-2">
+          <Users size={16} /> Aile Bütçesi
+        </span>
+        <SourceToggle value="family" onChange={onSwitch} light />
+      </div>
+      <Link to="/family" className="mt-3 block">
+        <p className="text-sm text-violet-100">Günlük güvenli harcama (aile)</p>
+        <AnimatedNumber
+          className="mt-0.5 block text-4xl font-bold tracking-tight tabular-nums"
+          value={budget.report.dailyAllowance}
+          format={(v) => formatMoney(v)}
+        />
+        <div className="mt-4 flex gap-6 text-sm">
+          <div>
+            <p className="text-violet-200">Bu ay kalan</p>
+            <p className="font-semibold tabular-nums">
+              {formatMoney(budget.report.remaining)}
+            </p>
+          </div>
+          <div>
+            <p className="text-violet-200">Harcanan</p>
+            <p className="font-semibold tabular-nums">
+              {formatMoney(budget.report.spent)}
+            </p>
+          </div>
+        </div>
+        <p className="mt-3 text-xs text-violet-100">
+          {members.length} üye katılıyor · Aile Özeti&apos;ne git →
+        </p>
+      </Link>
+    </div>
   )
 }
 
@@ -241,11 +372,22 @@ function GoalsModule() {
 
 function MoviesModule() {
   const movies = useMovies()
+  const family = useFamilyContext()
+  const [source, setSource] = useCardSource('la-card-movies')
 
-  if (movies.isPending) {
+  const movieMembers = family.family
+    ? moduleMembers(family.members, family.shares, 'movies', family.userId)
+    : []
+  const canFamily = movieMembers.length > 0
+
+  if (movies.isPending || (source === 'family' && family.isPending)) {
     return (
       <div className="h-40 animate-pulse rounded-3xl bg-zinc-100 dark:bg-zinc-800" />
     )
+  }
+
+  if (source === 'family' && canFamily) {
+    return <FamilyMoviesCard members={movieMembers} onSwitch={setSource} />
   }
 
   const list = movies.data ?? []
@@ -267,33 +409,81 @@ function MoviesModule() {
     .sort((a, b) => a.planned_for!.localeCompare(b.planned_for!))[0]
 
   return (
-    <Link
-      to="/movies"
-      className="group block rounded-3xl bg-white p-5 shadow-sm shadow-zinc-200/60 transition-transform hover:-translate-y-0.5 dark:bg-zinc-900 dark:shadow-none"
-    >
+    <div className="rounded-3xl bg-white p-5 shadow-sm shadow-zinc-200/60 transition-transform hover:-translate-y-0.5 dark:bg-zinc-900 dark:shadow-none">
       <div className="flex items-center justify-between text-sm">
         <span className="flex items-center gap-2 font-semibold tracking-tight">
           <Clapperboard size={16} className="text-indigo-500" /> Film Listesi
         </span>
-        <ArrowRight
-          size={16}
-          className="text-zinc-300 transition-transform group-hover:translate-x-0.5 dark:text-zinc-600"
-        />
+        {canFamily ? (
+          <SourceToggle value="personal" onChange={setSource} />
+        ) : (
+          <ArrowRight size={16} className="text-zinc-300 dark:text-zinc-600" />
+        )}
       </div>
-      <p className="mt-3 text-3xl font-bold tracking-tight tabular-nums">
-        {toWatch.length}
-      </p>
-      <p className="text-sm text-zinc-400">izlenecek film</p>
-      {nextPlanned && (
-        <p className="mt-3 text-xs text-zinc-400">
-          Sıradaki:{' '}
-          <span className="font-medium text-zinc-600 dark:text-zinc-300">
-            {nextPlanned.title}
-          </span>{' '}
-          · {formatDate(nextPlanned.planned_for!)}
+      <Link to="/movies" className="mt-3 block">
+        <p className="text-3xl font-bold tracking-tight tabular-nums">
+          {toWatch.length}
         </p>
-      )}
-    </Link>
+        <p className="text-sm text-zinc-400">izlenecek film</p>
+        {nextPlanned && (
+          <p className="mt-3 text-xs text-zinc-400">
+            Sıradaki:{' '}
+            <span className="font-medium text-zinc-600 dark:text-zinc-300">
+              {nextPlanned.title}
+            </span>{' '}
+            · {formatDate(nextPlanned.planned_for!)}
+          </p>
+        )}
+      </Link>
+    </div>
+  )
+}
+
+// Family variant of the movies card: the shared watchlist at a glance
+function FamilyMoviesCard({
+  members,
+  onSwitch,
+}: {
+  members: ModuleMember[]
+  onSwitch: (value: CardSource) => void
+}) {
+  const { isPending, movies } = useFamilyMovies(members)
+
+  if (isPending) {
+    return (
+      <div className="h-40 animate-pulse rounded-3xl bg-zinc-100 dark:bg-zinc-800" />
+    )
+  }
+
+  const toWatch = movies
+    .filter((m) => m.status === 'to_watch')
+    .sort((a, b) => b.created_at.localeCompare(a.created_at))
+  const latest = toWatch[0]
+
+  return (
+    <div className="rounded-3xl bg-white p-5 shadow-sm shadow-zinc-200/60 transition-transform hover:-translate-y-0.5 dark:bg-zinc-900 dark:shadow-none">
+      <div className="flex items-center justify-between text-sm">
+        <span className="flex items-center gap-2 font-semibold tracking-tight">
+          <Users size={16} className="text-indigo-500" /> Aile Filmleri
+        </span>
+        <SourceToggle value="family" onChange={onSwitch} />
+      </div>
+      <Link to="/family" className="mt-3 block">
+        <p className="text-3xl font-bold tracking-tight tabular-nums">
+          {toWatch.length}
+        </p>
+        <p className="text-sm text-zinc-400">izlenecek film (aile)</p>
+        {latest && (
+          <p className="mt-3 text-xs text-zinc-400">
+            Son eklenen:{' '}
+            <span className="font-medium text-zinc-600 dark:text-zinc-300">
+              {latest.title}
+            </span>{' '}
+            · {latest.ownerIsSelf ? 'sen' : latest.ownerName}
+          </p>
+        )}
+      </Link>
+    </div>
   )
 }
 

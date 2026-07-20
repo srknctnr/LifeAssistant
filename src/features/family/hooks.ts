@@ -14,7 +14,9 @@ import {
   removeMember,
   setShare,
   upsertProfile,
+  type FamilyModule,
 } from '@/features/family/api'
+import { myShareMode, type ShareMode } from '@/features/family/share-utils'
 
 const profileKey = ['profile'] as const
 const membershipsKey = ['family_members'] as const
@@ -104,6 +106,13 @@ export function useAcceptInvite() {
 
 export function useShares() {
   return useQuery({ queryKey: sharesKey, queryFn: listShares })
+}
+
+// Forms use this to decide how a new record's family visibility is set
+export function useMyShareMode(module: FamilyModule): ShareMode {
+  const { session } = useAuth()
+  const shares = useShares()
+  return myShareMode(shares.data ?? [], session?.user.id, module)
 }
 
 export function useSetShare() {

@@ -9,6 +9,9 @@ import {
   useCreateTransaction,
   useUpdateTransaction,
 } from '@/features/budget/hooks'
+import { FamilyVisibilityField } from '@/features/family/FamilyVisibilityField'
+import { useMyShareMode } from '@/features/family/hooks'
+import { resolveFamilyVisibility } from '@/features/family/share-utils'
 import { todayISO } from '@/lib/dates'
 import { saveErrorMessage } from '@/lib/errors'
 import { parseAmountInput } from '@/lib/money'
@@ -28,6 +31,10 @@ export function TransactionForm({ transaction, onDone }: TransactionFormProps) {
   const [category, setCategory] = useState(transaction?.category ?? '')
   const [note, setNote] = useState(transaction?.note ?? '')
   const [spentOn, setSpentOn] = useState(transaction?.spent_on ?? todayISO())
+  const shareMode = useMyShareMode('budget')
+  const [familyVisible, setFamilyVisible] = useState(
+    transaction?.is_family_visible ?? false,
+  )
   const [error, setError] = useState<string | null>(null)
 
   const isPending = createTransaction.isPending || updateTransaction.isPending
@@ -48,6 +55,11 @@ export function TransactionForm({ transaction, onDone }: TransactionFormProps) {
       category: category.trim() || null,
       note: note.trim() || null,
       spent_on: spentOn,
+      is_family_visible: resolveFamilyVisibility(
+        shareMode,
+        familyVisible,
+        transaction?.is_family_visible,
+      ),
     }
 
     try {
@@ -93,6 +105,12 @@ export function TransactionForm({ transaction, onDone }: TransactionFormProps) {
         value={spentOn}
         onChange={(e) => setSpentOn(e.target.value)}
       />
+      {shareMode === 'ask' && (
+        <FamilyVisibilityField
+          value={familyVisible}
+          onChange={setFamilyVisible}
+        />
+      )}
 
       {error && (
         <p className="text-sm text-red-600 dark:text-red-400">{error}</p>

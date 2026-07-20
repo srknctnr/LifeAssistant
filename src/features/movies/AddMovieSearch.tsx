@@ -3,6 +3,7 @@ import { Clapperboard, Loader2, Search, Star } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
 import { EmptyState } from '@/components/EmptyState'
+import { FamilyVisibilityToggle } from '@/features/family/FamilyVisibilityField'
 import { MovieForm } from '@/features/movies/MovieForm'
 import {
   isSearchConfigured,
@@ -14,7 +15,8 @@ import {
 import { resultKey, useAddFromSearch } from '@/features/movies/useAddFromSearch'
 
 export function AddMovieSearch({ onDone }: { onDone: () => void }) {
-  const { add, addingKey, error } = useAddFromSearch()
+  const { add, addingKey, error, askMode, familyVisible, setFamilyVisible } =
+    useAddFromSearch()
   const [query, setQuery] = useState('')
   const [debounced, setDebounced] = useState('')
   const [manualMode, setManualMode] = useState(!isSearchConfigured)
@@ -77,6 +79,13 @@ export function AddMovieSearch({ onDone }: { onDone: () => void }) {
           className="w-full rounded-xl border border-zinc-200 bg-white py-2.5 pr-4 pl-10 text-sm text-zinc-900 transition placeholder:text-zinc-400 focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:border-indigo-500 dark:focus:ring-indigo-500/20"
         />
       </div>
+
+      {askMode && (
+        <FamilyVisibilityToggle
+          value={familyVisible}
+          onChange={setFamilyVisible}
+        />
+      )}
 
       {!isTmdbConfigured && (
         <p className="text-xs text-zinc-400">

@@ -6,7 +6,10 @@ export type SavingsGoal = Tables<'savings_goals'>
 export type SavingsContribution = Tables<'savings_contributions'>
 
 export interface GoalWithWish extends SavingsGoal {
-  wishlist_items: Pick<WishlistItem, 'name' | 'kind' | 'target_date'> | null
+  wishlist_items: Pick<
+    WishlistItem,
+    'name' | 'kind' | 'target_date' | 'is_family_visible'
+  > | null
 }
 
 export async function listWishlistItems(): Promise<WishlistItem[]> {
@@ -53,7 +56,7 @@ export async function deleteWishlistItem(id: string): Promise<void> {
 export async function listGoals(): Promise<GoalWithWish[]> {
   const { data, error } = await supabase
     .from('savings_goals')
-    .select('*, wishlist_items(name, kind, target_date)')
+    .select('*, wishlist_items(name, kind, target_date, is_family_visible)')
     .eq('user_id', await currentUserId())
     .order('created_at', { ascending: true })
   if (error) throw error

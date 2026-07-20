@@ -1,6 +1,8 @@
 import { useState } from 'react'
 
 import { useAuth } from '@/features/auth/useAuth'
+import { useMyShareMode } from '@/features/family/hooks'
+import { resolveFamilyVisibility } from '@/features/family/share-utils'
 import { useCreateMovie } from '@/features/movies/hooks'
 import {
   fetchMovieExtras,
@@ -12,10 +14,13 @@ export function resultKey(result: MovieSearchResult): string {
 }
 
 // Shared add-to-watchlist flow for search results and the discover feed:
-// resolves the IMDb rating + genres, then inserts the movie
+// resolves the IMDb rating + genres, then inserts the movie. With an 'ask'
+// level share the caller shows a toggle bound to familyVisible.
 export function useAddFromSearch() {
   const { session } = useAuth()
   const createMovie = useCreateMovie()
+  const shareMode = useMyShareMode('movies')
+  const [familyVisible, setFamilyVisible] = useState(false)
   const [addingKey, setAddingKey] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -34,6 +39,7 @@ export function useAddFromSearch() {
         external_rating: extras.rating,
         external_source: extras.source,
         genres: extras.genres,
+        is_family_visible: resolveFamilyVisibility(shareMode, familyVisible),
       })
       return true
     } catch {
@@ -44,5 +50,12 @@ export function useAddFromSearch() {
     }
   }
 
-  return { add, addingKey, error }
+  return {
+    add,
+    addingKey,
+    error,
+    askMode: shareMode === 'ask',
+    familyVisible,
+    setFamilyVisible,
+  }
 }

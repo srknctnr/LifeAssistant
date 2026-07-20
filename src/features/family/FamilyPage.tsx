@@ -27,6 +27,7 @@ import type {
   FamilyModule as ModuleKey,
   ModuleShare,
 } from '@/features/family/api'
+import { FamilySpace } from '@/features/family/FamilySpace'
 import { MemberModuleSheet } from '@/features/family/MemberModuleSheet'
 import {
   useAcceptInvite,
@@ -56,7 +57,14 @@ const MODULE_LABELS = Object.fromEntries(
   MODULES.map((m) => [m.key, m.label]),
 ) as Record<ModuleKey, string>
 
-type ShareChoice = 'off' | 'summary' | 'full'
+type ShareChoice = 'off' | 'summary' | 'ask' | 'full'
+type FamilyView = 'space' | 'manage'
+
+function levelSuffix(level: ModuleShare['level']): string {
+  if (level === 'summary') return ' · özet'
+  if (level === 'ask') return ' · sor'
+  return ''
+}
 
 export function FamilyPage() {
   const { session } = useAuth()
@@ -68,6 +76,7 @@ export function FamilyPage() {
   const [selectedFamilyId, setSelectedFamilyId] = useState<string | null>(() =>
     localStorage.getItem('la-family'),
   )
+  const [view, setView] = useState<FamilyView>('space')
   const [createOpen, setCreateOpen] = useState(false)
   const [joinOpen, setJoinOpen] = useState(false)
   const [inviteOpen, setInviteOpen] = useState(false)
@@ -107,7 +116,7 @@ export function FamilyPage() {
     <PageTransition>
       <h1 className="text-2xl font-semibold tracking-tight">Ailem</h1>
       <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
-        Aileni kur, üyeleri davet et; modüllerini istediğin ayrıntıda paylaş.
+        Ailenin ortak alanı: paylaşılan bütçe, hedefler, filmler ve planlar.
       </p>
 
       {isLoading ? (
@@ -175,131 +184,148 @@ export function FamilyPage() {
 
           {selected && (
             <>
-              <Section title="Üyeler">
-                <ul className="space-y-1.5">
-                  {familyMembers.map((member) => {
-                    const memberShares = familyShares.filter(
-                      (s) => s.user_id === member.user_id,
-                    )
-                    const isSelf = member.user_id === userId
-                    return (
-                      <li
-                        key={member.id}
-                        className="flex items-center gap-3 rounded-xl bg-white px-3.5 py-2.5 shadow-sm shadow-zinc-200/60 dark:bg-zinc-900 dark:shadow-none"
-                      >
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-medium">
-                            {member.profiles?.display_name ?? 'Üye'}
-                            {isSelf && (
-                              <span className="text-zinc-400"> · sen</span>
-                            )}
-                          </p>
-                          <p className="text-xs text-zinc-400">
-                            {member.role === 'owner' ? 'Yönetici' : 'Üye'}
-                          </p>
-                          {memberShares.length > 0 && (
-                            <div className="mt-1.5 flex flex-wrap gap-1.5">
-                              {memberShares.map((share) =>
-                                isSelf ? (
-                                  <span
-                                    key={share.id}
-                                    className="rounded-full bg-zinc-100 px-2.5 py-1 text-[11px] font-medium text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400"
-                                  >
-                                    {MODULE_LABELS[share.module]}
-                                    {share.module === 'budget' &&
-                                    share.level === 'summary'
-                                      ? ' · özet'
-                                      : ''}
-                                  </span>
-                                ) : (
-                                  <button
-                                    key={share.id}
-                                    onClick={() =>
-                                      setViewing({ member, share })
-                                    }
-                                    className="rounded-full bg-indigo-50 px-2.5 py-1 text-[11px] font-semibold text-indigo-600 transition-colors hover:bg-indigo-100 dark:bg-indigo-500/10 dark:text-indigo-400 dark:hover:bg-indigo-500/20"
-                                  >
-                                    {MODULE_LABELS[share.module]}
-                                    {share.module === 'budget' &&
-                                    share.level === 'summary'
-                                      ? ' · özet'
-                                      : ''}
-                                  </button>
-                                ),
+              <div className="mt-5">
+                <Segmented<FamilyView>
+                  options={[
+                    { value: 'space', label: 'Aile Özeti' },
+                    { value: 'manage', label: 'Yönetim' },
+                  ]}
+                  value={view}
+                  onChange={setView}
+                />
+              </div>
+
+              {view === 'space' ? (
+                <FamilySpace
+                  family={selected}
+                  members={familyMembers}
+                  shares={familyShares}
+                />
+              ) : (
+                <>
+                  <Section title="Üyeler">
+                    <ul className="space-y-1.5">
+                      {familyMembers.map((member) => {
+                        const memberShares = familyShares.filter(
+                          (s) => s.user_id === member.user_id,
+                        )
+                        const isSelf = member.user_id === userId
+                        return (
+                          <li
+                            key={member.id}
+                            className="flex items-center gap-3 rounded-xl bg-white px-3.5 py-2.5 shadow-sm shadow-zinc-200/60 dark:bg-zinc-900 dark:shadow-none"
+                          >
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-sm font-medium">
+                                {member.profiles?.display_name ?? 'Üye'}
+                                {isSelf && (
+                                  <span className="text-zinc-400"> · sen</span>
+                                )}
+                              </p>
+                              <p className="text-xs text-zinc-400">
+                                {member.role === 'owner' ? 'Yönetici' : 'Üye'}
+                              </p>
+                              {memberShares.length > 0 && (
+                                <div className="mt-1.5 flex flex-wrap gap-1.5">
+                                  {memberShares.map((share) =>
+                                    isSelf ? (
+                                      <span
+                                        key={share.id}
+                                        className="rounded-full bg-zinc-100 px-2.5 py-1 text-[11px] font-medium text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400"
+                                      >
+                                        {MODULE_LABELS[share.module]}
+                                        {levelSuffix(share.level)}
+                                      </span>
+                                    ) : (
+                                      <button
+                                        key={share.id}
+                                        onClick={() =>
+                                          setViewing({ member, share })
+                                        }
+                                        className="rounded-full bg-indigo-50 px-2.5 py-1 text-[11px] font-semibold text-indigo-600 transition-colors hover:bg-indigo-100 dark:bg-indigo-500/10 dark:text-indigo-400 dark:hover:bg-indigo-500/20"
+                                      >
+                                        {MODULE_LABELS[share.module]}
+                                        {levelSuffix(share.level)}
+                                      </button>
+                                    ),
+                                  )}
+                                </div>
                               )}
                             </div>
-                          )}
-                        </div>
-                        {isOwner && !isSelf && (
-                          <RemoveMemberButton
-                            memberRowId={member.id}
-                            name={member.profiles?.display_name ?? 'Üye'}
-                          />
-                        )}
-                      </li>
-                    )
-                  })}
-                </ul>
-              </Section>
+                            {isOwner && !isSelf && (
+                              <RemoveMemberButton
+                                memberRowId={member.id}
+                                name={member.profiles?.display_name ?? 'Üye'}
+                              />
+                            )}
+                          </li>
+                        )
+                      })}
+                    </ul>
+                  </Section>
 
-              {isOwner && (
-                <Section title="Davetler" onAdd={() => setInviteOpen(true)}>
-                  {pendingInvites.length === 0 ? (
-                    <EmptyState text="Bekleyen davet yok. + ile e-posta adresine kod oluştur." />
-                  ) : (
-                    <ul className="space-y-1.5">
-                      {pendingInvites.map((invite) => (
-                        <InviteRow key={invite.id} invite={invite} />
+                  {isOwner && (
+                    <Section title="Davetler" onAdd={() => setInviteOpen(true)}>
+                      {pendingInvites.length === 0 ? (
+                        <EmptyState text="Bekleyen davet yok. + ile e-posta adresine kod oluştur." />
+                      ) : (
+                        <ul className="space-y-1.5">
+                          {pendingInvites.map((invite) => (
+                            <InviteRow key={invite.id} invite={invite} />
+                          ))}
+                        </ul>
+                      )}
+                    </Section>
+                  )}
+
+                  <Section title="Paylaşımlarım">
+                    <p className="mb-3 text-xs text-zinc-400">
+                      <strong>Tam:</strong> eklediğin her kayıt otomatik Aile
+                      Özeti&apos;ne düşer. <strong>Sor:</strong> eklerken
+                      &quot;Sadece ben / Aile ile&quot; diye sorulur.{' '}
+                      <strong>Özet</strong> (bütçe): yalnızca toplamlar görünür,
+                      kalemler görünmez.
+                    </p>
+                    <ul className="space-y-2.5">
+                      {MODULES.map((module) => (
+                        <ShareRow
+                          key={module.key}
+                          familyId={selected.id}
+                          module={module}
+                          current={
+                            familyShares.find(
+                              (s) =>
+                                s.module === module.key && s.user_id === userId,
+                            ) ?? null
+                          }
+                        />
                       ))}
                     </ul>
-                  )}
-                </Section>
+                  </Section>
+
+                  <div className="mt-8">
+                    {isOwner ? (
+                      <DangerButton
+                        label="Aileyi sil"
+                        note="Üyelikler, davetler ve paylaşım ayarları silinir; kişisel veriler etkilenmez."
+                        onConfirm={() => {}}
+                        familyId={selected.id}
+                        mode="delete"
+                      />
+                    ) : (
+                      <DangerButton
+                        label="Aileden ayrıl"
+                        note="Paylaşımların kapanır; kişisel verilerin etkilenmez."
+                        onConfirm={() => {}}
+                        memberRowId={
+                          myRows.find((m) => m.family_id === selected.id)?.id
+                        }
+                        mode="leave"
+                      />
+                    )}
+                  </div>
+                </>
               )}
-
-              <Section title="Paylaşımlarım">
-                <p className="mb-3 text-xs text-zinc-400">
-                  Bu ailenin üyeleri seçtiğin modülleri görebilir; bütçede
-                  ayrıntı seviyesini sen belirliyorsun. Üyelerin paylaştıklarını
-                  yukarıdaki rozetlere dokunarak görüntüleyebilirsin.
-                </p>
-                <ul className="space-y-2.5">
-                  {MODULES.map((module) => (
-                    <ShareRow
-                      key={module.key}
-                      familyId={selected.id}
-                      module={module}
-                      current={
-                        familyShares.find(
-                          (s) =>
-                            s.module === module.key && s.user_id === userId,
-                        ) ?? null
-                      }
-                    />
-                  ))}
-                </ul>
-              </Section>
-
-              <div className="mt-8">
-                {isOwner ? (
-                  <DangerButton
-                    label="Aileyi sil"
-                    note="Üyelikler, davetler ve paylaşım ayarları silinir; kişisel veriler etkilenmez."
-                    onConfirm={() => {}}
-                    familyId={selected.id}
-                    mode="delete"
-                  />
-                ) : (
-                  <DangerButton
-                    label="Aileden ayrıl"
-                    note="Paylaşımların kapanır; kişisel verilerin etkilenmez."
-                    onConfirm={() => {}}
-                    memberRowId={
-                      myRows.find((m) => m.family_id === selected.id)?.id
-                    }
-                    mode="leave"
-                  />
-                )}
-              </div>
             </>
           )}
         </>
@@ -599,7 +625,7 @@ function ShareRow({
 }: {
   familyId: string
   module: { key: ModuleKey; label: string; icon: LucideIcon }
-  current: { level: 'summary' | 'full' } | null
+  current: { level: 'summary' | 'full' | 'ask' } | null
 }) {
   const { session } = useAuth()
   const setShare = useSetShare()
@@ -610,11 +636,13 @@ function ShareRow({
       ? [
           { value: 'off' as const, label: 'Kapalı' },
           { value: 'summary' as const, label: 'Özet' },
+          { value: 'ask' as const, label: 'Sor' },
           { value: 'full' as const, label: 'Tam' },
         ]
       : [
           { value: 'off' as const, label: 'Kapalı' },
-          { value: 'full' as const, label: 'Açık' },
+          { value: 'ask' as const, label: 'Sor' },
+          { value: 'full' as const, label: 'Tam' },
         ]
 
   return (

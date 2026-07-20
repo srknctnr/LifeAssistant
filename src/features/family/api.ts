@@ -198,7 +198,7 @@ export async function listMemberGoals(
 ): Promise<GoalWithWish[]> {
   const { data, error } = await supabase
     .from('savings_goals')
-    .select('*, wishlist_items(name, kind, target_date)')
+    .select('*, wishlist_items(name, kind, target_date, is_family_visible)')
     .eq('user_id', ownerId)
     .order('created_at', { ascending: true })
   if (error) throw error

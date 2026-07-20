@@ -6,6 +6,9 @@ import { TextField } from '@/components/TextField'
 import { useAuth } from '@/features/auth/useAuth'
 import type { Income } from '@/features/budget/api'
 import { useCreateIncome, useUpdateIncome } from '@/features/budget/hooks'
+import { FamilyVisibilityField } from '@/features/family/FamilyVisibilityField'
+import { useMyShareMode } from '@/features/family/hooks'
+import { resolveFamilyVisibility } from '@/features/family/share-utils'
 import { todayISO } from '@/lib/dates'
 import { saveErrorMessage } from '@/lib/errors'
 import { parseAmountInput } from '@/lib/money'
@@ -29,6 +32,10 @@ export function IncomeForm({ income, onDone }: IncomeFormProps) {
     income?.salary_day ? String(income.salary_day) : '1',
   )
   const [autoRenew, setAutoRenew] = useState(income?.auto_renew ?? true)
+  const shareMode = useMyShareMode('budget')
+  const [familyVisible, setFamilyVisible] = useState(
+    income?.is_family_visible ?? false,
+  )
   const [error, setError] = useState<string | null>(null)
 
   const isPending = createIncome.isPending || updateIncome.isPending
@@ -64,6 +71,11 @@ export function IncomeForm({ income, onDone }: IncomeFormProps) {
       salary_day: isOnce ? null : day,
       income_date: isOnce ? incomeDate : null,
       auto_renew: isOnce ? false : autoRenew,
+      is_family_visible: resolveFamilyVisibility(
+        shareMode,
+        familyVisible,
+        income?.is_family_visible,
+      ),
     }
 
     try {
@@ -125,6 +137,12 @@ export function IncomeForm({ income, onDone }: IncomeFormProps) {
             label="Maaş gününde otomatik yenile"
           />
         </>
+      )}
+      {shareMode === 'ask' && (
+        <FamilyVisibilityField
+          value={familyVisible}
+          onChange={setFamilyVisible}
+        />
       )}
 
       {error && (

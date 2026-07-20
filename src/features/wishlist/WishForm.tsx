@@ -4,6 +4,9 @@ import { Button } from '@/components/Button'
 import { Segmented } from '@/components/Segmented'
 import { TextField } from '@/components/TextField'
 import { useAuth } from '@/features/auth/useAuth'
+import { FamilyVisibilityField } from '@/features/family/FamilyVisibilityField'
+import { useMyShareMode } from '@/features/family/hooks'
+import { resolveFamilyVisibility } from '@/features/family/share-utils'
 import type { WishlistItem } from '@/features/wishlist/api'
 import {
   useCreateWishlistItem,
@@ -29,6 +32,10 @@ export function WishForm({ item, onDone }: WishFormProps) {
     item ? String(item.estimated_amount) : '',
   )
   const [targetDate, setTargetDate] = useState(item?.target_date ?? '')
+  const shareMode = useMyShareMode('wishlist')
+  const [familyVisible, setFamilyVisible] = useState(
+    item?.is_family_visible ?? false,
+  )
   const [error, setError] = useState<string | null>(null)
 
   const isPending = createItem.isPending || updateItem.isPending
@@ -49,6 +56,11 @@ export function WishForm({ item, onDone }: WishFormProps) {
       kind,
       estimated_amount: parsedAmount,
       target_date: targetDate || null,
+      is_family_visible: resolveFamilyVisibility(
+        shareMode,
+        familyVisible,
+        item?.is_family_visible,
+      ),
     }
 
     try {
@@ -100,6 +112,12 @@ export function WishForm({ item, onDone }: WishFormProps) {
         value={targetDate}
         onChange={(e) => setTargetDate(e.target.value)}
       />
+      {shareMode === 'ask' && (
+        <FamilyVisibilityField
+          value={familyVisible}
+          onChange={setFamilyVisible}
+        />
+      )}
 
       {error && (
         <p className="text-sm text-red-600 dark:text-red-400">{error}</p>

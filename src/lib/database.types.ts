@@ -1,4 +1,4 @@
-// Database types matching supabase/migrations/20260706010000_initial_schema.sql.
+﻿// Database types matching supabase/migrations/20260706010000_initial_schema.sql.
 // Hand-written to mirror the schema exactly; regenerate with `npm run gen:types`
 // once the Supabase CLI is linked (requires `npx supabase login`).
 
@@ -165,7 +165,7 @@ export interface Database {
           family_id: string
           user_id: string
           module: 'budget' | 'wishlist' | 'movies' | 'calendar'
-          level: 'summary' | 'full'
+          level: 'summary' | 'full' | 'ask'
           created_at: string
           updated_at: string
         }
@@ -174,7 +174,7 @@ export interface Database {
           family_id: string
           user_id: string
           module: 'budget' | 'wishlist' | 'movies' | 'calendar'
-          level?: 'summary' | 'full'
+          level?: 'summary' | 'full' | 'ask'
           created_at?: string
           updated_at?: string
         }
@@ -183,7 +183,7 @@ export interface Database {
           family_id?: string
           user_id?: string
           module?: 'budget' | 'wishlist' | 'movies' | 'calendar'
-          level?: 'summary' | 'full'
+          level?: 'summary' | 'full' | 'ask'
           created_at?: string
           updated_at?: string
         }
@@ -207,6 +207,7 @@ export interface Database {
           salary_day: number | null
           income_date: string | null
           auto_renew: boolean
+          is_family_visible: boolean
           created_at: string
           updated_at: string
         }
@@ -219,6 +220,7 @@ export interface Database {
           salary_day?: number | null
           income_date?: string | null
           auto_renew?: boolean
+          is_family_visible?: boolean
           created_at?: string
           updated_at?: string
         }
@@ -231,6 +233,7 @@ export interface Database {
           salary_day?: number | null
           income_date?: string | null
           auto_renew?: boolean
+          is_family_visible?: boolean
           created_at?: string
           updated_at?: string
         }
@@ -248,6 +251,7 @@ export interface Database {
           expense_date: string | null
           source: Database['public']['Enums']['expense_source']
           is_active: boolean
+          is_family_visible: boolean
           created_at: string
           updated_at: string
         }
@@ -262,6 +266,7 @@ export interface Database {
           expense_date?: string | null
           source?: Database['public']['Enums']['expense_source']
           is_active?: boolean
+          is_family_visible?: boolean
           created_at?: string
           updated_at?: string
         }
@@ -276,6 +281,7 @@ export interface Database {
           expense_date?: string | null
           source?: Database['public']['Enums']['expense_source']
           is_active?: boolean
+          is_family_visible?: boolean
           created_at?: string
           updated_at?: string
         }
@@ -290,6 +296,7 @@ export interface Database {
           category: string | null
           note: string | null
           spent_on: string
+          is_family_visible: boolean
           created_at: string
           updated_at: string
         }
@@ -301,6 +308,7 @@ export interface Database {
           category?: string | null
           note?: string | null
           spent_on?: string
+          is_family_visible?: boolean
           created_at?: string
           updated_at?: string
         }
@@ -312,6 +320,7 @@ export interface Database {
           category?: string | null
           note?: string | null
           spent_on?: string
+          is_family_visible?: boolean
           created_at?: string
           updated_at?: string
         }
@@ -327,6 +336,7 @@ export interface Database {
           currency: string
           target_date: string | null
           status: Database['public']['Enums']['wishlist_status']
+          is_family_visible: boolean
           created_at: string
           updated_at: string
         }
@@ -339,6 +349,7 @@ export interface Database {
           currency?: string
           target_date?: string | null
           status?: Database['public']['Enums']['wishlist_status']
+          is_family_visible?: boolean
           created_at?: string
           updated_at?: string
         }
@@ -351,6 +362,7 @@ export interface Database {
           currency?: string
           target_date?: string | null
           status?: Database['public']['Enums']['wishlist_status']
+          is_family_visible?: boolean
           created_at?: string
           updated_at?: string
         }
@@ -458,6 +470,7 @@ export interface Database {
           name: string
           emoji: string | null
           weekly_target: number | null
+          is_family_visible: boolean
           created_at: string
           updated_at: string
         }
@@ -467,6 +480,7 @@ export interface Database {
           name: string
           emoji?: string | null
           weekly_target?: number | null
+          is_family_visible?: boolean
           created_at?: string
           updated_at?: string
         }
@@ -476,6 +490,7 @@ export interface Database {
           name?: string
           emoji?: string | null
           weekly_target?: number | null
+          is_family_visible?: boolean
           created_at?: string
           updated_at?: string
         }
@@ -531,6 +546,7 @@ export interface Database {
           genres: string[]
           watched_on: string | null
           planned_for: string | null
+          is_family_visible: boolean
           created_at: string
           updated_at: string
         }
@@ -548,6 +564,7 @@ export interface Database {
           genres?: string[]
           watched_on?: string | null
           planned_for?: string | null
+          is_family_visible?: boolean
           created_at?: string
           updated_at?: string
         }
@@ -565,6 +582,7 @@ export interface Database {
           genres?: string[]
           watched_on?: string | null
           planned_for?: string | null
+          is_family_visible?: boolean
           created_at?: string
           updated_at?: string
         }

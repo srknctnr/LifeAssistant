@@ -12,6 +12,9 @@ import {
   useUpdateExpenseItem,
 } from '@/features/budget/hooks'
 import { PERIOD_LABELS, type ExpensePeriod } from '@/features/budget/money'
+import { FamilyVisibilityField } from '@/features/family/FamilyVisibilityField'
+import { useMyShareMode } from '@/features/family/hooks'
+import { resolveFamilyVisibility } from '@/features/family/share-utils'
 import { todayISO } from '@/lib/dates'
 import { saveErrorMessage } from '@/lib/errors'
 import { parseAmountInput } from '@/lib/money'
@@ -41,6 +44,10 @@ export function ExpenseForm({ item, onDone }: ExpenseFormProps) {
     item?.expense_date ?? todayISO(),
   )
   const [category, setCategory] = useState(item?.category ?? '')
+  const shareMode = useMyShareMode('budget')
+  const [familyVisible, setFamilyVisible] = useState(
+    item?.is_family_visible ?? false,
+  )
   const [error, setError] = useState<string | null>(null)
 
   const isPending = createExpenseItem.isPending || updateExpenseItem.isPending
@@ -66,6 +73,11 @@ export function ExpenseForm({ item, onDone }: ExpenseFormProps) {
       period: (isOnce ? 'once' : period) as ExpensePeriod,
       expense_date: isOnce ? expenseDate : null,
       category: category.trim() || null,
+      is_family_visible: resolveFamilyVisibility(
+        shareMode,
+        familyVisible,
+        item?.is_family_visible,
+      ),
     }
 
     try {
@@ -126,6 +138,12 @@ export function ExpenseForm({ item, onDone }: ExpenseFormProps) {
         </div>
       )}
       <CategoryPicker value={category} onChange={setCategory} />
+      {shareMode === 'ask' && (
+        <FamilyVisibilityField
+          value={familyVisible}
+          onChange={setFamilyVisible}
+        />
+      )}
 
       {error && (
         <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
