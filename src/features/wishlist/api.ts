@@ -1,5 +1,5 @@
 import type { Tables, TablesInsert, TablesUpdate } from '@/lib/database.types'
-import { supabase } from '@/lib/supabase'
+import { currentUserId, supabase } from '@/lib/supabase'
 
 export type WishlistItem = Tables<'wishlist_items'>
 export type SavingsGoal = Tables<'savings_goals'>
@@ -13,6 +13,7 @@ export async function listWishlistItems(): Promise<WishlistItem[]> {
   const { data, error } = await supabase
     .from('wishlist_items')
     .select('*')
+    .eq('user_id', await currentUserId())
     .order('created_at', { ascending: true })
   if (error) throw error
   return data
@@ -53,6 +54,7 @@ export async function listGoals(): Promise<GoalWithWish[]> {
   const { data, error } = await supabase
     .from('savings_goals')
     .select('*, wishlist_items(name, kind, target_date)')
+    .eq('user_id', await currentUserId())
     .order('created_at', { ascending: true })
   if (error) throw error
   return data as GoalWithWish[]
@@ -62,6 +64,7 @@ export async function listContributions(): Promise<SavingsContribution[]> {
   const { data, error } = await supabase
     .from('savings_contributions')
     .select('*')
+    .eq('user_id', await currentUserId())
     .order('contributed_on', { ascending: false })
   if (error) throw error
   return data

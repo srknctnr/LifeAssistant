@@ -1,3 +1,7 @@
+import type { ExpenseItem, Income, Transaction } from '@/features/budget/api'
+import type { LifeCategory, CategoryEntry } from '@/features/calendar/api'
+import type { Movie } from '@/features/movies/api'
+import type { GoalWithWish, WishlistItem } from '@/features/wishlist/api'
 import type { Tables, TablesInsert } from '@/lib/database.types'
 import { supabase } from '@/lib/supabase'
 
@@ -124,6 +128,135 @@ export async function listShares(): Promise<ModuleShare[]> {
     .from('module_shares')
     .select('*')
     .order('created_at', { ascending: true })
+  if (error) throw error
+  return data
+}
+
+export interface MemberBudgetSummary {
+  income: number
+  planned: number
+  spent: number
+}
+
+// Summary-level access: three totals via a definer RPC, no row visibility
+export async function fetchMemberBudgetSummary(
+  ownerId: string,
+): Promise<MemberBudgetSummary> {
+  const { data, error } = await supabase.rpc('family_budget_summary', {
+    p_owner: ownerId,
+  })
+  if (error) throw error
+  const raw = data as {
+    income?: number
+    planned?: number
+    spent?: number
+  } | null
+  return {
+    income: Number(raw?.income ?? 0),
+    planned: Number(raw?.planned ?? 0),
+    spent: Number(raw?.spent ?? 0),
+  }
+}
+
+// Full-level readers: the family SELECT policies scope what these return
+export async function listMemberIncomes(ownerId: string): Promise<Income[]> {
+  const { data, error } = await supabase
+    .from('incomes')
+    .select('*')
+    .eq('user_id', ownerId)
+    .order('created_at', { ascending: true })
+  if (error) throw error
+  return data
+}
+
+export async function listMemberExpenses(
+  ownerId: string,
+): Promise<ExpenseItem[]> {
+  const { data, error } = await supabase
+    .from('expense_items')
+    .select('*')
+    .eq('user_id', ownerId)
+    .order('created_at', { ascending: true })
+  if (error) throw error
+  return data
+}
+
+export async function listMemberTransactions(
+  ownerId: string,
+): Promise<Transaction[]> {
+  const { data, error } = await supabase
+    .from('transactions')
+    .select('*')
+    .eq('user_id', ownerId)
+    .order('spent_on', { ascending: false })
+  if (error) throw error
+  return data
+}
+
+export async function listMemberGoals(
+  ownerId: string,
+): Promise<GoalWithWish[]> {
+  const { data, error } = await supabase
+    .from('savings_goals')
+    .select('*, wishlist_items(name, kind, target_date)')
+    .eq('user_id', ownerId)
+    .order('created_at', { ascending: true })
+  if (error) throw error
+  return data as GoalWithWish[]
+}
+
+export async function listMemberContributions(ownerId: string) {
+  const { data, error } = await supabase
+    .from('savings_contributions')
+    .select('*')
+    .eq('user_id', ownerId)
+    .order('contributed_on', { ascending: false })
+  if (error) throw error
+  return data
+}
+
+export async function listMemberWishes(
+  ownerId: string,
+): Promise<WishlistItem[]> {
+  const { data, error } = await supabase
+    .from('wishlist_items')
+    .select('*')
+    .eq('user_id', ownerId)
+    .order('created_at', { ascending: true })
+  if (error) throw error
+  return data
+}
+
+export async function listMemberMovies(ownerId: string): Promise<Movie[]> {
+  const { data, error } = await supabase
+    .from('movies')
+    .select('*')
+    .eq('user_id', ownerId)
+    .order('created_at', { ascending: false })
+  if (error) throw error
+  return data
+}
+
+export async function listMemberCategories(
+  ownerId: string,
+): Promise<LifeCategory[]> {
+  const { data, error } = await supabase
+    .from('life_categories')
+    .select('*')
+    .eq('user_id', ownerId)
+    .order('created_at', { ascending: true })
+  if (error) throw error
+  return data
+}
+
+export async function listMemberEntries(
+  ownerId: string,
+): Promise<CategoryEntry[]> {
+  const { data, error } = await supabase
+    .from('category_entries')
+    .select('*')
+    .eq('user_id', ownerId)
+    .order('done_on', { ascending: false })
   if (error) throw error
   return data
 }

@@ -1,5 +1,5 @@
 import type { Tables, TablesInsert, TablesUpdate } from '@/lib/database.types'
-import { supabase } from '@/lib/supabase'
+import { currentUserId, supabase } from '@/lib/supabase'
 
 export type Income = Tables<'incomes'>
 export type ExpenseItem = Tables<'expense_items'>
@@ -10,6 +10,7 @@ export async function listIncomes(): Promise<Income[]> {
   const { data, error } = await supabase
     .from('incomes')
     .select('*')
+    .eq('user_id', await currentUserId())
     .order('created_at', { ascending: true })
   if (error) throw error
   return data
@@ -50,6 +51,7 @@ export async function listExpenseItems(): Promise<ExpenseItem[]> {
   const { data, error } = await supabase
     .from('expense_items')
     .select('*')
+    .eq('user_id', await currentUserId())
     .order('created_at', { ascending: true })
   if (error) throw error
   return data
@@ -90,6 +92,7 @@ export async function listTransactions(): Promise<Transaction[]> {
   const { data, error } = await supabase
     .from('transactions')
     .select('*')
+    .eq('user_id', await currentUserId())
     .order('spent_on', { ascending: false })
   if (error) throw error
   return data

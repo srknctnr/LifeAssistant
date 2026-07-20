@@ -1,5 +1,5 @@
 import type { Tables, TablesInsert, TablesUpdate } from '@/lib/database.types'
-import { supabase } from '@/lib/supabase'
+import { currentUserId, supabase } from '@/lib/supabase'
 
 export type LifeCategory = Tables<'life_categories'>
 export type CategoryEntry = Tables<'category_entries'>
@@ -8,6 +8,7 @@ export async function listCategories(): Promise<LifeCategory[]> {
   const { data, error } = await supabase
     .from('life_categories')
     .select('*')
+    .eq('user_id', await currentUserId())
     .order('created_at', { ascending: true })
   if (error) throw error
   return data
@@ -48,6 +49,7 @@ export async function listEntries(): Promise<CategoryEntry[]> {
   const { data, error } = await supabase
     .from('category_entries')
     .select('*')
+    .eq('user_id', await currentUserId())
     .order('done_on', { ascending: false })
   if (error) throw error
   return data

@@ -21,7 +21,13 @@ import { Sheet } from '@/components/Sheet'
 import { SkeletonRows } from '@/components/SkeletonRows'
 import { TextField } from '@/components/TextField'
 import { useAuth } from '@/features/auth/useAuth'
-import type { Family, FamilyModule as ModuleKey } from '@/features/family/api'
+import type {
+  Family,
+  FamilyMembership,
+  FamilyModule as ModuleKey,
+  ModuleShare,
+} from '@/features/family/api'
+import { MemberModuleSheet } from '@/features/family/MemberModuleSheet'
 import {
   useAcceptInvite,
   useCancelInvite,
@@ -65,6 +71,10 @@ export function FamilyPage() {
   const [createOpen, setCreateOpen] = useState(false)
   const [joinOpen, setJoinOpen] = useState(false)
   const [inviteOpen, setInviteOpen] = useState(false)
+  const [viewing, setViewing] = useState<{
+    member: FamilyMembership
+    share: ModuleShare
+  } | null>(null)
 
   const userId = session?.user.id
   const allRows = memberships.data ?? []
@@ -186,14 +196,39 @@ export function FamilyPage() {
                           </p>
                           <p className="text-xs text-zinc-400">
                             {member.role === 'owner' ? 'Yönetici' : 'Üye'}
-                            {memberShares.length > 0 &&
-                              ` · paylaşıyor: ${memberShares
-                                .map(
-                                  (s) =>
-                                    `${MODULE_LABELS[s.module]}${s.module === 'budget' && s.level === 'summary' ? ' (özet)' : ''}`,
-                                )
-                                .join(', ')}`}
                           </p>
+                          {memberShares.length > 0 && (
+                            <div className="mt-1.5 flex flex-wrap gap-1.5">
+                              {memberShares.map((share) =>
+                                isSelf ? (
+                                  <span
+                                    key={share.id}
+                                    className="rounded-full bg-zinc-100 px-2.5 py-1 text-[11px] font-medium text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400"
+                                  >
+                                    {MODULE_LABELS[share.module]}
+                                    {share.module === 'budget' &&
+                                    share.level === 'summary'
+                                      ? ' · özet'
+                                      : ''}
+                                  </span>
+                                ) : (
+                                  <button
+                                    key={share.id}
+                                    onClick={() =>
+                                      setViewing({ member, share })
+                                    }
+                                    className="rounded-full bg-indigo-50 px-2.5 py-1 text-[11px] font-semibold text-indigo-600 transition-colors hover:bg-indigo-100 dark:bg-indigo-500/10 dark:text-indigo-400 dark:hover:bg-indigo-500/20"
+                                  >
+                                    {MODULE_LABELS[share.module]}
+                                    {share.module === 'budget' &&
+                                    share.level === 'summary'
+                                      ? ' · özet'
+                                      : ''}
+                                  </button>
+                                ),
+                              )}
+                            </div>
+                          )}
                         </div>
                         {isOwner && !isSelf && (
                           <RemoveMemberButton
@@ -223,9 +258,9 @@ export function FamilyPage() {
 
               <Section title="Paylaşımlarım">
                 <p className="mb-3 text-xs text-zinc-400">
-                  Bu ailenin üyeleri seçtiğin modülleri görebilecek; bütçede
-                  ayrıca ayrıntı seviyesini sen belirliyorsun. Görüntüleme
-                  ekranları bir sonraki güncellemeyle üyelere açılacak.
+                  Bu ailenin üyeleri seçtiğin modülleri görebilir; bütçede
+                  ayrıntı seviyesini sen belirliyorsun. Üyelerin paylaştıklarını
+                  yukarıdaki rozetlere dokunarak görüntüleyebilirsin.
                 </p>
                 <ul className="space-y-2.5">
                   {MODULES.map((module) => (
@@ -296,6 +331,14 @@ export function FamilyPage() {
           />
         )}
       </Sheet>
+      {viewing && (
+        <MemberModuleSheet
+          member={viewing.member}
+          share={viewing.share}
+          open
+          onClose={() => setViewing(null)}
+        />
+      )}
     </PageTransition>
   )
 }

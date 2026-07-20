@@ -8,6 +8,7 @@ import { routes } from '@/app/router'
 import { AuthProvider } from '@/features/auth/AuthProvider'
 
 vi.mock('@/lib/supabase', () => ({
+  currentUserId: () => Promise.reject(new Error('no session')),
   supabase: {
     auth: {
       getSession: () => Promise.resolve({ data: { session: null } }),

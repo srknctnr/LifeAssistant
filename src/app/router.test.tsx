@@ -12,6 +12,7 @@ vi.mock('@/lib/supabase', () => {
     access_token: 'fake-token',
   }
   return {
+    currentUserId: () => Promise.resolve('user-1'),
     supabase: {
       auth: {
         getSession: () => Promise.resolve({ data: { session } }),

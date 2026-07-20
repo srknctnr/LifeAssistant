@@ -12,3 +12,13 @@ if (!supabaseUrl || !supabaseAnonKey) {
 }
 
 export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey)
+
+// Family sharing extends SELECT policies, so "my data" queries must pin the
+// owner explicitly; reads the locally cached session (no network)
+export async function currentUserId(): Promise<string> {
+  const {
+    data: { session },
+  } = await supabase.auth.getSession()
+  if (!session) throw new Error('Oturum bulunamadı')
+  return session.user.id
+}

@@ -613,6 +613,10 @@ export interface Database {
         Args: { p_code: string }
         Returns: string
       }
+      family_budget_summary: {
+        Args: { p_owner: string }
+        Returns: Json
+      }
       convert_wishlist_item: {
         Args: {
           p_wishlist_item_id: string
