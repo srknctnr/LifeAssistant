@@ -35,8 +35,10 @@ import { useMemberships } from '@/features/family/hooks'
 import {
   moduleMembers,
   useFamilyBudget,
+  useFamilyCalendar,
   useFamilyContext,
   useFamilyMovies,
+  useFamilyWishlist,
   type ModuleMember,
 } from '@/features/family/space-data'
 import { useMovies } from '@/features/movies/hooks'
@@ -293,11 +295,22 @@ function FamilyBudgetCard({
 function GoalsModule() {
   const goals = useGoals()
   const contributions = useContributions()
+  const family = useFamilyContext()
+  const [source, setSource] = useCardSource('la-card-goals')
 
-  if (goals.isPending) {
+  const wishlistMembers = family.family
+    ? moduleMembers(family.members, family.shares, 'wishlist', family.userId)
+    : []
+  const canFamily = wishlistMembers.length > 0
+
+  if (goals.isPending || (source === 'family' && family.isPending)) {
     return (
       <div className="h-40 animate-pulse rounded-3xl bg-zinc-100 dark:bg-zinc-800" />
     )
+  }
+
+  if (source === 'family' && canFamily) {
+    return <FamilyGoalsCard members={wishlistMembers} onSwitch={setSource} />
   }
 
   const activeGoals = (goals.data ?? []).filter((g) => g.status === 'active')
@@ -322,51 +335,126 @@ function GoalsModule() {
   }
 
   return (
-    <Link
-      to="/wishlist"
-      className="group block rounded-3xl bg-white p-5 shadow-sm shadow-zinc-200/60 transition-transform hover:-translate-y-0.5 dark:bg-zinc-900 dark:shadow-none"
-    >
+    <div className="rounded-3xl bg-white p-5 shadow-sm shadow-zinc-200/60 transition-transform hover:-translate-y-0.5 dark:bg-zinc-900 dark:shadow-none">
       <div className="flex items-center justify-between text-sm">
         <span className="flex items-center gap-2 font-semibold tracking-tight">
           <Sparkles size={16} className="text-indigo-500" /> Hedeflerim
         </span>
-        <ArrowRight
-          size={16}
-          className="text-zinc-300 transition-transform group-hover:translate-x-0.5 dark:text-zinc-600"
-        />
+        {canFamily ? (
+          <SourceToggle value="personal" onChange={setSource} />
+        ) : (
+          <ArrowRight size={16} className="text-zinc-300 dark:text-zinc-600" />
+        )}
       </div>
-      <ul className="mt-4 space-y-3.5">
-        {activeGoals.slice(0, 3).map((goal) => {
-          const saved = savedByGoal.get(goal.id) ?? 0
-          const progress = Math.min(1, saved / goal.target_amount)
-          return (
-            <li key={goal.id}>
-              <div className="flex items-baseline justify-between gap-3">
-                <p className="truncate text-sm font-medium">
-                  {goal.wishlist_items?.name ?? 'Hedef'}
-                </p>
-                <p className="text-xs font-medium text-zinc-400 tabular-nums">
-                  %{Math.round(progress * 100)}
-                </p>
-              </div>
-              <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">
-                <motion.div
-                  className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-violet-500"
-                  initial={{ width: 0 }}
-                  animate={{ width: `${progress * 100}%` }}
-                  transition={{ type: 'spring', stiffness: 90, damping: 22 }}
-                />
-              </div>
-            </li>
-          )
-        })}
-      </ul>
-      {activeGoals.length > 3 && (
-        <p className="mt-3 text-xs text-zinc-400">
-          +{activeGoals.length - 3} hedef daha
-        </p>
-      )}
-    </Link>
+      <Link to="/wishlist" className="mt-4 block">
+        <ul className="space-y-3.5">
+          {activeGoals.slice(0, 3).map((goal) => {
+            const saved = savedByGoal.get(goal.id) ?? 0
+            const progress = Math.min(1, saved / goal.target_amount)
+            return (
+              <li key={goal.id}>
+                <div className="flex items-baseline justify-between gap-3">
+                  <p className="truncate text-sm font-medium">
+                    {goal.wishlist_items?.name ?? 'Hedef'}
+                  </p>
+                  <p className="text-xs font-medium text-zinc-400 tabular-nums">
+                    %{Math.round(progress * 100)}
+                  </p>
+                </div>
+                <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">
+                  <motion.div
+                    className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-violet-500"
+                    initial={{ width: 0 }}
+                    animate={{ width: `${progress * 100}%` }}
+                    transition={{ type: 'spring', stiffness: 90, damping: 22 }}
+                  />
+                </div>
+              </li>
+            )
+          })}
+        </ul>
+        {activeGoals.length > 3 && (
+          <p className="mt-3 text-xs text-zinc-400">
+            +{activeGoals.length - 3} hedef daha
+          </p>
+        )}
+      </Link>
+    </div>
+  )
+}
+
+// Family variant of the goals card: shared savings goals with owner chips
+function FamilyGoalsCard({
+  members,
+  onSwitch,
+}: {
+  members: ModuleMember[]
+  onSwitch: (value: CardSource) => void
+}) {
+  const { isPending, goals } = useFamilyWishlist(members)
+
+  if (isPending) {
+    return (
+      <div className="h-40 animate-pulse rounded-3xl bg-zinc-100 dark:bg-zinc-800" />
+    )
+  }
+
+  const activeGoals = goals.filter((g) => g.status === 'active')
+
+  return (
+    <div className="rounded-3xl bg-white p-5 shadow-sm shadow-zinc-200/60 transition-transform hover:-translate-y-0.5 dark:bg-zinc-900 dark:shadow-none">
+      <div className="flex items-center justify-between text-sm">
+        <span className="flex items-center gap-2 font-semibold tracking-tight">
+          <Users size={16} className="text-indigo-500" /> Aile Hedefleri
+        </span>
+        <SourceToggle value="family" onChange={onSwitch} />
+      </div>
+      <Link to="/family" className="mt-4 block">
+        {activeGoals.length === 0 ? (
+          <p className="text-sm text-zinc-400">
+            Ortak alanda hedef yok — Aile Özeti&apos;ne git →
+          </p>
+        ) : (
+          <ul className="space-y-3.5">
+            {activeGoals.slice(0, 3).map((goal) => {
+              const progress = Math.min(1, goal.saved / goal.target_amount)
+              return (
+                <li key={goal.id}>
+                  <div className="flex items-baseline justify-between gap-3">
+                    <p className="truncate text-sm font-medium">
+                      {goal.wishlist_items?.name ?? 'Hedef'}
+                      <span className="ml-1.5 text-xs font-normal text-indigo-500 dark:text-indigo-400">
+                        {goal.ownerIsSelf ? 'sen' : goal.ownerName}
+                      </span>
+                    </p>
+                    <p className="text-xs font-medium text-zinc-400 tabular-nums">
+                      %{Math.round(progress * 100)}
+                    </p>
+                  </div>
+                  <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">
+                    <motion.div
+                      className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-violet-500"
+                      initial={{ width: 0 }}
+                      animate={{ width: `${progress * 100}%` }}
+                      transition={{
+                        type: 'spring',
+                        stiffness: 90,
+                        damping: 22,
+                      }}
+                    />
+                  </div>
+                </li>
+              )
+            })}
+          </ul>
+        )}
+        {activeGoals.length > 3 && (
+          <p className="mt-3 text-xs text-zinc-400">
+            +{activeGoals.length - 3} hedef daha
+          </p>
+        )}
+      </Link>
+    </div>
   )
 }
 
@@ -490,11 +578,26 @@ function FamilyMoviesCard({
 function CalendarModule() {
   const categories = useLifeCategories()
   const entries = useCategoryEntries()
+  const family = useFamilyContext()
+  const [source, setSource] = useCardSource('la-card-calendar')
 
-  if (categories.isPending || entries.isPending) {
+  const calendarMembers = family.family
+    ? moduleMembers(family.members, family.shares, 'calendar', family.userId)
+    : []
+  const canFamily = calendarMembers.length > 0
+
+  if (
+    categories.isPending ||
+    entries.isPending ||
+    (source === 'family' && family.isPending)
+  ) {
     return (
       <div className="h-40 animate-pulse rounded-3xl bg-zinc-100 dark:bg-zinc-800" />
     )
+  }
+
+  if (source === 'family' && canFamily) {
+    return <FamilyCalendarCard members={calendarMembers} onSwitch={setSource} />
   }
 
   const list = categories.data ?? []
@@ -516,41 +619,100 @@ function CalendarModule() {
     ).length
 
   return (
-    <Link
-      to="/calendar"
-      className="group block rounded-3xl bg-white p-5 shadow-sm shadow-zinc-200/60 transition-transform hover:-translate-y-0.5 dark:bg-zinc-900 dark:shadow-none"
-    >
+    <div className="rounded-3xl bg-white p-5 shadow-sm shadow-zinc-200/60 transition-transform hover:-translate-y-0.5 dark:bg-zinc-900 dark:shadow-none">
       <div className="flex items-center justify-between text-sm">
         <span className="flex items-center gap-2 font-semibold tracking-tight">
           <CalendarDays size={16} className="text-indigo-500" /> Bu Hafta
         </span>
-        <ArrowRight
-          size={16}
-          className="text-zinc-300 transition-transform group-hover:translate-x-0.5 dark:text-zinc-600"
-        />
+        {canFamily ? (
+          <SourceToggle value="personal" onChange={setSource} />
+        ) : (
+          <ArrowRight size={16} className="text-zinc-300 dark:text-zinc-600" />
+        )}
       </div>
-      <ul className="mt-4 flex flex-wrap gap-2">
-        {list.slice(0, 6).map((category) => {
-          const count = countFor(category.id)
-          const met =
-            category.weekly_target !== null && count >= category.weekly_target
-          return (
-            <li
-              key={category.id}
-              className={`rounded-full px-3 py-1.5 text-xs font-medium tabular-nums ${
-                met
-                  ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400'
-                  : 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300'
-              }`}
-            >
-              {category.emoji ? `${category.emoji} ` : ''}
-              {category.name} {count}
-              {category.weekly_target ? `/${category.weekly_target}` : ''}
-            </li>
-          )
-        })}
-      </ul>
-    </Link>
+      <Link to="/calendar" className="mt-4 block">
+        <ul className="flex flex-wrap gap-2">
+          {list.slice(0, 6).map((category) => {
+            const count = countFor(category.id)
+            const met =
+              category.weekly_target !== null && count >= category.weekly_target
+            return (
+              <li
+                key={category.id}
+                className={`rounded-full px-3 py-1.5 text-xs font-medium tabular-nums ${
+                  met
+                    ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400'
+                    : 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300'
+                }`}
+              >
+                {category.emoji ? `${category.emoji} ` : ''}
+                {category.name} {count}
+                {category.weekly_target ? `/${category.weekly_target}` : ''}
+              </li>
+            )
+          })}
+        </ul>
+      </Link>
+    </div>
+  )
+}
+
+// Family variant of the calendar card: the family's week, owner in each chip
+function FamilyCalendarCard({
+  members,
+  onSwitch,
+}: {
+  members: ModuleMember[]
+  onSwitch: (value: CardSource) => void
+}) {
+  const { isPending, categories } = useFamilyCalendar(members)
+
+  if (isPending) {
+    return (
+      <div className="h-40 animate-pulse rounded-3xl bg-zinc-100 dark:bg-zinc-800" />
+    )
+  }
+
+  return (
+    <div className="rounded-3xl bg-white p-5 shadow-sm shadow-zinc-200/60 transition-transform hover:-translate-y-0.5 dark:bg-zinc-900 dark:shadow-none">
+      <div className="flex items-center justify-between text-sm">
+        <span className="flex items-center gap-2 font-semibold tracking-tight">
+          <Users size={16} className="text-indigo-500" /> Ailede Bu Hafta
+        </span>
+        <SourceToggle value="family" onChange={onSwitch} />
+      </div>
+      <Link to="/family" className="mt-4 block">
+        {categories.length === 0 ? (
+          <p className="text-sm text-zinc-400">
+            Ortak alanda takvim kategorisi yok — Aile Özeti&apos;ne git →
+          </p>
+        ) : (
+          <ul className="flex flex-wrap gap-2">
+            {categories.slice(0, 6).map((category) => {
+              const met =
+                category.weekly_target !== null &&
+                category.weekCount >= category.weekly_target
+              return (
+                <li
+                  key={category.id}
+                  className={`rounded-full px-3 py-1.5 text-xs font-medium tabular-nums ${
+                    met
+                      ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400'
+                      : 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300'
+                  }`}
+                >
+                  {category.emoji ? `${category.emoji} ` : ''}
+                  {category.name} {category.weekCount}
+                  {category.weekly_target ? `/${category.weekly_target}` : ''}
+                  {' · '}
+                  {category.ownerIsSelf ? 'sen' : category.ownerName}
+                </li>
+              )
+            })}
+          </ul>
+        )}
+      </Link>
+    </div>
   )
 }
 
