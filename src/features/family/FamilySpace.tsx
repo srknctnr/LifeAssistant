@@ -1,4 +1,11 @@
-import { Clapperboard, Sparkles, Star, Users, Wallet } from 'lucide-react'
+import {
+  CalendarDays,
+  Clapperboard,
+  Sparkles,
+  Star,
+  Users,
+  Wallet,
+} from 'lucide-react'
 import { motion } from 'motion/react'
 
 import { AnimatedNumber } from '@/components/AnimatedNumber'
@@ -19,7 +26,7 @@ import {
   type ModuleMember,
 } from '@/features/family/space-data'
 import { tmdbPosterUrl } from '@/features/movies/tmdb'
-import { formatDate } from '@/lib/dates'
+import { formatClock, formatDate } from '@/lib/dates'
 import { formatMoney } from '@/lib/money'
 
 interface FamilySpaceProps {
@@ -346,54 +353,97 @@ function FamilyMovieRow({
 }
 
 function FamilyCalendarSection({ members }: { members: ModuleMember[] }) {
-  const { isPending, categories } = useFamilyCalendar(members)
+  const { isPending, categories, upcomingEvents, eventsPending } =
+    useFamilyCalendar(members)
 
   return (
-    <Section title="Bu hafta ailede">
-      {isPending ? (
-        <SkeletonRows count={1} />
-      ) : categories.length === 0 ? (
-        <p className="text-sm text-zinc-400">
-          Ortak alanda takvim kategorisi yok.
-        </p>
-      ) : (
-        <ul className="space-y-1.5">
-          {categories.map((category) => {
-            const met =
-              category.weekly_target !== null &&
-              category.weekCount >= category.weekly_target
-            return (
+    <>
+      <Section title="Aile takvimi">
+        {eventsPending ? (
+          <SkeletonRows count={1} />
+        ) : upcomingEvents.length === 0 ? (
+          <p className="text-sm text-zinc-400">
+            Ortak alanda yaklaşan etkinlik yok.
+          </p>
+        ) : (
+          <ul className="space-y-1.5">
+            {upcomingEvents.slice(0, 8).map((event) => (
               <li
-                key={category.id}
-                className="flex items-center justify-between gap-3 rounded-xl bg-white px-3.5 py-2.5 shadow-sm shadow-zinc-200/60 dark:bg-zinc-900 dark:shadow-none"
+                key={event.id}
+                className="flex items-center gap-3 rounded-xl bg-white px-3.5 py-2.5 shadow-sm shadow-zinc-200/60 dark:bg-zinc-900 dark:shadow-none"
               >
-                <div className="flex min-w-0 items-center gap-2">
-                  <p className="truncate text-sm font-medium">
-                    {category.emoji ? `${category.emoji} ` : ''}
-                    {category.name}
-                  </p>
-                  <OwnerChip
-                    name={category.ownerName}
-                    isSelf={category.ownerIsSelf}
-                  />
-                </div>
-                <span
-                  className={`shrink-0 text-xs font-semibold tabular-nums ${
-                    met
-                      ? 'text-emerald-600 dark:text-emerald-400'
-                      : 'text-zinc-400'
-                  }`}
-                >
-                  {category.weekCount}
-                  {category.weekly_target ? `/${category.weekly_target}` : ''}
-                  {met ? ' 🎉' : ''}
+                <span className="shrink-0 rounded-lg bg-indigo-50 p-2 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400">
+                  {event.kind === 'movie' ? (
+                    <Clapperboard size={15} />
+                  ) : (
+                    <CalendarDays size={15} />
+                  )}
                 </span>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium">{event.title}</p>
+                  <p className="mt-0.5 flex items-center gap-1.5 text-xs text-zinc-400">
+                    {formatDate(event.starts_on)}
+                    {event.starts_at && (
+                      <span>· {formatClock(event.starts_at)}</span>
+                    )}
+                    <OwnerChip
+                      name={event.ownerName}
+                      isSelf={event.ownerIsSelf}
+                    />
+                  </p>
+                </div>
               </li>
-            )
-          })}
-        </ul>
-      )}
-    </Section>
+            ))}
+          </ul>
+        )}
+      </Section>
+
+      <Section title="Bu hafta ailede">
+        {isPending ? (
+          <SkeletonRows count={1} />
+        ) : categories.length === 0 ? (
+          <p className="text-sm text-zinc-400">
+            Ortak alanda takvim kategorisi yok.
+          </p>
+        ) : (
+          <ul className="space-y-1.5">
+            {categories.map((category) => {
+              const met =
+                category.weekly_target !== null &&
+                category.weekCount >= category.weekly_target
+              return (
+                <li
+                  key={category.id}
+                  className="flex items-center justify-between gap-3 rounded-xl bg-white px-3.5 py-2.5 shadow-sm shadow-zinc-200/60 dark:bg-zinc-900 dark:shadow-none"
+                >
+                  <div className="flex min-w-0 items-center gap-2">
+                    <p className="truncate text-sm font-medium">
+                      {category.emoji ? `${category.emoji} ` : ''}
+                      {category.name}
+                    </p>
+                    <OwnerChip
+                      name={category.ownerName}
+                      isSelf={category.ownerIsSelf}
+                    />
+                  </div>
+                  <span
+                    className={`shrink-0 text-xs font-semibold tabular-nums ${
+                      met
+                        ? 'text-emerald-600 dark:text-emerald-400'
+                        : 'text-zinc-400'
+                    }`}
+                  >
+                    {category.weekCount}
+                    {category.weekly_target ? `/${category.weekly_target}` : ''}
+                    {met ? ' 🎉' : ''}
+                  </span>
+                </li>
+              )
+            })}
+          </ul>
+        )}
+      </Section>
+    </>
   )
 }
 

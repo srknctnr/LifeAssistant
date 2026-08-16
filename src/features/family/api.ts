@@ -1,5 +1,9 @@
 import type { ExpenseItem, Income, Transaction } from '@/features/budget/api'
-import type { LifeCategory, CategoryEntry } from '@/features/calendar/api'
+import type {
+  CalendarEvent,
+  LifeCategory,
+  CategoryEntry,
+} from '@/features/calendar/api'
 import type { Movie } from '@/features/movies/api'
 import type { GoalWithWish, WishlistItem } from '@/features/wishlist/api'
 import type { Tables, TablesInsert } from '@/lib/database.types'
@@ -245,6 +249,18 @@ export async function listMemberCategories(
     .select('*')
     .eq('user_id', ownerId)
     .order('created_at', { ascending: true })
+  if (error) throw error
+  return data
+}
+
+export async function listMemberEvents(
+  ownerId: string,
+): Promise<CalendarEvent[]> {
+  const { data, error } = await supabase
+    .from('events')
+    .select('*')
+    .eq('user_id', ownerId)
+    .order('starts_on', { ascending: true })
   if (error) throw error
   return data
 }

@@ -8,7 +8,11 @@ import {
   paceReport,
   type PaceReport,
 } from '@/features/budget/money'
-import type { CategoryEntry, LifeCategory } from '@/features/calendar/api'
+import type {
+  CalendarEvent,
+  CategoryEntry,
+  LifeCategory,
+} from '@/features/calendar/api'
 import { weekDays } from '@/features/calendar/week-math'
 import type {
   Family,
@@ -22,6 +26,7 @@ import {
   listMemberCategories,
   listMemberContributions,
   listMemberEntries,
+  listMemberEvents,
   listMemberExpenses,
   listMemberGoals,
   listMemberIncomes,
@@ -308,6 +313,11 @@ export interface OwnedCategory extends LifeCategory {
   weekCount: number
 }
 
+export interface OwnedEvent extends CalendarEvent {
+  ownerName: string
+  ownerIsSelf: boolean
+}
+
 export function useFamilyCalendar(members: ModuleMember[]) {
   const categoryQueries = useQueries({
     queries: members.map((m) => ({
@@ -321,9 +331,17 @@ export function useFamilyCalendar(members: ModuleMember[]) {
       queryFn: () => listMemberEntries(m.userId),
     })),
   })
+  const eventQueries = useQueries({
+    queries: members.map((m) => ({
+      queryKey: ['member-events', m.userId],
+      queryFn: () => listMemberEvents(m.userId),
+    })),
+  })
 
   const weekIso = new Set(weekDays(new Date()).map(toISODate))
+  const today = todayISO()
   const categories: OwnedCategory[] = []
+  const upcomingEvents: OwnedEvent[] = []
 
   members.forEach((member, i) => {
     const visible = visibleRows(categoryQueries[i].data ?? [], member)
@@ -338,10 +356,22 @@ export function useFamilyCalendar(members: ModuleMember[]) {
         ).length,
       })
     }
+    for (const event of visibleRows(eventQueries[i].data ?? [], member)) {
+      if (event.starts_on < today) continue
+      upcomingEvents.push({
+        ...event,
+        ownerName: member.name,
+        ownerIsSelf: member.isSelf,
+      })
+    }
   })
+
+  upcomingEvents.sort((a, b) => a.starts_on.localeCompare(b.starts_on))
 
   return {
     isPending: categoryQueries.some((q) => q.isPending),
     categories,
+    upcomingEvents,
+    eventsPending: eventQueries.some((q) => q.isPending),
   }
 }
