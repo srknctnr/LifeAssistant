@@ -2,6 +2,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useRef } from 'react'
 
 import { useAuth } from '@/features/auth/useAuth'
+import type { CalendarEvent } from '@/features/calendar/api'
+import { useEvents } from '@/features/calendar/hooks'
 import { useMovies } from '@/features/movies/hooks'
 import {
   createReminder,
@@ -13,11 +15,14 @@ import {
 } from '@/features/reminders/api'
 import {
   planContributionReminders,
+  planEventReminders,
   planMovieReminders,
 } from '@/features/reminders/reminder-sync'
 import { useContributions, useGoals } from '@/features/wishlist/hooks'
 
 const remindersKey = ['reminders'] as const
+// stable identity, so the sync effect does not re-run on every render
+const NO_EVENTS: CalendarEvent[] = []
 
 export function useReminders() {
   return useQuery({ queryKey: remindersKey, queryFn: listReminders })
@@ -39,14 +44,15 @@ export function useSetReminderStatus() {
   })
 }
 
-// Materializes contribution and movie-night reminders (and completes or
-// dismisses satisfied/stale ones) once per mount, as soon as all datasets
-// are loaded
+// Materializes contribution, movie-night and calendar-event reminders (and
+// completes or dismisses satisfied/stale ones) once per mount, as soon as all
+// datasets are loaded
 export function useReminderSync() {
   const { session } = useAuth()
   const goals = useGoals()
   const contributions = useContributions()
   const movies = useMovies()
+  const events = useEvents()
   const reminders = useReminders()
   const queryClient = useQueryClient()
   const hasRun = useRef(false)
@@ -57,6 +63,10 @@ export function useReminderSync() {
   })
   const { mutate } = sync
 
+  // Events are the newest dataset: if that query fails (e.g. the migration
+  // has not been applied yet) the other planners must still run
+  const eventRows = events.data ?? (events.isError ? NO_EVENTS : null)
+
   useEffect(() => {
     if (hasRun.current) return
     if (
@@ -64,6 +74,7 @@ export function useReminderSync() {
       !goals.data ||
       !contributions.data ||
       !movies.data ||
+      !eventRows ||
       !reminders.data
     ) {
       return
@@ -81,6 +92,11 @@ export function useReminderSync() {
         movies: movies.data,
         reminders: reminders.data,
       }),
+      planEventReminders({
+        userId: session.user.id,
+        events: eventRows,
+        reminders: reminders.data,
+      }),
     )
 
     if (!isEmptyPlan(plan)) {
@@ -92,6 +108,7 @@ export function useReminderSync() {
     goals.data,
     contributions.data,
     movies.data,
+    eventRows,
     reminders.data,
     mutate,
   ])

@@ -3,6 +3,7 @@ import { useState, type FormEvent } from 'react'
 import { Button } from '@/components/Button'
 import { TextField } from '@/components/TextField'
 import { useAuth } from '@/features/auth/useAuth'
+import { useEvents } from '@/features/calendar/hooks'
 import { FamilyVisibilityField } from '@/features/family/FamilyVisibilityField'
 import { useMyShareMode } from '@/features/family/hooks'
 import { resolveFamilyVisibility } from '@/features/family/share-utils'
@@ -30,6 +31,13 @@ export function MovieForm({ movie, onDone }: MovieFormProps) {
   )
   const [error, setError] = useState<string | null>(null)
 
+  // While a calendar event owns this movie's film günü, the event is the
+  // single writer of planned_for — the field here goes read-only
+  const events = useEvents()
+  const linkedEvent = movie
+    ? (events.data ?? []).find((e) => e.movie_id === movie.id)
+    : undefined
+
   const isPending = createMovie.isPending || updateMovie.isPending
 
   async function handleSubmit(event: FormEvent) {
@@ -48,13 +56,14 @@ export function MovieForm({ movie, onDone }: MovieFormProps) {
 
     const values = {
       title: title.trim(),
-      planned_for: plannedFor || null,
       external_rating: parsedExternal,
       is_family_visible: resolveFamilyVisibility(
         shareMode,
         familyVisible,
         movie?.is_family_visible,
       ),
+      // omitted while an event owns the date, so stale state cannot overwrite it
+      ...(linkedEvent ? {} : { planned_for: plannedFor || null }),
     }
 
     try {
@@ -81,9 +90,15 @@ export function MovieForm({ movie, onDone }: MovieFormProps) {
       <TextField
         label="Film günü (isteğe bağlı)"
         type="date"
+        disabled={Boolean(linkedEvent)}
         value={plannedFor}
         onChange={(e) => setPlannedFor(e.target.value)}
       />
+      {linkedEvent && (
+        <p className="-mt-2 text-xs text-zinc-400">
+          Film günü takvimdeki etkinlikten geliyor.
+        </p>
+      )}
       <TextField
         label="IMDb/TMDB puanı (isteğe bağlı)"
         inputMode="decimal"

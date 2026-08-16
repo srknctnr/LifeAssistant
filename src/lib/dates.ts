@@ -18,3 +18,9 @@ export function toISODate(date: Date): string {
 export function todayISO(): string {
   return toISODate(new Date())
 }
+
+// Postgres `time` comes back as '19:30:00'; every display site wants '19:30'.
+// Plain string slice — parsing a time through Date invites timezone bugs.
+export function formatClock(time: string): string {
+  return time.slice(0, 5)
+}

@@ -1,5 +1,6 @@
 import type { Reminder, ReminderSyncPlan } from '@/features/reminders/api'
 import type { GoalWithWish, SavingsContribution } from '@/features/wishlist/api'
+import { formatClock, toISODate } from '@/lib/dates'
 
 interface PlanInput {
   userId: string
@@ -133,6 +134,80 @@ export function planMovieReminders({
         source_id: movie.id,
       })
     }
+  }
+
+  return plan
+}
+
+interface EventLike {
+  id: string
+  title: string
+  kind: string
+  starts_on: string
+  starts_at: string | null
+  movie_id: string | null
+}
+
+interface EventPlanInput {
+  userId: string
+  events: EventLike[]
+  reminders: Reminder[]
+  today?: Date
+}
+
+// A movie-kind event that already has its film is left to planMovieReminders:
+// the event keeps movies.planned_for in sync, and source_type is part of the
+// unique key, so both planners firing would show that night twice.
+function coveredByMovieReminder(event: EventLike): boolean {
+  return event.kind === 'movie' && event.movie_id !== null
+}
+
+// Every event gets one reminder on its own day. A deleted event, a moved date
+// or a newly picked film dismisses the stale one; past events are never
+// materialized and nothing auto-completes (no column marks an event attended).
+// Known limitation: the title is not part of the unique key and the plan has
+// no update arm, so renaming an event leaves its reminder title stale —
+// movies already behave this way.
+export function planEventReminders({
+  userId,
+  events,
+  reminders,
+  today = new Date(),
+}: EventPlanInput): ReminderSyncPlan {
+  const plan: ReminderSyncPlan = { toInsert: [], toComplete: [], toDismiss: [] }
+  const todayIso = toISODate(today)
+  const eventById = new Map(events.map((e) => [e.id, e]))
+  const eventReminders = reminders.filter(
+    (r) => r.source_type === 'event' && r.source_id,
+  )
+
+  for (const reminder of eventReminders) {
+    if (reminder.status !== 'pending') continue
+    const event = eventById.get(reminder.source_id!)
+    if (!event || coveredByMovieReminder(event)) {
+      plan.toDismiss.push(reminder.id)
+    } else if (event.starts_on !== reminder.due_on) {
+      plan.toDismiss.push(reminder.id)
+    }
+  }
+
+  for (const event of events) {
+    if (coveredByMovieReminder(event)) continue
+    if (event.starts_on < todayIso) continue
+    const exists = eventReminders.some(
+      (r) => r.source_id === event.id && r.due_on === event.starts_on,
+    )
+    if (exists) continue
+    const timePrefix = event.starts_at
+      ? `${formatClock(event.starts_at)} · `
+      : ''
+    plan.toInsert.push({
+      user_id: userId,
+      title: `${timePrefix}${event.title}`,
+      due_on: event.starts_on,
+      source_type: 'event',
+      source_id: event.id,
+    })
   }
 
   return plan

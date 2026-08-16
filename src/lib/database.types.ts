@@ -531,6 +531,56 @@ export interface Database {
           },
         ]
       }
+      events: {
+        Row: {
+          id: string
+          user_id: string
+          kind: Database['public']['Enums']['event_kind']
+          title: string
+          starts_on: string
+          starts_at: string | null
+          note: string | null
+          movie_id: string | null
+          is_family_visible: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          kind?: Database['public']['Enums']['event_kind']
+          title: string
+          starts_on: string
+          starts_at?: string | null
+          note?: string | null
+          movie_id?: string | null
+          is_family_visible?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          kind?: Database['public']['Enums']['event_kind']
+          title?: string
+          starts_on?: string
+          starts_at?: string | null
+          note?: string | null
+          movie_id?: string | null
+          is_family_visible?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'events_movie_id_fkey'
+            columns: ['movie_id']
+            isOneToOne: false
+            referencedRelation: 'movies'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       movies: {
         Row: {
           id: string
@@ -648,11 +698,13 @@ export interface Database {
     Enums: {
       expense_period: 'weekly' | 'monthly' | 'yearly' | 'once'
       movie_status: 'to_watch' | 'watched'
+      event_kind: 'general' | 'movie'
       expense_source: 'manual' | 'savings_goal'
       wishlist_kind: 'purchase' | 'travel'
       wishlist_status: 'active' | 'converted' | 'completed' | 'archived'
       savings_goal_status: 'active' | 'paused' | 'completed' | 'cancelled'
-      reminder_source: 'manual' | 'savings_goal' | 'wishlist_item' | 'movie'
+      reminder_source:
+        'manual' | 'savings_goal' | 'wishlist_item' | 'movie' | 'event'
       reminder_status: 'pending' | 'done' | 'dismissed'
     }
     CompositeTypes: Record<string, never>
@@ -676,11 +728,18 @@ export const Constants = {
     Enums: {
       expense_period: ['weekly', 'monthly', 'yearly', 'once'],
       movie_status: ['to_watch', 'watched'],
+      event_kind: ['general', 'movie'],
       expense_source: ['manual', 'savings_goal'],
       wishlist_kind: ['purchase', 'travel'],
       wishlist_status: ['active', 'converted', 'completed', 'archived'],
       savings_goal_status: ['active', 'paused', 'completed', 'cancelled'],
-      reminder_source: ['manual', 'savings_goal', 'wishlist_item', 'movie'],
+      reminder_source: [
+        'manual',
+        'savings_goal',
+        'wishlist_item',
+        'movie',
+        'event',
+      ],
       reminder_status: ['pending', 'done', 'dismissed'],
     },
   },

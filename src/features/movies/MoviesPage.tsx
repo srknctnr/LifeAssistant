@@ -30,6 +30,7 @@ import {
 import { AddMovieSearch } from '@/features/movies/AddMovieSearch'
 import { DiscoverView } from '@/features/movies/DiscoverView'
 import { MovieForm } from '@/features/movies/MovieForm'
+import { MovieNightBanner } from '@/features/movies/MovieNightBanner'
 import { genreTasteProfile } from '@/features/movies/taste'
 import { tmdbPosterUrl } from '@/features/movies/tmdb'
 import { WatchedForm } from '@/features/movies/WatchedForm'
@@ -93,6 +94,8 @@ export function MoviesPage() {
         <DiscoverView />
       ) : (
         <>
+          <MovieNightBanner />
+
           <div className="relative mt-4">
             <Search
               size={16}

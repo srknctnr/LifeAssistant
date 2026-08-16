@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import type { Reminder } from '@/features/reminders/api'
 import {
   planContributionReminders,
+  planEventReminders,
   planMovieReminders,
 } from '@/features/reminders/reminder-sync'
 import type { GoalWithWish, SavingsContribution } from '@/features/wishlist/api'
@@ -233,5 +234,136 @@ describe('planMovieReminders', () => {
       reminders: [],
     })
     expect(plan.toInsert).toEqual([])
+  })
+})
+
+describe('planEventReminders', () => {
+  const event = {
+    id: 'e1',
+    title: 'Anne yemeği',
+    kind: 'general',
+    starts_on: '2026-07-10',
+    starts_at: null as string | null,
+    movie_id: null as string | null,
+  }
+
+  function eventReminder(overrides: Partial<Reminder> = {}): Reminder {
+    return makeReminder({
+      id: 'event-reminder-1',
+      title: 'Anne yemeği',
+      due_on: '2026-07-10',
+      source_type: 'event',
+      source_id: 'e1',
+      ...overrides,
+    })
+  }
+
+  it('creates a reminder for an upcoming event', () => {
+    const plan = planEventReminders({
+      userId: 'user-1',
+      events: [event],
+      reminders: [],
+      today,
+    })
+    expect(plan.toInsert).toHaveLength(1)
+    expect(plan.toInsert[0]).toMatchObject({
+      title: 'Anne yemeği',
+      due_on: '2026-07-10',
+      source_type: 'event',
+      source_id: 'e1',
+    })
+    expect(plan.toComplete).toEqual([])
+  })
+
+  it('prefixes the title with the time when the event has one', () => {
+    const plan = planEventReminders({
+      userId: 'user-1',
+      events: [{ ...event, starts_at: '20:30:00' }],
+      reminders: [],
+      today,
+    })
+    expect(plan.toInsert[0]).toMatchObject({ title: '20:30 · Anne yemeği' })
+  })
+
+  it('skips events dated before today', () => {
+    const plan = planEventReminders({
+      userId: 'user-1',
+      events: [{ ...event, starts_on: '2026-07-05' }],
+      reminders: [],
+      today,
+    })
+    expect(plan.toInsert).toEqual([])
+  })
+
+  it('creates nothing when the reminder already exists', () => {
+    const plan = planEventReminders({
+      userId: 'user-1',
+      events: [event],
+      reminders: [eventReminder()],
+      today,
+    })
+    expect(plan.toInsert).toEqual([])
+    expect(plan.toDismiss).toEqual([])
+  })
+
+  it('does not recreate a dismissed reminder for the same date', () => {
+    const plan = planEventReminders({
+      userId: 'user-1',
+      events: [event],
+      reminders: [eventReminder({ status: 'dismissed' })],
+      today,
+    })
+    expect(plan.toInsert).toEqual([])
+    expect(plan.toDismiss).toEqual([])
+  })
+
+  it('dismisses the reminder of a deleted event', () => {
+    const plan = planEventReminders({
+      userId: 'user-1',
+      events: [],
+      reminders: [eventReminder()],
+      today,
+    })
+    expect(plan.toDismiss).toEqual(['event-reminder-1'])
+  })
+
+  it('dismisses the stale reminder and inserts the new date when the event moves', () => {
+    const plan = planEventReminders({
+      userId: 'user-1',
+      events: [{ ...event, starts_on: '2026-07-18' }],
+      reminders: [eventReminder()],
+      today,
+    })
+    expect(plan.toDismiss).toEqual(['event-reminder-1'])
+    expect(plan.toInsert[0]).toMatchObject({ due_on: '2026-07-18' })
+  })
+
+  it('leaves a movie-kind event with a film to planMovieReminders', () => {
+    const plan = planEventReminders({
+      userId: 'user-1',
+      events: [
+        {
+          ...event,
+          kind: 'movie',
+          title: 'Film gecesi: Dune',
+          movie_id: 'movie-1',
+        },
+      ],
+      reminders: [eventReminder()],
+      today,
+    })
+    expect(plan.toInsert).toEqual([])
+    expect(plan.toDismiss).toEqual(['event-reminder-1'])
+  })
+
+  it('reminds about a movie night that has no film yet', () => {
+    const plan = planEventReminders({
+      userId: 'user-1',
+      events: [{ ...event, kind: 'movie', title: 'Film gecesi' }],
+      reminders: [],
+      today,
+    })
+    expect(plan.toInsert).toHaveLength(1)
+    expect(plan.toInsert[0]).toMatchObject({ title: 'Film gecesi' })
   })
 })

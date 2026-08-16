@@ -1,29 +1,66 @@
-import { Bell, Check, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react'
+import {
+  Bell,
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  Clapperboard,
+  Clock,
+  Trash2,
+} from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useState } from 'react'
 
 import { EmptyState } from '@/components/EmptyState'
 import { PageTransition } from '@/components/PageTransition'
 import { Section } from '@/components/Section'
+import { Segmented } from '@/components/Segmented'
 import { Sheet } from '@/components/Sheet'
 import { SkeletonRows } from '@/components/SkeletonRows'
 import { useAuth } from '@/features/auth/useAuth'
-import type { CategoryEntry, LifeCategory } from '@/features/calendar/api'
+import type {
+  CalendarEvent,
+  CategoryEntry,
+  LifeCategory,
+} from '@/features/calendar/api'
+import { CalendarGrid } from '@/features/calendar/CalendarGrid'
 import { CategoryForm } from '@/features/calendar/CategoryForm'
+import { busyDates, eventsOnDay } from '@/features/calendar/event-day'
+import { EventForm } from '@/features/calendar/EventForm'
 import {
   useCategoryEntries,
   useDeleteCategory,
+  useEvents,
   useLifeCategories,
   useToggleEntry,
 } from '@/features/calendar/hooks'
-import { DAY_INITIALS, addDays, weekDays } from '@/features/calendar/week-math'
+import {
+  addMonths,
+  isSameMonth,
+  monthGrid,
+} from '@/features/calendar/month-math'
+import {
+  DAY_INITIALS,
+  addDays,
+  startOfWeek,
+  weekDays,
+} from '@/features/calendar/week-math'
 import type { Reminder } from '@/features/reminders/api'
-import { useReminders, useSetReminderStatus } from '@/features/reminders/hooks'
-import { formatDate, toISODate, todayISO } from '@/lib/dates'
+import {
+  useReminders,
+  useReminderSync,
+  useSetReminderStatus,
+} from '@/features/reminders/hooks'
+import { formatClock, formatDate, toISODate, todayISO } from '@/lib/dates'
+
+type CalendarView = 'week' | 'month'
 
 const rangeLabel = new Intl.DateTimeFormat('tr-TR', {
   day: 'numeric',
   month: 'short',
+})
+const monthLabel = new Intl.DateTimeFormat('tr-TR', {
+  month: 'long',
+  year: 'numeric',
 })
 const agendaDayLabel = new Intl.DateTimeFormat('tr-TR', {
   day: 'numeric',
@@ -34,50 +71,109 @@ const agendaDayLabel = new Intl.DateTimeFormat('tr-TR', {
 export function CalendarPage() {
   const categories = useLifeCategories()
   const entries = useCategoryEntries()
-  const [weekOffset, setWeekOffset] = useState(0)
-  const [addOpen, setAddOpen] = useState(false)
+  const events = useEvents()
+  useReminderSync()
+
+  const [view, setView] = useState<CalendarView>('week')
+  const [selected, setSelected] = useState(() => new Date())
+  const [addEventOpen, setAddEventOpen] = useState(false)
+  const [editEvent, setEditEvent] = useState<CalendarEvent | null>(null)
+  const [addCategoryOpen, setAddCategoryOpen] = useState(false)
   const [editCategory, setEditCategory] = useState<LifeCategory | null>(null)
 
-  const days = weekDays(addDays(new Date(), weekOffset * 7))
-  const weekStart = days[0]
-  const weekEnd = days[6]
+  // One selected day feeds every dated block on the page
+  const weeks = view === 'week' ? [weekDays(selected)] : monthGrid(selected)
+  const selectedISO = toISODate(selected)
+  const categoryDays = weekDays(selected)
+  const busy = busyDates(events.data ?? [])
+
+  const isAway =
+    view === 'week'
+      ? toISODate(startOfWeek(selected)) !== toISODate(startOfWeek(new Date()))
+      : !isSameMonth(selected, new Date())
 
   return (
     <PageTransition>
       <h1 className="text-2xl font-semibold tracking-tight">Takvim</h1>
       <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
-        Yaşam kategorilerin ve önündeki plan.
+        Planların, etkinliklerin ve yaşam kategorilerin.
       </p>
 
-      <Section title="Bu hafta" onAdd={() => setAddOpen(true)}>
+      <div className="mt-4">
+        <Segmented<CalendarView>
+          options={[
+            { value: 'week', label: 'Hafta' },
+            { value: 'month', label: 'Ay' },
+          ]}
+          value={view}
+          onChange={setView}
+        />
+      </div>
+
+      <motion.div
+        layout
+        className="mt-3 rounded-2xl bg-white p-4 shadow-sm shadow-zinc-200/60 dark:bg-zinc-900 dark:shadow-none"
+      >
         <div className="mb-3 flex items-center justify-between">
           <button
-            onClick={() => setWeekOffset((w) => w - 1)}
-            aria-label="Önceki hafta"
+            onClick={() =>
+              setSelected(
+                view === 'week'
+                  ? addDays(selected, -7)
+                  : addMonths(selected, -1),
+              )
+            }
+            aria-label={view === 'week' ? 'Önceki hafta' : 'Önceki ay'}
             className="rounded-full p-1.5 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
           >
             <ChevronLeft size={17} />
           </button>
           <button
-            onClick={() => setWeekOffset(0)}
+            onClick={() => setSelected(new Date())}
             className={`text-sm font-medium ${
-              weekOffset === 0
-                ? 'text-zinc-700 dark:text-zinc-200'
-                : 'text-indigo-600 dark:text-indigo-400'
+              isAway
+                ? 'text-indigo-600 dark:text-indigo-400'
+                : 'text-zinc-700 dark:text-zinc-200'
             }`}
           >
-            {rangeLabel.format(weekStart)} – {rangeLabel.format(weekEnd)}
-            {weekOffset !== 0 && ' · bugüne dön'}
+            {view === 'week'
+              ? `${rangeLabel.format(weeks[0][0])} – ${rangeLabel.format(weeks[0][6])}`
+              : monthLabel.format(selected)}
+            {isAway && ' · bugüne dön'}
           </button>
           <button
-            onClick={() => setWeekOffset((w) => w + 1)}
-            aria-label="Sonraki hafta"
+            onClick={() =>
+              setSelected(
+                view === 'week' ? addDays(selected, 7) : addMonths(selected, 1),
+              )
+            }
+            aria-label={view === 'week' ? 'Sonraki hafta' : 'Sonraki ay'}
             className="rounded-full p-1.5 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
           >
             <ChevronRight size={17} />
           </button>
         </div>
 
+        <CalendarGrid
+          weeks={weeks}
+          selectedISO={selectedISO}
+          anchorMonth={selected.getMonth()}
+          busy={busy}
+          onSelect={setSelected}
+        />
+      </motion.div>
+
+      <Section
+        title={agendaDayLabel.format(selected)}
+        onAdd={() => setAddEventOpen(true)}
+      >
+        <DayPlans
+          selectedISO={selectedISO}
+          onEditEvent={(event) => setEditEvent(event)}
+        />
+      </Section>
+
+      <Section title="Bu hafta" onAdd={() => setAddCategoryOpen(true)}>
         {categories.isPending || entries.isPending ? (
           <SkeletonRows />
         ) : (categories.data ?? []).length === 0 ? (
@@ -89,7 +185,7 @@ export function CalendarPage() {
                 <CategoryCard
                   key={category.id}
                   category={category}
-                  days={days}
+                  days={categoryDays}
                   entries={entries.data ?? []}
                   onEdit={() => setEditCategory(category)}
                 />
@@ -99,14 +195,35 @@ export function CalendarPage() {
         )}
       </Section>
 
-      <AgendaSection />
+      <AgendaSection selectedISO={selectedISO} />
 
       <Sheet
-        open={addOpen}
-        onClose={() => setAddOpen(false)}
+        open={addEventOpen}
+        onClose={() => setAddEventOpen(false)}
+        title="Etkinlik ekle"
+      >
+        <EventForm
+          defaultDate={selectedISO}
+          onDone={() => setAddEventOpen(false)}
+        />
+      </Sheet>
+
+      <Sheet
+        open={editEvent !== null}
+        onClose={() => setEditEvent(null)}
+        title="Etkinliği düzenle"
+      >
+        {editEvent && (
+          <EventForm event={editEvent} onDone={() => setEditEvent(null)} />
+        )}
+      </Sheet>
+
+      <Sheet
+        open={addCategoryOpen}
+        onClose={() => setAddCategoryOpen(false)}
         title="Kategori ekle"
       >
-        <CategoryForm onDone={() => setAddOpen(false)} />
+        <CategoryForm onDone={() => setAddCategoryOpen(false)} />
       </Sheet>
 
       <Sheet
@@ -122,6 +239,106 @@ export function CalendarPage() {
         )}
       </Sheet>
     </PageTransition>
+  )
+}
+
+// The selected day's plans: its events first, then the reminders other
+// modules put on that date (event reminders are excluded — the event itself
+// is already listed above)
+function DayPlans({
+  selectedISO,
+  onEditEvent,
+}: {
+  selectedISO: string
+  onEditEvent: (event: CalendarEvent) => void
+}) {
+  const events = useEvents()
+  const reminders = useReminders()
+  const setStatus = useSetReminderStatus()
+
+  const dayEvents = eventsOnDay(events.data ?? [], selectedISO)
+  const dayReminders = (reminders.data ?? []).filter(
+    (r) =>
+      r.status === 'pending' &&
+      r.due_on === selectedISO &&
+      r.source_type !== 'event',
+  )
+  const isPast = selectedISO < todayISO()
+
+  if (events.isPending || reminders.isPending) return <SkeletonRows count={1} />
+
+  if (dayEvents.length + dayReminders.length === 0) {
+    return <EmptyState text="Bu güne planın yok. Bir etkinlik ekle." />
+  }
+
+  return (
+    <ul className="space-y-1.5">
+      <AnimatePresence initial={false}>
+        {dayEvents.map((event) => (
+          <motion.li
+            key={event.id}
+            layout
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, x: -16 }}
+            className={`flex items-center gap-3 rounded-xl bg-white px-3.5 py-2.5 shadow-sm shadow-zinc-200/60 dark:bg-zinc-900 dark:shadow-none ${
+              isPast ? 'opacity-60' : ''
+            }`}
+          >
+            <span className="shrink-0 rounded-lg bg-indigo-50 p-2 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400">
+              {event.kind === 'movie' ? (
+                <Clapperboard size={15} />
+              ) : (
+                <Clock size={15} />
+              )}
+            </span>
+            <button
+              onClick={() => onEditEvent(event)}
+              aria-label={`${event.title}, düzenle`}
+              className="min-w-0 flex-1 text-left"
+            >
+              <p className="truncate text-sm font-medium">{event.title}</p>
+              <p className="mt-0.5 flex items-center gap-1.5 text-xs text-zinc-400">
+                {event.starts_at ? formatClock(event.starts_at) : 'Gün boyu'}
+                {event.kind === 'movie' && !event.movie_id && (
+                  <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-600 dark:bg-amber-500/10 dark:text-amber-400">
+                    film seçilmedi
+                  </span>
+                )}
+                {event.note && <span className="truncate">{event.note}</span>}
+              </p>
+            </button>
+          </motion.li>
+        ))}
+        {dayReminders.map((reminder) => (
+          <motion.li
+            key={reminder.id}
+            layout
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, x: -16 }}
+            className="flex items-center gap-2.5 rounded-xl bg-white px-3.5 py-2.5 shadow-sm shadow-zinc-200/60 dark:bg-zinc-900 dark:shadow-none"
+          >
+            <Bell
+              size={14}
+              className="shrink-0 text-amber-500 dark:text-amber-400"
+            />
+            <p className="min-w-0 flex-1 truncate text-sm font-medium">
+              {reminder.title}
+            </p>
+            <button
+              aria-label={`${reminder.title} tamamlandı`}
+              onClick={() =>
+                setStatus.mutate({ id: reminder.id, status: 'done' })
+              }
+              className="rounded-full p-1.5 text-zinc-300 transition-colors hover:bg-emerald-50 hover:text-emerald-600 dark:text-zinc-600 dark:hover:bg-emerald-500/10 dark:hover:text-emerald-400"
+            >
+              <Check size={15} strokeWidth={2.4} />
+            </button>
+          </motion.li>
+        ))}
+      </AnimatePresence>
+    </ul>
   )
 }
 
@@ -199,7 +416,11 @@ function CategoryCard({
               </span>
               <button
                 aria-label={`${category.name} · ${formatDate(day)} ${done ? 'yapıldı' : 'yapılmadı'}`}
-                disabled={isFuture || toggle.isPending || !session}
+                disabled={
+                  isFuture ||
+                  !session ||
+                  (toggle.isPending && toggle.variables?.date === iso)
+                }
                 onClick={() =>
                   session &&
                   toggle.mutate({
@@ -228,15 +449,21 @@ function CategoryCard({
 }
 
 // The connective tissue: reminders from every module (movie nights, savings
-// contributions, manual ones) land here as a date-grouped agenda
-function AgendaSection() {
+// contributions, manual ones) land here as a date-grouped agenda. The
+// selected day is skipped — it already has its own list above.
+function AgendaSection({ selectedISO }: { selectedISO: string }) {
   const reminders = useReminders()
   const setStatus = useSetReminderStatus()
   const today = todayISO()
   const horizon = toISODate(addDays(new Date(), 30))
 
   const upcoming = (reminders.data ?? [])
-    .filter((r) => r.status === 'pending' && r.due_on <= horizon)
+    .filter(
+      (r) =>
+        r.status === 'pending' &&
+        r.due_on <= horizon &&
+        r.due_on !== selectedISO,
+    )
     .sort((a, b) => a.due_on.localeCompare(b.due_on))
 
   const grouped = new Map<string, Reminder[]>()

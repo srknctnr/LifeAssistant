@@ -8,6 +8,16 @@ export function describeError(error: unknown): string | null {
   return null
 }
 
+// Postgres unique_violation — worth its own Turkish message at call sites
+export function isUniqueViolation(error: unknown): boolean {
+  return (
+    error !== null &&
+    typeof error === 'object' &&
+    'code' in error &&
+    (error as { code: unknown }).code === '23505'
+  )
+}
+
 export function saveErrorMessage(error: unknown): string {
   const detail = describeError(error)
   return detail
