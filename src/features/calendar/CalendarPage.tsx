@@ -157,7 +157,7 @@ export function CalendarPage() {
         <CalendarGrid
           weeks={weeks}
           selectedISO={selectedISO}
-          anchorMonth={selected.getMonth()}
+          anchorMonth={view === 'month' ? selected.getMonth() : null}
           busy={busy}
           onSelect={setSelected}
         />
@@ -257,11 +257,21 @@ function DayPlans({
   const setStatus = useSetReminderStatus()
 
   const dayEvents = eventsOnDay(events.data ?? [], selectedISO)
+  // An event is already listed as itself; so is the film night of a movie an
+  // event owns (its movie reminder is on its way out of the sync)
+  const ownedMovieIds = new Set(
+    dayEvents.flatMap((e) => (e.movie_id ? [e.movie_id] : [])),
+  )
   const dayReminders = (reminders.data ?? []).filter(
     (r) =>
       r.status === 'pending' &&
       r.due_on === selectedISO &&
-      r.source_type !== 'event',
+      r.source_type !== 'event' &&
+      !(
+        r.source_type === 'movie' &&
+        r.source_id &&
+        ownedMovieIds.has(r.source_id)
+      ),
   )
   const isPast = selectedISO < todayISO()
 

@@ -6,7 +6,9 @@ import { formatDate, toISODate, todayISO } from '@/lib/dates'
 interface CalendarGridProps {
   weeks: Date[][] // one row in week view, five or six in month view
   selectedISO: string
-  anchorMonth: number // dims cells belonging to the neighbouring months
+  // month view dims cells outside this month; null in week view, where a week
+  // legitimately spans two months and nothing should be dimmed
+  anchorMonth: number | null
   busy: Set<string> // ISO days carrying at least one event
   onSelect: (day: Date) => void
 }
@@ -60,7 +62,11 @@ export function CalendarGrid({
                     isToday && !isSelected
                       ? 'ring-2 ring-indigo-400 ring-offset-2 ring-offset-white dark:ring-offset-zinc-900'
                       : ''
-                  } ${day.getMonth() === anchorMonth ? '' : 'opacity-35'}`}
+                  } ${
+                    anchorMonth !== null && day.getMonth() !== anchorMonth
+                      ? 'opacity-35'
+                      : ''
+                  }`}
                 >
                   {isSelected && (
                     <motion.span

@@ -8,6 +8,7 @@ import { useMovies } from '@/features/movies/hooks'
 import { filterAndSortMovies } from '@/features/movies/movie-sort'
 import { tmdbPosterUrl } from '@/features/movies/tmdb'
 import { todayISO } from '@/lib/dates'
+import { isUniqueViolation, saveErrorMessage } from '@/lib/errors'
 
 const bandDayLabel = new Intl.DateTimeFormat('tr-TR', {
   day: 'numeric',
@@ -22,8 +23,10 @@ export function MovieNightBanner() {
   const movies = useMovies()
   const updateEvent = useUpdateEvent()
   const [pickOpen, setPickOpen] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  const next = (events.data ?? [])
+  const eventRows = events.data ?? []
+  const next = eventRows
     .filter(
       (e) =>
         e.kind === 'movie' && e.movie_id === null && e.starts_on >= todayISO(),
@@ -32,20 +35,36 @@ export function MovieNightBanner() {
 
   if (!next) return null
 
+  // one event per movie (events_user_movie_unique), so films another night
+  // already booked are not offered here
+  const booked = new Set(
+    eventRows.flatMap((e) => (e.movie_id ? [e.movie_id] : [])),
+  )
   const watchlist = filterAndSortMovies(
-    (movies.data ?? []).filter((m) => m.status === 'to_watch'),
+    (movies.data ?? []).filter(
+      (m) => m.status === 'to_watch' && !booked.has(m.id),
+    ),
     '',
     'external',
   )
 
-  function pick(movieId: string, title: string) {
+  async function pick(movieId: string, title: string) {
     if (!next) return
-    updateEvent.mutate({
-      id: next.id,
-      patch: { movie_id: movieId, title: `Film gecesi: ${title}` },
-      previousMovieId: null,
-    })
-    setPickOpen(false)
+    setError(null)
+    try {
+      await updateEvent.mutateAsync({
+        id: next.id,
+        patch: { movie_id: movieId, title: `Film gecesi: ${title}` },
+        previousMovieId: null,
+      })
+      setPickOpen(false)
+    } catch (pickError) {
+      setError(
+        isUniqueViolation(pickError)
+          ? 'Bu film başka bir gecede planlı.'
+          : saveErrorMessage(pickError),
+      )
+    }
   }
 
   return (
@@ -74,9 +93,12 @@ export function MovieNightBanner() {
         onClose={() => setPickOpen(false)}
         title="Film gecesine film seç"
       >
+        {error && (
+          <p className="mb-3 text-sm text-red-600 dark:text-red-400">{error}</p>
+        )}
         {watchlist.length === 0 ? (
           <p className="text-sm text-zinc-500 dark:text-zinc-400">
-            İzleme listen boş. Önce bir film ekle, sonra buradan seç.
+            Seçilebilecek film yok. Önce izleme listene bir film ekle.
           </p>
         ) : (
           <ul className="max-h-80 space-y-2 overflow-y-auto pr-1">

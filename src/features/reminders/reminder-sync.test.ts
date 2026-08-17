@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import type { Reminder } from '@/features/reminders/api'
 import {
+  eventOwnedMovieIds,
   planContributionReminders,
   planEventReminders,
   planMovieReminders,
@@ -338,7 +339,7 @@ describe('planEventReminders', () => {
     expect(plan.toInsert[0]).toMatchObject({ due_on: '2026-07-18' })
   })
 
-  it('leaves a movie-kind event with a film to planMovieReminders', () => {
+  it('keeps owning a movie night after its film is picked', () => {
     const plan = planEventReminders({
       userId: 'user-1',
       events: [
@@ -353,7 +354,7 @@ describe('planEventReminders', () => {
       today,
     })
     expect(plan.toInsert).toEqual([])
-    expect(plan.toDismiss).toEqual(['event-reminder-1'])
+    expect(plan.toDismiss).toEqual([])
   })
 
   it('reminds about a movie night that has no film yet', () => {
@@ -365,5 +366,66 @@ describe('planEventReminders', () => {
     })
     expect(plan.toInsert).toHaveLength(1)
     expect(plan.toInsert[0]).toMatchObject({ title: 'Film gecesi' })
+  })
+})
+
+describe('eventOwnedMovieIds', () => {
+  const base = {
+    id: 'e1',
+    title: 'Film gecesi',
+    kind: 'movie',
+    starts_on: '2026-07-10',
+    starts_at: null as string | null,
+    movie_id: null as string | null,
+  }
+
+  it('collects the films booked by movie-kind events', () => {
+    const ids = eventOwnedMovieIds([
+      { ...base, movie_id: 'movie-1' },
+      { ...base, id: 'e2', movie_id: null },
+      { ...base, id: 'e3', kind: 'general', movie_id: null },
+    ])
+    expect([...ids]).toEqual(['movie-1'])
+  })
+
+  it('is empty when nothing is booked', () => {
+    expect(eventOwnedMovieIds([]).size).toBe(0)
+  })
+})
+
+describe('planMovieReminders + events', () => {
+  const movie = {
+    id: 'movie-1',
+    title: 'Dune',
+    status: 'to_watch',
+    planned_for: '2026-07-12',
+  }
+
+  it('creates no movie reminder for a night an event owns', () => {
+    const plan = planMovieReminders({
+      userId: 'user-1',
+      movies: [movie],
+      reminders: [],
+      eventOwnedMovieIds: new Set(['movie-1']),
+    })
+    expect(plan.toInsert).toEqual([])
+  })
+
+  it('hands an existing movie reminder over when an event takes the night', () => {
+    const existing = makeReminder({
+      id: 'movie-reminder-1',
+      title: 'Film günü: Dune',
+      due_on: '2026-07-12',
+      source_type: 'movie',
+      source_id: 'movie-1',
+    })
+    const plan = planMovieReminders({
+      userId: 'user-1',
+      movies: [movie],
+      reminders: [existing],
+      eventOwnedMovieIds: new Set(['movie-1']),
+    })
+    expect(plan.toDismiss).toEqual(['movie-reminder-1'])
+    expect(plan.toInsert).toEqual([])
   })
 })

@@ -91,6 +91,9 @@ interface MoviePlanInput {
   userId: string
   movies: MovieLike[]
   reminders: Reminder[]
+  // movies whose night is owned by a calendar event; that event's reminder
+  // covers the night, so no movie reminder is created for them
+  eventOwnedMovieIds?: Set<string>
 }
 
 // A to-watch movie with a planned date gets a movie-night reminder for that
@@ -101,6 +104,7 @@ export function planMovieReminders({
   userId,
   movies,
   reminders,
+  eventOwnedMovieIds = new Set<string>(),
 }: MoviePlanInput): ReminderSyncPlan {
   const plan: ReminderSyncPlan = { toInsert: [], toComplete: [], toDismiss: [] }
   const movieById = new Map(movies.map((m) => [m.id, m]))
@@ -111,7 +115,7 @@ export function planMovieReminders({
   for (const reminder of movieReminders) {
     if (reminder.status !== 'pending') continue
     const movie = movieById.get(reminder.source_id!)
-    if (!movie) {
+    if (!movie || eventOwnedMovieIds.has(movie.id)) {
       plan.toDismiss.push(reminder.id)
     } else if (movie.status === 'watched') {
       plan.toComplete.push(reminder.id)
@@ -122,6 +126,7 @@ export function planMovieReminders({
 
   for (const movie of movies) {
     if (movie.status !== 'to_watch' || !movie.planned_for) continue
+    if (eventOwnedMovieIds.has(movie.id)) continue
     const exists = movieReminders.some(
       (r) => r.source_id === movie.id && r.due_on === movie.planned_for,
     )
@@ -155,19 +160,25 @@ interface EventPlanInput {
   today?: Date
 }
 
-// A movie-kind event that already has its film is left to planMovieReminders:
-// the event keeps movies.planned_for in sync, and source_type is part of the
-// unique key, so both planners firing would show that night twice.
-function coveredByMovieReminder(event: EventLike): boolean {
-  return event.kind === 'movie' && event.movie_id !== null
+// Movies whose night is owned by a calendar event. planMovieReminders takes
+// this so exactly one planner covers a given night: the event owns it, from
+// the moment it is created until it is deleted — picking or clearing the film
+// never hands ownership over, which is what would otherwise strand a
+// programmatically dismissed reminder that can never come back.
+export function eventOwnedMovieIds(events: EventLike[]): Set<string> {
+  return new Set(
+    events.flatMap((e) =>
+      e.kind === 'movie' && e.movie_id ? [e.movie_id] : [],
+    ),
+  )
 }
 
-// Every event gets one reminder on its own day. A deleted event, a moved date
-// or a newly picked film dismisses the stale one; past events are never
-// materialized and nothing auto-completes (no column marks an event attended).
+// Every event gets one reminder on its own day. A deleted event or a moved
+// date dismisses the stale one; past events are never materialized and
+// nothing auto-completes (no column marks an event attended).
 // Known limitation: the title is not part of the unique key and the plan has
-// no update arm, so renaming an event leaves its reminder title stale —
-// movies already behave this way.
+// no update arm, so renaming an event — or picking its film later — leaves
+// the existing reminder's title stale. Movies already behave this way.
 export function planEventReminders({
   userId,
   events,
@@ -184,15 +195,12 @@ export function planEventReminders({
   for (const reminder of eventReminders) {
     if (reminder.status !== 'pending') continue
     const event = eventById.get(reminder.source_id!)
-    if (!event || coveredByMovieReminder(event)) {
-      plan.toDismiss.push(reminder.id)
-    } else if (event.starts_on !== reminder.due_on) {
+    if (!event || event.starts_on !== reminder.due_on) {
       plan.toDismiss.push(reminder.id)
     }
   }
 
   for (const event of events) {
-    if (coveredByMovieReminder(event)) continue
     if (event.starts_on < todayIso) continue
     const exists = eventReminders.some(
       (r) => r.source_id === event.id && r.due_on === event.starts_on,

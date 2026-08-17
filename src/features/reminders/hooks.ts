@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useEffect, useRef } from 'react'
+import { useEffect } from 'react'
 
 import { useAuth } from '@/features/auth/useAuth'
 import type { CalendarEvent } from '@/features/calendar/api'
@@ -12,8 +12,10 @@ import {
   mergePlans,
   setReminderStatus,
   syncReminders,
+  type ReminderSyncPlan,
 } from '@/features/reminders/api'
 import {
+  eventOwnedMovieIds,
   planContributionReminders,
   planEventReminders,
   planMovieReminders,
@@ -21,8 +23,13 @@ import {
 import { useContributions, useGoals } from '@/features/wishlist/hooks'
 
 const remindersKey = ['reminders'] as const
-// stable identity, so the sync effect does not re-run on every render
+// stable identities, so the sync effect does not re-run on every render
 const NO_EVENTS: CalendarEvent[] = []
+const EMPTY_PLAN: ReminderSyncPlan = {
+  toInsert: [],
+  toComplete: [],
+  toDismiss: [],
+}
 
 export function useReminders() {
   return useQuery({ queryKey: remindersKey, queryFn: listReminders })
@@ -45,8 +52,9 @@ export function useSetReminderStatus() {
 }
 
 // Materializes contribution, movie-night and calendar-event reminders (and
-// completes or dismisses satisfied/stale ones) once per mount, as soon as all
-// datasets are loaded
+// completes or dismisses satisfied/stale ones) whenever the underlying data
+// settles. Plans are idempotent and an applied plan makes the next one empty,
+// so this converges instead of looping.
 export function useReminderSync() {
   const { session } = useAuth()
   const goals = useGoals()
@@ -55,31 +63,34 @@ export function useReminderSync() {
   const events = useEvents()
   const reminders = useReminders()
   const queryClient = useQueryClient()
-  const hasRun = useRef(false)
 
   const sync = useMutation({
     mutationFn: syncReminders,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: remindersKey }),
   })
-  const { mutate } = sync
+  const { mutate, isPending } = sync
 
-  // Events are the newest dataset: if that query fails (e.g. the migration
-  // has not been applied yet) the other planners must still run
-  const eventRows = events.data ?? (events.isError ? NO_EVENTS : null)
+  // An events query that failed (e.g. before the migration is applied) must
+  // not be read as "the user deleted every event" — the event planner is
+  // skipped entirely, so it can never dismiss live reminders. The other
+  // planners still run.
+  const eventRows = events.isSuccess ? events.data : null
+  const eventsSettled = events.isSuccess || events.isError
 
   useEffect(() => {
-    if (hasRun.current) return
+    if (isPending) return
     if (
       !session ||
       !goals.data ||
       !contributions.data ||
       !movies.data ||
-      !eventRows ||
+      !eventsSettled ||
       !reminders.data
     ) {
       return
     }
 
+    const ownedByEvents = eventOwnedMovieIds(eventRows ?? NO_EVENTS)
     const plan = mergePlans(
       planContributionReminders({
         userId: session.user.id,
@@ -91,25 +102,27 @@ export function useReminderSync() {
         userId: session.user.id,
         movies: movies.data,
         reminders: reminders.data,
+        eventOwnedMovieIds: ownedByEvents,
       }),
-      planEventReminders({
-        userId: session.user.id,
-        events: eventRows,
-        reminders: reminders.data,
-      }),
+      eventRows
+        ? planEventReminders({
+            userId: session.user.id,
+            events: eventRows,
+            reminders: reminders.data,
+          })
+        : EMPTY_PLAN,
     )
 
-    if (!isEmptyPlan(plan)) {
-      hasRun.current = true
-      mutate(plan)
-    }
+    if (!isEmptyPlan(plan)) mutate(plan)
   }, [
     session,
     goals.data,
     contributions.data,
     movies.data,
     eventRows,
+    eventsSettled,
     reminders.data,
+    isPending,
     mutate,
   ])
 }

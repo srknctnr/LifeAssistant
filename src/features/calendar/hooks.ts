@@ -106,7 +106,9 @@ export function useCreateEvent() {
       }
       return event
     },
-    onSuccess: () => {
+    // onSettled, not onSuccess: the event write may land while the mirroring
+    // movie write fails, and the caches must reflect what actually happened
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: eventsKey })
       queryClient.invalidateQueries({ queryKey: moviesKey })
     },
@@ -138,7 +140,9 @@ export function useUpdateEvent() {
       }
       return event
     },
-    onSuccess: () => {
+    // onSettled, not onSuccess: the event write may land while the mirroring
+    // movie write fails, and the caches must reflect what actually happened
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: eventsKey })
       queryClient.invalidateQueries({ queryKey: moviesKey })
     },
@@ -158,7 +162,9 @@ export function useDeleteEvent() {
         })
       }
     },
-    onSuccess: () => {
+    // onSettled, not onSuccess: the event write may land while the mirroring
+    // movie write fails, and the caches must reflect what actually happened
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: eventsKey })
       queryClient.invalidateQueries({ queryKey: moviesKey })
     },

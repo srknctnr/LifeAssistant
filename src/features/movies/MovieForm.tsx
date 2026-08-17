@@ -32,11 +32,15 @@ export function MovieForm({ movie, onDone }: MovieFormProps) {
   const [error, setError] = useState<string | null>(null)
 
   // While a calendar event owns this movie's film günü, the event is the
-  // single writer of planned_for — the field here goes read-only
+  // single writer of planned_for — the field here goes read-only. Until the
+  // events query has answered we cannot know, so the field stays locked
+  // rather than risk overwriting an event-owned date.
   const events = useEvents()
   const linkedEvent = movie
     ? (events.data ?? []).find((e) => e.movie_id === movie.id)
     : undefined
+  const dateLocked =
+    Boolean(movie) && (!events.isSuccess || Boolean(linkedEvent))
 
   const isPending = createMovie.isPending || updateMovie.isPending
 
@@ -63,7 +67,7 @@ export function MovieForm({ movie, onDone }: MovieFormProps) {
         movie?.is_family_visible,
       ),
       // omitted while an event owns the date, so stale state cannot overwrite it
-      ...(linkedEvent ? {} : { planned_for: plannedFor || null }),
+      ...(dateLocked ? {} : { planned_for: plannedFor || null }),
     }
 
     try {
@@ -90,13 +94,15 @@ export function MovieForm({ movie, onDone }: MovieFormProps) {
       <TextField
         label="Film günü (isteğe bağlı)"
         type="date"
-        disabled={Boolean(linkedEvent)}
+        disabled={dateLocked}
         value={plannedFor}
         onChange={(e) => setPlannedFor(e.target.value)}
       />
-      {linkedEvent && (
+      {dateLocked && (
         <p className="-mt-2 text-xs text-zinc-400">
-          Film günü takvimdeki etkinlikten geliyor.
+          {linkedEvent
+            ? 'Film günü takvimdeki etkinlikten geliyor.'
+            : 'Takvim kontrol ediliyor…'}
         </p>
       )}
       <TextField
