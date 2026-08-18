@@ -16,12 +16,14 @@ import {
 } from '@/features/expenses/hooks'
 import {
   buildLedgerView,
+  ledgerMembers,
   type LedgerMember,
   type LedgerTransfer,
 } from '@/features/expenses/ledger'
 import { SettlementForm } from '@/features/expenses/SettlementForm'
 import { SharedExpenseForm } from '@/features/expenses/SharedExpenseForm'
 import { formatDate } from '@/lib/dates'
+import { describeError, saveErrorMessage } from '@/lib/errors'
 import { formatMoney } from '@/lib/money'
 
 interface GroupLedgerProps {
@@ -41,8 +43,15 @@ export function GroupLedger({ familyId, members }: GroupLedgerProps) {
   const [editExpense, setEditExpense] = useState<ExpenseWithShares | null>(null)
   const [settleWith, setSettleWith] = useState<LedgerTransfer | null>(null)
   const [settleOpen, setSettleOpen] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
 
   const isPending = expenses.isPending || settlements.isPending
+  // current members plus anyone who only lives in the ledger's history
+  const participants = ledgerMembers(
+    members,
+    expenses.data ?? [],
+    settlements.data ?? [],
+  )
   const view = buildLedgerView({
     members,
     expenses: expenses.data ?? [],
@@ -51,7 +60,7 @@ export function GroupLedger({ familyId, members }: GroupLedgerProps) {
   })
 
   const nameOf = (userId: string) => {
-    const member = members.find((m) => m.userId === userId)
+    const member = participants.find((m) => m.userId === userId)
     if (!member) return 'Eski üye'
     return member.isSelf ? 'Sen' : member.name
   }
@@ -61,6 +70,22 @@ export function GroupLedger({ familyId, members }: GroupLedgerProps) {
       <div className="mt-6 space-y-3">
         <div className="h-32 animate-pulse rounded-3xl bg-zinc-100 dark:bg-zinc-800" />
         <SkeletonRows />
+      </div>
+    )
+  }
+
+  // An empty ledger and an unreachable one look identical otherwise, and the
+  // tables only exist once the migration has been run
+  if (expenses.isError || settlements.isError) {
+    const detail = describeError(expenses.error ?? settlements.error)
+    return (
+      <div className="mt-6 rounded-3xl border border-dashed border-red-200 p-6 text-center dark:border-red-500/30">
+        <p className="text-sm font-semibold text-red-600 dark:text-red-400">
+          Ortak kasa yüklenemedi
+        </p>
+        <p className="mx-auto mt-1.5 max-w-xs text-sm text-zinc-500 dark:text-zinc-400">
+          {detail ?? 'Bağlantını kontrol edip tekrar dene.'}
+        </p>
       </div>
     )
   }
@@ -195,6 +220,11 @@ export function GroupLedger({ familyId, members }: GroupLedgerProps) {
           setSettleOpen(true)
         }}
       >
+        {deleteError && (
+          <p className="mb-2 text-sm text-red-600 dark:text-red-400">
+            {deleteError}
+          </p>
+        )}
         {(settlements.data ?? []).length === 0 ? (
           <p className="text-sm text-zinc-400">
             Kayıtlı ödeşme yok. Borcunu ödeyince buraya yaz, bakiye kapansın.
@@ -228,7 +258,14 @@ export function GroupLedger({ familyId, members }: GroupLedgerProps) {
                 </p>
                 <button
                   aria-label="Ödeşmeyi sil"
-                  onClick={() => deleteSettlement.mutate(settlement.id)}
+                  onClick={async () => {
+                    setDeleteError(null)
+                    try {
+                      await deleteSettlement.mutateAsync(settlement.id)
+                    } catch (error) {
+                      setDeleteError(saveErrorMessage(error))
+                    }
+                  }}
                   className="rounded-full p-1.5 text-zinc-300 transition-colors hover:bg-red-50 hover:text-red-500 dark:text-zinc-600 dark:hover:bg-red-500/10 dark:hover:text-red-400"
                 >
                   <Trash2 size={15} />
@@ -246,7 +283,7 @@ export function GroupLedger({ familyId, members }: GroupLedgerProps) {
       >
         <SharedExpenseForm
           familyId={familyId}
-          members={members}
+          members={participants}
           onDone={() => setAddOpen(false)}
         />
       </Sheet>
@@ -259,7 +296,7 @@ export function GroupLedger({ familyId, members }: GroupLedgerProps) {
         {editExpense && (
           <SharedExpenseForm
             familyId={familyId}
-            members={members}
+            members={participants}
             expense={editExpense}
             onDone={() => setEditExpense(null)}
           />
@@ -273,7 +310,7 @@ export function GroupLedger({ familyId, members }: GroupLedgerProps) {
       >
         <SettlementForm
           familyId={familyId}
-          members={members}
+          members={participants}
           suggestion={settleWith ?? undefined}
           onDone={() => setSettleOpen(false)}
         />

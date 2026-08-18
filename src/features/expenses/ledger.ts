@@ -16,6 +16,8 @@ export interface LedgerMember {
   userId: string
   name: string
   isSelf: boolean
+  // true for someone who took part but has since left the group
+  isFormer?: boolean
 }
 
 export interface LedgerBalance {
@@ -58,6 +60,27 @@ export function ledgerParticipants(
     ids.add(settlement.to_user)
   }
   return [...ids]
+}
+
+// Everyone the forms have to be able to name: current members first, then
+// anyone who only exists in the ledger's history. Without the second group a
+// departed member's expense could never be edited and their debt never
+// settled — the DB accepts them (is_group_participant), so the UI must too.
+export function ledgerMembers(
+  members: LedgerMember[],
+  expenses: ExpenseWithShares[],
+  settlements: ExpenseSettlement[],
+): LedgerMember[] {
+  const known = new Set(members.map((m) => m.userId))
+  const former = ledgerParticipants(members, expenses, settlements)
+    .filter((id) => !known.has(id))
+    .map((userId) => ({
+      userId,
+      name: 'Eski üye',
+      isSelf: false,
+      isFormer: true,
+    }))
+  return [...members, ...former]
 }
 
 export function buildLedgerView(params: {

@@ -49,7 +49,8 @@ export function SharedExpenseForm({
   const [participants, setParticipants] = useState<string[]>(
     expense
       ? expense.expense_shares.map((s) => s.user_id)
-      : members.map((m) => m.userId),
+      : // a new expense starts with everyone still in the group
+        members.filter((m) => !m.isFormer).map((m) => m.userId),
   )
   const [customShares, setCustomShares] = useState<Record<string, string>>(() =>
     Object.fromEntries(
@@ -182,6 +183,7 @@ export function SharedExpenseForm({
           {members.map((member) => (
             <option key={member.userId} value={member.userId}>
               {member.isSelf ? `${member.name} (sen)` : member.name}
+              {member.isFormer ? ' · ayrıldı' : ''}
             </option>
           ))}
         </select>
@@ -208,6 +210,9 @@ export function SharedExpenseForm({
               >
                 {on && <Check size={13} strokeWidth={3} />}
                 {member.isSelf ? 'Ben' : member.name}
+                {member.isFormer && (
+                  <span className="text-[10px] opacity-70">ayrıldı</span>
+                )}
               </button>
             )
           })}

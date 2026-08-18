@@ -7,6 +7,7 @@ import type {
 import {
   buildLedgerView,
   equalShares,
+  ledgerMembers,
   ledgerParticipants,
 } from '@/features/expenses/ledger'
 
@@ -178,5 +179,26 @@ describe('buildLedgerView', () => {
     const sum = view.balances.reduce((total, b) => total + b.net, 0)
     expect(Math.round(sum * 100)).toBe(0)
     expect(view.total).toBe(130)
+  })
+})
+
+describe('ledgerMembers', () => {
+  it('keeps current members and adds anyone only the history knows', () => {
+    const all = ledgerMembers(
+      members,
+      [expense({ paid_by: 'gone' })],
+      [settlement({ from_user: 'old', to_user: 'a' })],
+    )
+    expect(all.filter((m) => !m.isFormer).map((m) => m.userId)).toEqual([
+      'a',
+      'b',
+    ])
+    const former = all.filter((m) => m.isFormer)
+    expect(former.map((m) => m.userId).sort()).toEqual(['gone', 'old'])
+    expect(former.every((m) => m.name === 'Eski üye')).toBe(true)
+  })
+
+  it('adds nobody when everyone is still in the group', () => {
+    expect(ledgerMembers(members, [expense()], [settlement()])).toHaveLength(2)
   })
 })

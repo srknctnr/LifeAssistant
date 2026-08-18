@@ -88,8 +88,10 @@ as $fn$
   );
 $fn$;
 
--- somebody who has left the group can still be owed money, so settlements
--- accept anyone who ever took part
+-- Somebody who has left the group can still be owed money and can still
+-- appear on an old expense, so both settlements and expenses accept anyone
+-- who ever took part. It stays closed to strangers: an id only qualifies
+-- once it already appears in this group ledger.
 create or replace function public.is_group_participant(p_family_id uuid, p_user_id uuid)
 returns boolean
 language sql
@@ -183,13 +185,13 @@ create policy "shared_expenses_insert_member" on public.shared_expenses
   for insert to authenticated with check (
     public.is_family_member(family_id)
     and created_by = (select auth.uid())
-    and public.is_group_member(family_id, paid_by)
+    and public.is_group_participant(family_id, paid_by)
   );
 create policy "shared_expenses_update_member" on public.shared_expenses
   for update to authenticated using (public.is_family_member(family_id))
   with check (
     public.is_family_member(family_id)
-    and public.is_group_member(family_id, paid_by)
+    and public.is_group_participant(family_id, paid_by)
   );
 create policy "shared_expenses_delete_member" on public.shared_expenses
   for delete to authenticated using (public.is_family_member(family_id));
@@ -199,13 +201,13 @@ create policy "expense_shares_select_member" on public.expense_shares
 create policy "expense_shares_insert_member" on public.expense_shares
   for insert to authenticated with check (
     public.is_family_member(family_id)
-    and public.is_group_member(family_id, user_id)
+    and public.is_group_participant(family_id, user_id)
   );
 create policy "expense_shares_update_member" on public.expense_shares
   for update to authenticated using (public.is_family_member(family_id))
   with check (
     public.is_family_member(family_id)
-    and public.is_group_member(family_id, user_id)
+    and public.is_group_participant(family_id, user_id)
   );
 create policy "expense_shares_delete_member" on public.expense_shares
   for delete to authenticated using (public.is_family_member(family_id));
@@ -266,7 +268,7 @@ begin
   if p_amount is null or p_amount <= 0 then
     raise exception 'Tutar sıfırdan büyük olmalı';
   end if;
-  if not public.is_group_member(p_family_id, p_paid_by) then
+  if not public.is_group_participant(p_family_id, p_paid_by) then
     raise exception 'Ödeyen kişi grubun üyesi değil';
   end if;
   if p_shares is null or jsonb_array_length(p_shares) = 0 then
@@ -274,7 +276,7 @@ begin
   end if;
   if exists (
     select 1 from jsonb_array_elements(p_shares) s
-    where not public.is_group_member(p_family_id, (s->>'user_id')::uuid)
+    where not public.is_group_participant(p_family_id, (s->>'user_id')::uuid)
   ) then
     raise exception 'Paylaşanlardan biri grubun üyesi değil';
   end if;

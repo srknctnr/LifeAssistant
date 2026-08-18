@@ -97,6 +97,7 @@ export function SettlementForm({
           {members.map((member) => (
             <option key={member.userId} value={member.userId}>
               {member.isSelf ? `${member.name} (sen)` : member.name}
+              {member.isFormer ? ' · ayrıldı' : ''}
             </option>
           ))}
         </select>
@@ -118,6 +119,7 @@ export function SettlementForm({
           {members.map((member) => (
             <option key={member.userId} value={member.userId}>
               {member.isSelf ? `${member.name} (sen)` : member.name}
+              {member.isFormer ? ' · ayrıldı' : ''}
             </option>
           ))}
         </select>
