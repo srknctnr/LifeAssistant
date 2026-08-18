@@ -23,6 +23,8 @@ import { isUniqueViolation, saveErrorMessage } from '@/lib/errors'
 const fieldClass =
   'w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-base text-zinc-900 transition focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-indigo-500 dark:focus:ring-indigo-500/20'
 
+const MOVIE_TITLE_SUGGESTION = 'Film gecesi'
+
 interface EventFormProps {
   event?: CalendarEvent
   defaultDate?: string
@@ -68,11 +70,30 @@ export function EventForm({ event, defaultDate, onDone }: EventFormProps) {
     'external',
   )
 
+  // Keeps the borrowed title in step with the picked film, so a night named
+  // from here reads the same as one named from the Filmler band.
+  function suggestedTitle(id: string): string {
+    const picked = watchlist.find((m) => m.id === id)
+    return picked
+      ? `${MOVIE_TITLE_SUGGESTION}: ${picked.title}`
+      : MOVIE_TITLE_SUGGESTION
+  }
+
+  function handleMovieChange(id: string) {
+    setMovieId(id)
+    if (!titleTouched) setTitle(suggestedTitle(id))
+  }
+
+  // The suggested title is only ever borrowed: switching to a film night
+  // fills it in, switching back takes it away again. A title the user typed
+  // is never touched in either direction.
   function handleKindChange(next: EventKind) {
     setKind(next)
     if (next === 'movie') {
-      if (!titleTouched) setTitle('Film gecesi')
+      if (!titleTouched) setTitle(suggestedTitle(movieId))
     } else {
+      if (!titleTouched && title.startsWith(MOVIE_TITLE_SUGGESTION))
+        setTitle('')
       setMovieId('') // the DB check constraint forbids a movie on a general event
     }
   }
@@ -207,7 +228,7 @@ export function EventForm({ event, defaultDate, onDone }: EventFormProps) {
           <select
             id={movieSelectId}
             value={movieId}
-            onChange={(e) => setMovieId(e.target.value)}
+            onChange={(e) => handleMovieChange(e.target.value)}
             className={fieldClass}
           >
             <option value="">Henüz seçmedim</option>
