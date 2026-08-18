@@ -102,12 +102,12 @@ function FamilyBudgetSection({ members }: { members: ModuleMember[] }) {
       <div className="mt-6 rounded-3xl bg-gradient-to-br from-indigo-600 to-violet-600 p-5 text-white shadow-lg shadow-indigo-600/20">
         <div className="flex items-center justify-between text-sm text-indigo-100">
           <span className="flex items-center gap-2">
-            <Wallet size={16} /> Aile Bütçesi
+            <Wallet size={16} /> Grup Bütçesi
           </span>
           <span className="text-xs">{members.length} üye katılıyor</span>
         </div>
         <p className="mt-3 text-sm text-indigo-100">
-          Günlük güvenli harcama (aile)
+          Günlük güvenli harcama (grup)
         </p>
         <AnimatedNumber
           className="mt-0.5 block text-4xl font-bold tracking-tight tabular-nums"
@@ -147,12 +147,12 @@ function FamilyBudgetSection({ members }: { members: ModuleMember[] }) {
         </div>
         {!report.onTrack && (
           <p className="mt-3 rounded-xl bg-white/15 px-3 py-2 text-xs font-medium">
-            ⚠️ Aile bu hızla ay sonunu getirmekte zorlanır.
+            ⚠️ Grup bu hızla ay sonunu getirmekte zorlanır.
           </p>
         )}
       </div>
 
-      <Section title="Aile harcamaları · bu ay">
+      <Section title="Paylaşılan harcamalar · bu ay">
         {budget.transactions.length === 0 ? (
           <p className="text-sm text-zinc-400">
             Bu ay ortak alana düşen harcama yok.
@@ -262,7 +262,7 @@ function FamilyMoviesSection({ members }: { members: ModuleMember[] }) {
   const watched = movies.filter((m) => m.status === 'watched')
 
   return (
-    <Section title="Aile film listesi">
+    <Section title="Grup film listesi">
       {isPending ? (
         <SkeletonRows count={2} />
       ) : movies.length === 0 ? (
@@ -358,7 +358,7 @@ function FamilyCalendarSection({ members }: { members: ModuleMember[] }) {
 
   return (
     <>
-      <Section title="Aile takvimi">
+      <Section title="Grup takvimi">
         {eventsPending ? (
           <SkeletonRows count={1} />
         ) : upcomingEvents.length === 0 ? (
@@ -398,7 +398,7 @@ function FamilyCalendarSection({ members }: { members: ModuleMember[] }) {
         )}
       </Section>
 
-      <Section title="Bu hafta ailede">
+      <Section title="Bu hafta grupta">
         {isPending ? (
           <SkeletonRows count={1} />
         ) : categories.length === 0 ? (

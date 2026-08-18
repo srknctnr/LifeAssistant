@@ -83,10 +83,10 @@ describe('app routes (authenticated)', () => {
     ).toBeInTheDocument()
   })
 
-  it('renders the family page at /family', async () => {
+  it('renders the group page at /family', async () => {
     renderAt('/family')
     expect(
-      await screen.findByRole('heading', { name: 'Ailem' }),
+      await screen.findByRole('heading', { name: 'Gruplarım' }),
     ).toBeInTheDocument()
   })
 })

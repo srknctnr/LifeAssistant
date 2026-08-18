@@ -100,7 +100,7 @@ function SourceToggle({
       {(
         [
           { value: 'personal', label: 'Kişisel' },
-          { value: 'family', label: 'Aile' },
+          { value: 'family', label: 'Grup' },
         ] as const
       ).map((option) => (
         <button
@@ -259,12 +259,12 @@ function FamilyBudgetCard({
     <div className="rounded-3xl bg-gradient-to-br from-violet-600 to-fuchsia-600 p-5 text-white shadow-lg shadow-violet-600/20 transition-transform hover:-translate-y-0.5">
       <div className="flex items-center justify-between text-sm text-violet-100">
         <span className="flex items-center gap-2">
-          <Users size={16} /> Aile Bütçesi
+          <Users size={16} /> Grup Bütçesi
         </span>
         <SourceToggle value="family" onChange={onSwitch} light />
       </div>
       <Link to="/family" className="mt-3 block">
-        <p className="text-sm text-violet-100">Günlük güvenli harcama (aile)</p>
+        <p className="text-sm text-violet-100">Günlük güvenli harcama (grup)</p>
         <AnimatedNumber
           className="mt-0.5 block text-4xl font-bold tracking-tight tabular-nums"
           value={budget.report.dailyAllowance}
@@ -285,7 +285,7 @@ function FamilyBudgetCard({
           </div>
         </div>
         <p className="mt-3 text-xs text-violet-100">
-          {members.length} üye katılıyor · Aile Özeti&apos;ne git →
+          {members.length} üye katılıyor · Grup özetine git →
         </p>
       </Link>
     </div>
@@ -405,14 +405,14 @@ function FamilyGoalsCard({
     <div className="rounded-3xl bg-white p-5 shadow-sm shadow-zinc-200/60 transition-transform hover:-translate-y-0.5 dark:bg-zinc-900 dark:shadow-none">
       <div className="flex items-center justify-between text-sm">
         <span className="flex items-center gap-2 font-semibold tracking-tight">
-          <Users size={16} className="text-indigo-500" /> Aile Hedefleri
+          <Users size={16} className="text-indigo-500" /> Grup Hedefleri
         </span>
         <SourceToggle value="family" onChange={onSwitch} />
       </div>
       <Link to="/family" className="mt-4 block">
         {activeGoals.length === 0 ? (
           <p className="text-sm text-zinc-400">
-            Ortak alanda hedef yok — Aile Özeti&apos;ne git →
+            Ortak alanda hedef yok — Grup özetine git →
           </p>
         ) : (
           <ul className="space-y-3.5">
@@ -552,7 +552,7 @@ function FamilyMoviesCard({
     <div className="rounded-3xl bg-white p-5 shadow-sm shadow-zinc-200/60 transition-transform hover:-translate-y-0.5 dark:bg-zinc-900 dark:shadow-none">
       <div className="flex items-center justify-between text-sm">
         <span className="flex items-center gap-2 font-semibold tracking-tight">
-          <Users size={16} className="text-indigo-500" /> Aile Filmleri
+          <Users size={16} className="text-indigo-500" /> Grup Filmleri
         </span>
         <SourceToggle value="family" onChange={onSwitch} />
       </div>
@@ -560,7 +560,7 @@ function FamilyMoviesCard({
         <p className="text-3xl font-bold tracking-tight tabular-nums">
           {toWatch.length}
         </p>
-        <p className="text-sm text-zinc-400">izlenecek film (aile)</p>
+        <p className="text-sm text-zinc-400">izlenecek film (grup)</p>
         {latest && (
           <p className="mt-3 text-xs text-zinc-400">
             Son eklenen:{' '}
@@ -677,14 +677,14 @@ function FamilyCalendarCard({
     <div className="rounded-3xl bg-white p-5 shadow-sm shadow-zinc-200/60 transition-transform hover:-translate-y-0.5 dark:bg-zinc-900 dark:shadow-none">
       <div className="flex items-center justify-between text-sm">
         <span className="flex items-center gap-2 font-semibold tracking-tight">
-          <Users size={16} className="text-indigo-500" /> Ailede Bu Hafta
+          <Users size={16} className="text-indigo-500" /> Grupta Bu Hafta
         </span>
         <SourceToggle value="family" onChange={onSwitch} />
       </div>
       <Link to="/family" className="mt-4 block">
         {categories.length === 0 ? (
           <p className="text-sm text-zinc-400">
-            Ortak alanda takvim kategorisi yok — Aile Özeti&apos;ne git →
+            Ortak alanda takvim kategorisi yok — Grup özetine git →
           </p>
         ) : (
           <ul className="flex flex-wrap gap-2">
@@ -738,8 +738,8 @@ function FamilyModule() {
       <CtaModule
         to="/family"
         icon={Users}
-        title="Aileni kur"
-        text="Sevdiklerini davet et; bütçeni, listelerini ve planlarını seçtiğin ayrıntıda paylaş."
+        title="Grubunu kur"
+        text="Aile ya da arkadaş grubu kur; ortak masrafları bölüş, seçtiğin modülleri paylaş."
       />
     )
   }
@@ -762,7 +762,7 @@ function FamilyModule() {
     >
       <div className="flex items-center justify-between text-sm">
         <span className="flex items-center gap-2 font-semibold tracking-tight">
-          <Users size={16} className="text-indigo-500" /> Ailem
+          <Users size={16} className="text-indigo-500" /> Gruplarım
         </span>
         <ArrowRight
           size={16}

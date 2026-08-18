@@ -20,7 +20,7 @@ const navItems = [
   { to: '/wishlist', label: 'İstekler', icon: Sparkles },
   { to: '/movies', label: 'Filmler', icon: Clapperboard },
   { to: '/calendar', label: 'Takvim', icon: CalendarDays },
-  { to: '/family', label: 'Ailem', icon: Users },
+  { to: '/family', label: 'Gruplar', icon: Users },
 ]
 
 export function AppLayout() {

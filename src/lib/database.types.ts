@@ -60,6 +60,7 @@ export interface Database {
           id: string
           name: string
           created_by: string
+          currency: string
           created_at: string
           updated_at: string
         }
@@ -67,6 +68,7 @@ export interface Database {
           id?: string
           name: string
           created_by: string
+          currency?: string
           created_at?: string
           updated_at?: string
         }
@@ -74,6 +76,7 @@ export interface Database {
           id?: string
           name?: string
           created_by?: string
+          currency?: string
           created_at?: string
           updated_at?: string
         }
@@ -190,6 +193,144 @@ export interface Database {
         Relationships: [
           {
             foreignKeyName: 'module_shares_family_id_fkey'
+            columns: ['family_id']
+            isOneToOne: false
+            referencedRelation: 'families'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      shared_expenses: {
+        Row: {
+          id: string
+          family_id: string
+          title: string
+          amount: number
+          currency: string
+          paid_by: string
+          spent_on: string
+          category: string | null
+          note: string | null
+          split_mode: 'equal' | 'amount'
+          created_by: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          family_id: string
+          title: string
+          amount: number
+          currency?: string
+          paid_by: string
+          spent_on?: string
+          category?: string | null
+          note?: string | null
+          split_mode?: 'equal' | 'amount'
+          created_by: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          family_id?: string
+          title?: string
+          amount?: number
+          currency?: string
+          paid_by?: string
+          spent_on?: string
+          category?: string | null
+          note?: string | null
+          split_mode?: 'equal' | 'amount'
+          created_by?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'shared_expenses_family_id_fkey'
+            columns: ['family_id']
+            isOneToOne: false
+            referencedRelation: 'families'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      expense_shares: {
+        Row: {
+          id: string
+          expense_id: string
+          family_id: string
+          user_id: string
+          amount: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          expense_id: string
+          family_id: string
+          user_id: string
+          amount: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          expense_id?: string
+          family_id?: string
+          user_id?: string
+          amount?: number
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'expense_shares_expense_id_family_id_fkey'
+            columns: ['expense_id', 'family_id']
+            isOneToOne: false
+            referencedRelation: 'shared_expenses'
+            referencedColumns: ['id', 'family_id']
+          },
+        ]
+      }
+      expense_settlements: {
+        Row: {
+          id: string
+          family_id: string
+          from_user: string
+          to_user: string
+          amount: number
+          currency: string
+          settled_on: string
+          note: string | null
+          created_by: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          family_id: string
+          from_user: string
+          to_user: string
+          amount: number
+          currency?: string
+          settled_on?: string
+          note?: string | null
+          created_by: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          family_id?: string
+          from_user?: string
+          to_user?: string
+          amount?: number
+          currency?: string
+          settled_on?: string
+          note?: string | null
+          created_by?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'expense_settlements_family_id_fkey'
             columns: ['family_id']
             isOneToOne: false
             referencedRelation: 'families'
@@ -684,6 +825,21 @@ export interface Database {
       family_budget_summary: {
         Args: { p_owner: string }
         Returns: Json
+      }
+      save_shared_expense: {
+        Args: {
+          p_family_id: string
+          p_title: string
+          p_amount: number
+          p_paid_by: string
+          p_spent_on: string
+          p_shares: Json
+          p_split_mode?: string
+          p_category?: string | null
+          p_note?: string | null
+          p_expense_id?: string | null
+        }
+        Returns: string
       }
       convert_wishlist_item: {
         Args: {

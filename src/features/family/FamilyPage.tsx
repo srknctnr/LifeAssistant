@@ -27,6 +27,7 @@ import type {
   FamilyModule as ModuleKey,
   ModuleShare,
 } from '@/features/family/api'
+import { GroupLedger } from '@/features/expenses/GroupLedger'
 import { FamilySpace } from '@/features/family/FamilySpace'
 import { MemberModuleSheet } from '@/features/family/MemberModuleSheet'
 import {
@@ -58,7 +59,7 @@ const MODULE_LABELS = Object.fromEntries(
 ) as Record<ModuleKey, string>
 
 type ShareChoice = 'off' | 'summary' | 'ask' | 'full'
-type FamilyView = 'space' | 'manage'
+type FamilyView = 'space' | 'expenses' | 'manage'
 
 function levelSuffix(level: ModuleShare['level']): string {
   if (level === 'summary') return ' · özet'
@@ -114,9 +115,9 @@ export function FamilyPage() {
 
   return (
     <PageTransition>
-      <h1 className="text-2xl font-semibold tracking-tight">Ailem</h1>
+      <h1 className="text-2xl font-semibold tracking-tight">Gruplarım</h1>
       <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
-        Ailenin ortak alanı: paylaşılan bütçe, hedefler, filmler ve planlar.
+        Ailen ve grupların: ortak kasa, paylaşılan bütçe, hedefler ve planlar.
       </p>
 
       {isLoading ? (
@@ -132,10 +133,10 @@ export function FamilyPage() {
             className="block w-full rounded-3xl border border-dashed border-zinc-200 bg-white/60 p-5 text-left transition-colors hover:border-indigo-300 hover:bg-indigo-50/40 dark:border-zinc-800 dark:bg-zinc-900/60 dark:hover:border-indigo-700 dark:hover:bg-indigo-500/10"
           >
             <p className="flex items-center gap-2 font-semibold text-indigo-600 dark:text-indigo-400">
-              <Plus size={17} /> Aile kur
+              <Plus size={17} /> Grup kur
             </p>
             <p className="mt-1.5 text-sm text-zinc-500 dark:text-zinc-400">
-              Bir aile (ya da grup) oluştur, sevdiklerini davet et.
+              Aile, ev arkadaşların ya da tatil ekibin için bir grup kur.
             </p>
           </button>
           <button
@@ -146,7 +147,7 @@ export function FamilyPage() {
               <KeyRound size={17} /> Davet kodum var
             </p>
             <p className="mt-1.5 text-sm text-zinc-500 dark:text-zinc-400">
-              Sana gönderilen 6 haneli kodla aileye katıl.
+              Sana gönderilen 6 haneli kodla gruba katıl.
             </p>
           </button>
         </div>
@@ -168,7 +169,7 @@ export function FamilyPage() {
             ))}
             <button
               onClick={() => setCreateOpen(true)}
-              aria-label="Yeni aile kur"
+              aria-label="Yeni grup kur"
               className="shrink-0 rounded-full bg-zinc-100 px-2.5 py-1.5 text-zinc-500 transition-colors hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700"
             >
               <Plus size={16} />
@@ -187,7 +188,8 @@ export function FamilyPage() {
               <div className="mt-5">
                 <Segmented<FamilyView>
                   options={[
-                    { value: 'space', label: 'Aile Özeti' },
+                    { value: 'space', label: 'Özet' },
+                    { value: 'expenses', label: 'Ortak Kasa' },
                     { value: 'manage', label: 'Yönetim' },
                   ]}
                   value={view}
@@ -200,6 +202,15 @@ export function FamilyPage() {
                   family={selected}
                   members={familyMembers}
                   shares={familyShares}
+                />
+              ) : view === 'expenses' ? (
+                <GroupLedger
+                  familyId={selected.id}
+                  members={familyMembers.map((m) => ({
+                    userId: m.user_id,
+                    name: m.profiles?.display_name ?? 'Üye',
+                    isSelf: m.user_id === userId,
+                  }))}
                 />
               ) : (
                 <>
@@ -280,7 +291,7 @@ export function FamilyPage() {
 
                   <Section title="Paylaşımlarım">
                     <p className="mb-3 text-xs text-zinc-400">
-                      <strong>Tam:</strong> eklediğin her kayıt otomatik Aile
+                      <strong>Tam:</strong> eklediğin her kayıt otomatik Grup
                       Özeti&apos;ne düşer. <strong>Sor:</strong> eklerken
                       &quot;Sadece ben / Aile ile&quot; diye sorulur.{' '}
                       <strong>Özet</strong> (bütçe): yalnızca toplamlar görünür,
@@ -306,15 +317,15 @@ export function FamilyPage() {
                   <div className="mt-8">
                     {isOwner ? (
                       <DangerButton
-                        label="Aileyi sil"
-                        note="Üyelikler, davetler ve paylaşım ayarları silinir; kişisel veriler etkilenmez."
+                        label="Grubu sil"
+                        note="Üyelikler, davetler, ortak kasa ve paylaşım ayarları silinir; kişisel veriler etkilenmez."
                         onConfirm={() => {}}
                         familyId={selected.id}
                         mode="delete"
                       />
                     ) : (
                       <DangerButton
-                        label="Aileden ayrıl"
+                        label="Gruptan ayrıl"
                         note="Paylaşımların kapanır; kişisel verilerin etkilenmez."
                         onConfirm={() => {}}
                         memberRowId={
@@ -334,7 +345,7 @@ export function FamilyPage() {
       <Sheet
         open={createOpen}
         onClose={() => setCreateOpen(false)}
-        title="Aile kur"
+        title="Grup kur"
       >
         <CreateFamilyForm onDone={() => setCreateOpen(false)} />
       </Sheet>
@@ -395,7 +406,7 @@ function ProfileGate() {
       className="mt-6 space-y-4 rounded-3xl bg-white p-5 shadow-sm shadow-zinc-200/60 dark:bg-zinc-900 dark:shadow-none"
     >
       <p className="text-sm text-zinc-500 dark:text-zinc-400">
-        Aile üyeleri seni bu adla görecek. Önce kendini tanıtalım:
+        Grup üyeleri seni bu adla görecek. Önce kendini tanıtalım:
       </p>
       <TextField
         label="Görünen adın"
@@ -434,9 +445,9 @@ function CreateFamilyForm({ onDone }: { onDone: () => void }) {
   return (
     <form className="space-y-4" onSubmit={handleSubmit}>
       <TextField
-        label="Aile / grup adı"
+        label="Grup adı"
         required
-        placeholder="Çetiner Ailesi"
+        placeholder="Çetiner Ailesi, Ev, Kapadokya 2026…"
         value={name}
         onChange={(e) => setName(e.target.value)}
       />
@@ -526,7 +537,7 @@ function InviteForm({
       <div className="space-y-4 text-center">
         <p className="text-sm text-zinc-500 dark:text-zinc-400">
           Davet hazır! Bu kodu {email} adresinin sahibiyle paylaş — uygulamaya
-          kayıt olup Ailem → kod ile katılabilir. Kod 7 gün geçerli.
+          kayıt olup Gruplarım → kod ile katılabilir. Kod 7 gün geçerli.
         </p>
         <p className="text-3xl font-bold tracking-[0.3em] tabular-nums">
           {createdCode}
