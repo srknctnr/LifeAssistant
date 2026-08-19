@@ -437,6 +437,7 @@ export interface Database {
           category: string | null
           note: string | null
           spent_on: string
+          shared_expense_id: string | null
           is_family_visible: boolean
           created_at: string
           updated_at: string
@@ -449,6 +450,7 @@ export interface Database {
           category?: string | null
           note?: string | null
           spent_on?: string
+          shared_expense_id?: string | null
           is_family_visible?: boolean
           created_at?: string
           updated_at?: string
@@ -461,6 +463,7 @@ export interface Database {
           category?: string | null
           note?: string | null
           spent_on?: string
+          shared_expense_id?: string | null
           is_family_visible?: boolean
           created_at?: string
           updated_at?: string

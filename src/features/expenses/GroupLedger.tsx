@@ -1,4 +1,4 @@
-import { ArrowRight, HandCoins, Receipt, Trash2 } from 'lucide-react'
+import { ArrowRight, HandCoins, Receipt, Trash2, Wallet } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useState } from 'react'
 
@@ -22,6 +22,7 @@ import {
 } from '@/features/expenses/ledger'
 import { SettlementForm } from '@/features/expenses/SettlementForm'
 import { SharedExpenseForm } from '@/features/expenses/SharedExpenseForm'
+import { useShareMirror } from '@/features/expenses/useShareMirror'
 import { formatDate } from '@/lib/dates'
 import { describeError, saveErrorMessage } from '@/lib/errors'
 import { formatMoney } from '@/lib/money'
@@ -38,6 +39,7 @@ export function GroupLedger({ familyId, members }: GroupLedgerProps) {
   const expenses = useGroupExpenses(familyId)
   const settlements = useSettlements(familyId)
   const deleteSettlement = useDeleteSettlement(familyId)
+  const mirror = useShareMirror(session?.user.id)
 
   const [addOpen, setAddOpen] = useState(false)
   const [editExpense, setEditExpense] = useState<ExpenseWithShares | null>(null)
@@ -184,28 +186,31 @@ export function GroupLedger({ familyId, members }: GroupLedgerProps) {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, x: -16 }}
                 >
-                  <button
-                    onClick={() => setEditExpense(expense)}
-                    aria-label={`${expense.title}, düzenle`}
-                    className="flex w-full items-center gap-3 rounded-xl bg-white px-3.5 py-2.5 text-left shadow-sm shadow-zinc-200/60 dark:bg-zinc-900 dark:shadow-none"
-                  >
-                    <span className="shrink-0 rounded-lg bg-indigo-50 p-2 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400">
-                      <Receipt size={15} />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-medium">
-                        {expense.title}
+                  <div className="flex items-center gap-3 rounded-xl bg-white px-3.5 py-2.5 shadow-sm shadow-zinc-200/60 dark:bg-zinc-900 dark:shadow-none">
+                    <button
+                      onClick={() => setEditExpense(expense)}
+                      aria-label={`${expense.title}, düzenle`}
+                      className="flex min-w-0 flex-1 items-center gap-3 text-left"
+                    >
+                      <span className="shrink-0 rounded-lg bg-indigo-50 p-2 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400">
+                        <Receipt size={15} />
                       </span>
-                      <span className="mt-0.5 block truncate text-xs text-zinc-400">
-                        {nameOf(expense.paid_by)} ödedi ·{' '}
-                        {expense.expense_shares.length} kişi ·{' '}
-                        {formatDate(expense.spent_on)}
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-medium">
+                          {expense.title}
+                        </span>
+                        <span className="mt-0.5 block truncate text-xs text-zinc-400">
+                          {nameOf(expense.paid_by)} ödedi ·{' '}
+                          {expense.expense_shares.length} kişi ·{' '}
+                          {formatDate(expense.spent_on)}
+                        </span>
                       </span>
-                    </span>
-                    <span className="shrink-0 text-sm font-semibold tabular-nums">
-                      {formatMoney(expense.amount, expense.currency)}
-                    </span>
-                  </button>
+                      <span className="shrink-0 text-sm font-semibold tabular-nums">
+                        {formatMoney(expense.amount, expense.currency)}
+                      </span>
+                    </button>
+                    <ShareMirrorButton expense={expense} mirror={mirror} />
+                  </div>
                 </motion.li>
               ))}
             </AnimatePresence>
@@ -316,5 +321,47 @@ export function GroupLedger({ familyId, members }: GroupLedgerProps) {
         />
       </Sheet>
     </>
+  )
+}
+
+// Writes the caller's own share of a group expense into their personal
+// spending log, and takes it back out again. Only ever the share — mirroring
+// what somebody paid, or a settlement, would double count.
+function ShareMirrorButton({
+  expense,
+  mirror,
+}: {
+  expense: ExpenseWithShares
+  mirror: ReturnType<typeof useShareMirror>
+}) {
+  const share = mirror.myShare(expense)
+  if (share <= 0) return null
+
+  const on = mirror.isMirrored(expense.id)
+  return (
+    <button
+      onClick={() =>
+        on ? mirror.undo.mutate(expense.id) : mirror.write.mutate(expense)
+      }
+      disabled={mirror.isPending}
+      aria-pressed={on}
+      aria-label={
+        on
+          ? `${expense.title}: payını bütçenden çıkar`
+          : `${expense.title}: ${formatMoney(share)} payını bütçene yaz`
+      }
+      title={
+        on
+          ? 'Payın kişisel bütçende — çıkarmak için dokun'
+          : `${formatMoney(share)} payını kişisel bütçene yaz`
+      }
+      className={`shrink-0 rounded-full p-2 transition-colors disabled:opacity-60 ${
+        on
+          ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400'
+          : 'text-zinc-300 hover:bg-indigo-50 hover:text-indigo-600 dark:text-zinc-600 dark:hover:bg-indigo-500/10 dark:hover:text-indigo-400'
+      }`}
+    >
+      <Wallet size={15} />
+    </button>
   )
 }
