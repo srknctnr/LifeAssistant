@@ -13,6 +13,7 @@ import {
   listShares,
   removeMember,
   setShare,
+  updateFamily,
   upsertProfile,
   type FamilyModule,
 } from '@/features/family/api'
@@ -48,6 +49,15 @@ export function useCreateFamily() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: createFamily,
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: membershipsKey }),
+  })
+}
+
+export function useUpdateFamily() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: updateFamily,
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: membershipsKey }),
   })

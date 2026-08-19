@@ -78,6 +78,7 @@ export interface CreateSettlementInput {
   fromUser: string
   toUser: string
   amount: number
+  currency: string
   settledOn: string
   note?: string | null
   createdBy: string
@@ -93,6 +94,7 @@ export async function createSettlement(
       from_user: input.fromUser,
       to_user: input.toUser,
       amount: input.amount,
+      currency: input.currency,
       settled_on: input.settledOn,
       note: input.note ?? null,
       created_by: input.createdBy,

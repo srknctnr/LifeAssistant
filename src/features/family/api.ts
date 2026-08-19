@@ -61,10 +61,15 @@ export async function listMemberships(): Promise<FamilyMembership[]> {
 export async function createFamily(params: {
   userId: string
   name: string
+  currency?: string
 }): Promise<Family> {
   const { data: family, error } = await supabase
     .from('families')
-    .insert({ name: params.name, created_by: params.userId })
+    .insert({
+      name: params.name,
+      created_by: params.userId,
+      currency: params.currency ?? 'TRY',
+    })
     .select()
     .single()
   if (error) throw error
@@ -75,6 +80,22 @@ export async function createFamily(params: {
   if (memberError) throw memberError
 
   return family
+}
+
+// Only the ledger's currency and the group's name are editable; everything
+// else about a group is derived from its members
+export async function updateFamily(params: {
+  id: string
+  patch: { name?: string; currency?: string }
+}): Promise<Family> {
+  const { data, error } = await supabase
+    .from('families')
+    .update(params.patch)
+    .eq('id', params.id)
+    .select()
+    .single()
+  if (error) throw error
+  return data
 }
 
 export async function deleteFamily(id: string): Promise<void> {

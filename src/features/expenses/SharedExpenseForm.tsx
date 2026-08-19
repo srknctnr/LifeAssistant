@@ -14,7 +14,7 @@ import {
 } from '@/features/expenses/ledger'
 import { todayISO } from '@/lib/dates'
 import { saveErrorMessage } from '@/lib/errors'
-import { formatMoney, parseAmountInput } from '@/lib/money'
+import { currencySymbol, formatMoney, parseAmountInput } from '@/lib/money'
 
 const fieldClass =
   'w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-base text-zinc-900 transition focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-indigo-500 dark:focus:ring-indigo-500/20'
@@ -23,6 +23,7 @@ type SplitMode = 'equal' | 'weight' | 'amount'
 
 interface SharedExpenseFormProps {
   familyId: string
+  currency: string
   members: LedgerMember[]
   expense?: ExpenseWithShares
   onDone: () => void
@@ -30,6 +31,7 @@ interface SharedExpenseFormProps {
 
 export function SharedExpenseForm({
   familyId,
+  currency,
   members,
   expense,
   onDone,
@@ -180,7 +182,7 @@ export function SharedExpenseForm({
         onChange={(e) => setTitle(e.target.value)}
       />
       <TextField
-        label="Tutar (₺)"
+        label={`Tutar (${currencySymbol(currency)})`}
         required
         inputMode="decimal"
         placeholder="0,00"

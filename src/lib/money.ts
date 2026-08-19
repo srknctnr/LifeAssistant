@@ -1,3 +1,20 @@
+// The currencies a group can keep its ledger in. Personal budget stays TRY;
+// this is for a holiday group that spends in euros.
+export const CURRENCIES = ['TRY', 'USD', 'EUR', 'GBP'] as const
+
+export type Currency = (typeof CURRENCIES)[number]
+
+const SYMBOLS: Record<string, string> = {
+  TRY: '₺',
+  USD: '$',
+  EUR: '€',
+  GBP: '£',
+}
+
+export function currencySymbol(currency: string): string {
+  return SYMBOLS[currency] ?? currency
+}
+
 export function formatMoney(amount: number, currency = 'TRY'): string {
   return new Intl.NumberFormat('tr-TR', {
     style: 'currency',

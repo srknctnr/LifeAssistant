@@ -29,12 +29,13 @@ import { formatMoney } from '@/lib/money'
 
 interface GroupLedgerProps {
   familyId: string
+  currency: string
   members: LedgerMember[]
 }
 
 // Tricount-style shared ledger for one group: who paid what, who owes whom,
 // and the settlements that close it.
-export function GroupLedger({ familyId, members }: GroupLedgerProps) {
+export function GroupLedger({ familyId, currency, members }: GroupLedgerProps) {
   const { session } = useAuth()
   const expenses = useGroupExpenses(familyId)
   const settlements = useSettlements(familyId)
@@ -105,7 +106,9 @@ export function GroupLedger({ familyId, members }: GroupLedgerProps) {
           <span className="flex items-center gap-2">
             <HandCoins size={16} /> Ortak Kasa
           </span>
-          <span className="text-xs">toplam {formatMoney(view.total)}</span>
+          <span className="text-xs">
+            toplam {formatMoney(view.total, currency)}
+          </span>
         </div>
         <p className="mt-3 text-sm text-white/80">
           {view.isSettled
@@ -117,7 +120,7 @@ export function GroupLedger({ familyId, members }: GroupLedgerProps) {
         <AnimatedNumber
           className="mt-0.5 block text-4xl font-bold tracking-tight tabular-nums"
           value={Math.abs(view.myNet)}
-          format={(v) => formatMoney(v)}
+          format={(v) => formatMoney(v, currency)}
         />
         {view.balances.length > 0 && (
           <div className="mt-4 flex flex-wrap gap-1.5">
@@ -129,7 +132,7 @@ export function GroupLedger({ familyId, members }: GroupLedgerProps) {
                 {balance.isSelf ? 'Sen' : balance.name}{' '}
                 {balance.net === 0
                   ? '✓'
-                  : `${balance.net > 0 ? '+' : '−'}${formatMoney(Math.abs(balance.net))}`}
+                  : `${balance.net > 0 ? '+' : '−'}${formatMoney(Math.abs(balance.net), currency)}`}
               </span>
             ))}
           </div>
@@ -163,7 +166,7 @@ export function GroupLedger({ familyId, members }: GroupLedgerProps) {
                     {nameOf(transfer.toUser)}
                   </span>
                   <span className="shrink-0 text-sm font-semibold tabular-nums">
-                    {formatMoney(transfer.amount)}
+                    {formatMoney(transfer.amount, currency)}
                   </span>
                 </button>
               </li>
@@ -288,6 +291,7 @@ export function GroupLedger({ familyId, members }: GroupLedgerProps) {
       >
         <SharedExpenseForm
           familyId={familyId}
+          currency={currency}
           members={participants}
           onDone={() => setAddOpen(false)}
         />
@@ -301,6 +305,7 @@ export function GroupLedger({ familyId, members }: GroupLedgerProps) {
         {editExpense && (
           <SharedExpenseForm
             familyId={familyId}
+            currency={currency}
             members={participants}
             expense={editExpense}
             onDone={() => setEditExpense(null)}
@@ -315,6 +320,7 @@ export function GroupLedger({ familyId, members }: GroupLedgerProps) {
       >
         <SettlementForm
           familyId={familyId}
+          currency={currency}
           members={participants}
           suggestion={settleWith ?? undefined}
           onDone={() => setSettleOpen(false)}
@@ -335,6 +341,7 @@ function ShareMirrorButton({
   mirror: ReturnType<typeof useShareMirror>
 }) {
   const share = mirror.myShare(expense)
+  const money = (v: number) => formatMoney(v, expense.currency)
   if (share <= 0) return null
 
   const on = mirror.isMirrored(expense.id)
@@ -348,12 +355,12 @@ function ShareMirrorButton({
       aria-label={
         on
           ? `${expense.title}: payını bütçenden çıkar`
-          : `${expense.title}: ${formatMoney(share)} payını bütçene yaz`
+          : `${expense.title}: ${money(share)} payını bütçene yaz`
       }
       title={
         on
           ? 'Payın kişisel bütçende — çıkarmak için dokun'
-          : `${formatMoney(share)} payını kişisel bütçene yaz`
+          : `${money(share)} payını kişisel bütçene yaz`
       }
       className={`shrink-0 rounded-full p-2 transition-colors disabled:opacity-60 ${
         on

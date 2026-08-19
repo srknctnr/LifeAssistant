@@ -10,7 +10,7 @@ import {
   Wallet,
   type LucideIcon,
 } from 'lucide-react'
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useId, useState, type FormEvent } from 'react'
 
 import { Button } from '@/components/Button'
 import { EmptyState } from '@/components/EmptyState'
@@ -42,10 +42,12 @@ import {
   useRemoveMember,
   useSetShare,
   useShares,
+  useUpdateFamily,
   useUpsertProfile,
 } from '@/features/family/hooks'
 import { generateInviteCode } from '@/features/family/invite-code'
 import { describeError } from '@/lib/errors'
+import { CURRENCIES, currencySymbol } from '@/lib/money'
 
 const MODULES: { key: ModuleKey; label: string; icon: LucideIcon }[] = [
   { key: 'budget', label: 'Bütçe', icon: Wallet },
@@ -206,6 +208,7 @@ export function FamilyPage() {
               ) : view === 'expenses' ? (
                 <GroupLedger
                   familyId={selected.id}
+                  currency={selected.currency}
                   members={familyMembers.map((m) => ({
                     userId: m.user_id,
                     name: m.profiles?.display_name ?? 'Üye',
@@ -313,6 +316,12 @@ export function FamilyPage() {
                       ))}
                     </ul>
                   </Section>
+
+                  {isOwner && (
+                    <Section title="Grup ayarları">
+                      <GroupSettings family={selected} />
+                    </Section>
+                  )}
 
                   <div className="mt-8">
                     {isOwner ? (
@@ -425,17 +434,60 @@ function ProfileGate() {
   )
 }
 
+const selectClass =
+  'w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-base text-zinc-900 transition focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-indigo-500 dark:focus:ring-indigo-500/20'
+
+function CurrencyField({
+  value,
+  onChange,
+  hint,
+}: {
+  value: string
+  onChange: (value: string) => void
+  hint?: string
+}) {
+  const id = useId()
+  return (
+    <div className="space-y-1.5">
+      <label
+        htmlFor={id}
+        className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
+      >
+        Ortak kasa para birimi
+      </label>
+      <select
+        id={id}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className={selectClass}
+      >
+        {CURRENCIES.map((code) => (
+          <option key={code} value={code}>
+            {currencySymbol(code)} {code}
+          </option>
+        ))}
+      </select>
+      {hint && <p className="text-xs text-zinc-400">{hint}</p>}
+    </div>
+  )
+}
+
 function CreateFamilyForm({ onDone }: { onDone: () => void }) {
   const { session } = useAuth()
   const create = useCreateFamily()
   const [name, setName] = useState('')
+  const [currency, setCurrency] = useState<string>('TRY')
   const [error, setError] = useState<string | null>(null)
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
     if (!session) return
     try {
-      await create.mutateAsync({ userId: session.user.id, name: name.trim() })
+      await create.mutateAsync({
+        userId: session.user.id,
+        name: name.trim(),
+        currency,
+      })
       onDone()
     } catch (e) {
       setError(describeError(e) ?? 'Kaydedilemedi, tekrar dene.')
@@ -451,11 +503,73 @@ function CreateFamilyForm({ onDone }: { onDone: () => void }) {
         value={name}
         onChange={(e) => setName(e.target.value)}
       />
+      <CurrencyField
+        value={currency}
+        onChange={setCurrency}
+        hint="Ortak harcamalar bu para biriminde tutulur. Kişisel bütçen etkilenmez."
+      />
       {error && (
         <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
       )}
       <Button type="submit" isLoading={create.isPending} className="w-full">
         Kur
+      </Button>
+    </form>
+  )
+}
+
+// Owner-only: renaming the group and switching the ledger's currency
+function GroupSettings({ family }: { family: Family }) {
+  const update = useUpdateFamily()
+  const [name, setName] = useState(family.name)
+  const [currency, setCurrency] = useState(family.currency)
+  const [error, setError] = useState<string | null>(null)
+  const [saved, setSaved] = useState(false)
+
+  const dirty = name.trim() !== family.name || currency !== family.currency
+
+  async function handleSubmit(event: FormEvent) {
+    event.preventDefault()
+    setError(null)
+    if (!name.trim()) {
+      setError('Gruba bir ad ver.')
+      return
+    }
+    try {
+      await update.mutateAsync({
+        id: family.id,
+        patch: { name: name.trim(), currency },
+      })
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2000)
+    } catch (e) {
+      setError(describeError(e) ?? 'Kaydedilemedi, tekrar dene.')
+    }
+  }
+
+  return (
+    <form className="space-y-4" onSubmit={handleSubmit}>
+      <TextField
+        label="Grup adı"
+        required
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+      />
+      <CurrencyField
+        value={currency}
+        onChange={setCurrency}
+        hint="Daha önce girilmiş harcamalar kendi para biriminde kalır; bundan sonrakiler bu birime yazılır."
+      />
+      {error && (
+        <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+      )}
+      <Button
+        type="submit"
+        isLoading={update.isPending}
+        disabled={!dirty}
+        className="w-full"
+      >
+        {saved ? 'Kaydedildi ✓' : 'Kaydet'}
       </Button>
     </form>
   )

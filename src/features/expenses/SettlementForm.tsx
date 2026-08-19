@@ -7,13 +7,14 @@ import { useCreateSettlement } from '@/features/expenses/hooks'
 import type { LedgerMember, LedgerTransfer } from '@/features/expenses/ledger'
 import { todayISO } from '@/lib/dates'
 import { saveErrorMessage } from '@/lib/errors'
-import { parseAmountInput } from '@/lib/money'
+import { currencySymbol, parseAmountInput } from '@/lib/money'
 
 const fieldClass =
   'w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-base text-zinc-900 transition focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-indigo-500 dark:focus:ring-indigo-500/20'
 
 interface SettlementFormProps {
   familyId: string
+  currency: string
   members: LedgerMember[]
   // prefilled when the sheet is opened from a "kim kime ödesin" row
   suggestion?: LedgerTransfer
@@ -22,6 +23,7 @@ interface SettlementFormProps {
 
 export function SettlementForm({
   familyId,
+  currency,
   members,
   suggestion,
   onDone,
@@ -69,6 +71,7 @@ export function SettlementForm({
         fromUser,
         toUser,
         amount: parsed,
+        currency,
         settledOn,
         note: note.trim() || null,
         createdBy: session.user.id,
@@ -126,7 +129,7 @@ export function SettlementForm({
       </div>
 
       <TextField
-        label="Tutar (₺)"
+        label={`Tutar (${currencySymbol(currency)})`}
         required
         inputMode="decimal"
         placeholder="0,00"
