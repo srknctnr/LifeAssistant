@@ -211,7 +211,7 @@ export interface Database {
           spent_on: string
           category: string | null
           note: string | null
-          split_mode: 'equal' | 'amount'
+          split_mode: 'equal' | 'weight' | 'amount'
           created_by: string
           created_at: string
           updated_at: string
@@ -226,7 +226,7 @@ export interface Database {
           spent_on?: string
           category?: string | null
           note?: string | null
-          split_mode?: 'equal' | 'amount'
+          split_mode?: 'equal' | 'weight' | 'amount'
           created_by: string
           created_at?: string
           updated_at?: string
@@ -241,7 +241,7 @@ export interface Database {
           spent_on?: string
           category?: string | null
           note?: string | null
-          split_mode?: 'equal' | 'amount'
+          split_mode?: 'equal' | 'weight' | 'amount'
           created_by?: string
           created_at?: string
           updated_at?: string
@@ -263,6 +263,7 @@ export interface Database {
           family_id: string
           user_id: string
           amount: number
+          weight: number | null
           created_at: string
         }
         Insert: {
@@ -271,6 +272,7 @@ export interface Database {
           family_id: string
           user_id: string
           amount: number
+          weight?: number | null
           created_at?: string
         }
         Update: {
@@ -279,6 +281,7 @@ export interface Database {
           family_id?: string
           user_id?: string
           amount?: number
+          weight?: number | null
           created_at?: string
         }
         Relationships: [

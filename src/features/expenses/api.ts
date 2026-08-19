@@ -44,8 +44,9 @@ export interface SaveExpenseInput {
   spentOn: string
   category?: string | null
   note?: string | null
-  splitMode: 'equal' | 'amount'
-  shares: { user_id: string; amount: number }[]
+  splitMode: 'equal' | 'weight' | 'amount'
+  // weight only travels for split_mode 'weight'; amount is always authoritative
+  shares: { user_id: string; amount: number; weight?: number }[]
 }
 
 // One RPC so the header and its shares land together or not at all; the

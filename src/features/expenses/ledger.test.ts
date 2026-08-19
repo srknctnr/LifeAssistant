@@ -9,6 +9,7 @@ import {
   equalShares,
   ledgerMembers,
   ledgerParticipants,
+  weightedShares,
 } from '@/features/expenses/ledger'
 
 const members = [
@@ -38,6 +39,7 @@ function expense(over: Partial<ExpenseWithShares> = {}): ExpenseWithShares {
         family_id: 'f1',
         user_id: 'a',
         amount: 50,
+        weight: null,
         created_at: '',
       },
       {
@@ -46,6 +48,7 @@ function expense(over: Partial<ExpenseWithShares> = {}): ExpenseWithShares {
         family_id: 'f1',
         user_id: 'b',
         amount: 50,
+        weight: null,
         created_at: '',
       },
     ],
@@ -168,6 +171,7 @@ describe('buildLedgerView', () => {
               family_id: 'f1',
               user_id: 'a',
               amount: 30,
+              weight: null,
               created_at: '',
             },
           ],
@@ -200,5 +204,35 @@ describe('ledgerMembers', () => {
 
   it('adds nobody when everyone is still in the group', () => {
     expect(ledgerMembers(members, [expense()], [settlement()])).toHaveLength(2)
+  })
+})
+
+describe('weightedShares', () => {
+  it('splits 2/2/1 exactly', () => {
+    const shares = weightedShares(
+      100,
+      ['a', 'b', 'c'],
+      { a: 2, b: 2, c: 1 },
+      'a',
+    )
+    expect(shares.reduce((sum, s) => sum + s.amount, 0)).toBe(100)
+    expect(shares.map((s) => s.amount)).toEqual([40, 40, 20])
+  })
+
+  it('treats a missing or non-positive weight as 1', () => {
+    const shares = weightedShares(90, ['a', 'b', 'c'], { a: 0 }, 'a')
+    expect(shares.map((s) => s.weight)).toEqual([1, 1, 1])
+    expect(shares.reduce((sum, s) => sum + s.amount, 0)).toBe(90)
+  })
+
+  it('gives the leftover kuruş to the payer', () => {
+    const shares = weightedShares(
+      10,
+      ['a', 'b', 'c'],
+      { a: 1, b: 1, c: 1 },
+      'b',
+    )
+    expect(shares[0].user_id).toBe('b')
+    expect(shares.reduce((sum, s) => sum + s.amount, 0)).toBe(10)
   })
 })

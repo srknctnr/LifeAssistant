@@ -7,7 +7,11 @@ import { TextField } from '@/components/TextField'
 import { CategoryPicker } from '@/features/budget/CategoryPicker'
 import type { ExpenseWithShares } from '@/features/expenses/api'
 import { useDeleteExpense, useSaveExpense } from '@/features/expenses/hooks'
-import { equalShares, type LedgerMember } from '@/features/expenses/ledger'
+import {
+  equalShares,
+  weightedShares,
+  type LedgerMember,
+} from '@/features/expenses/ledger'
 import { todayISO } from '@/lib/dates'
 import { saveErrorMessage } from '@/lib/errors'
 import { formatMoney, parseAmountInput } from '@/lib/money'
@@ -15,7 +19,7 @@ import { formatMoney, parseAmountInput } from '@/lib/money'
 const fieldClass =
   'w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-base text-zinc-900 transition focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-indigo-500 dark:focus:ring-indigo-500/20'
 
-type SplitMode = 'equal' | 'amount'
+type SplitMode = 'equal' | 'weight' | 'amount'
 
 interface SharedExpenseFormProps {
   familyId: string
@@ -57,17 +61,32 @@ export function SharedExpenseForm({
       (expense?.expense_shares ?? []).map((s) => [s.user_id, String(s.amount)]),
     ),
   )
+  const [weights, setWeights] = useState<Record<string, string>>(() =>
+    Object.fromEntries(
+      (expense?.expense_shares ?? []).map((s) => [
+        s.user_id,
+        String(s.weight ?? 1),
+      ]),
+    ),
+  )
   const [error, setError] = useState<string | null>(null)
   const [armed, setArmed] = useState(false)
 
   const parsedAmount = parseAmountInput(amount) ?? 0
   const isPending = save.isPending || remove.isPending
 
+  const weightNumbers = Object.fromEntries(
+    participants.map((id) => [id, Number(weights[id] ?? 1)]),
+  )
   // live preview of what each person ends up owing
   const preview =
-    splitMode === 'equal' && participants.length > 0 && parsedAmount > 0
-      ? equalShares(parsedAmount, participants, paidBy)
-      : []
+    participants.length === 0 || parsedAmount <= 0
+      ? []
+      : splitMode === 'equal'
+        ? equalShares(parsedAmount, participants, paidBy)
+        : splitMode === 'weight'
+          ? weightedShares(parsedAmount, participants, weightNumbers, paidBy)
+          : []
   const customTotal = participants.reduce(
     (sum, id) => sum + (parseAmountInput(customShares[id] ?? '') ?? 0),
     0,
@@ -101,10 +120,12 @@ export function SharedExpenseForm({
     const shares =
       splitMode === 'equal'
         ? equalShares(parsedAmount, participants, paidBy)
-        : participants.map((user_id) => ({
-            user_id,
-            amount: parseAmountInput(customShares[user_id] ?? '') ?? 0,
-          }))
+        : splitMode === 'weight'
+          ? weightedShares(parsedAmount, participants, weightNumbers, paidBy)
+          : participants.map((user_id) => ({
+              user_id,
+              amount: parseAmountInput(customShares[user_id] ?? '') ?? 0,
+            }))
 
     const sum = shares.reduce((total, s) => total + s.amount, 0)
     if (Math.round(sum * 100) !== Math.round(parsedAmount * 100)) {
@@ -226,14 +247,43 @@ export function SharedExpenseForm({
         <Segmented<SplitMode>
           options={[
             { value: 'equal', label: 'Eşit' },
-            { value: 'amount', label: 'Özel tutar' },
+            { value: 'weight', label: 'Ağırlık' },
+            { value: 'amount', label: 'Özel' },
           ]}
           value={splitMode}
           onChange={setSplitMode}
         />
       </div>
 
-      {splitMode === 'equal' && preview.length > 0 && (
+      {splitMode === 'weight' && (
+        <div className="space-y-2">
+          <p className="text-xs text-zinc-400">
+            Kaç pay alsın? Örneğin iki yetişkin 2, çocuk 1. Sayılar birbirine
+            göre; toplamlarının bir anlamı yok.
+          </p>
+          {participants.map((userId) => {
+            const member = members.find((m) => m.userId === userId)
+            return (
+              <TextField
+                key={userId}
+                label={member?.isSelf ? 'Ben' : (member?.name ?? 'Üye')}
+                type="number"
+                min={0.5}
+                step={0.5}
+                value={weights[userId] ?? '1'}
+                onChange={(e) =>
+                  setWeights((current) => ({
+                    ...current,
+                    [userId]: e.target.value,
+                  }))
+                }
+              />
+            )
+          })}
+        </div>
+      )}
+
+      {preview.length > 0 && (
         <ul className="space-y-1 rounded-xl bg-zinc-50 px-3.5 py-2.5 dark:bg-zinc-800/60">
           {preview.map((share) => {
             const member = members.find((m) => m.userId === share.user_id)

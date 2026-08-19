@@ -6,6 +6,7 @@ import {
   computeBalances,
   fromMinor,
   settleUp,
+  splitByWeight,
   splitEvenly,
   toMinor,
   type Balance,
@@ -135,17 +136,43 @@ export function buildLedgerView(params: {
   }
 }
 
-// An equal split that always adds back up to the total. The payer absorbs the
-// leftover kuruş first, which is the convention people expect.
+// Payer first, so the leftover kuruş lands on them — the convention people
+// expect when a total does not divide cleanly.
+function payerFirst(participantIds: string[], paidBy: string): string[] {
+  return [
+    ...participantIds.filter((id) => id === paidBy),
+    ...participantIds.filter((id) => id !== paidBy),
+  ]
+}
+
+// An equal split that always adds back up to the total.
 export function equalShares(
   amount: number,
   participantIds: string[],
   paidBy: string,
 ): { user_id: string; amount: number }[] {
-  const ordered = [
-    ...participantIds.filter((id) => id === paidBy),
-    ...participantIds.filter((id) => id !== paidBy),
-  ]
+  const ordered = payerFirst(participantIds, paidBy)
   const parts = splitEvenly(toMinor(amount), ordered.length)
   return ordered.map((user_id, i) => ({ user_id, amount: fromMinor(parts[i]) }))
+}
+
+// "2 yetişkin + 1 çocuk" is 2/2/1. Weights are relative, so they need no unit
+// and no total; the amounts still add back up to the expense exactly.
+export function weightedShares(
+  amount: number,
+  participantIds: string[],
+  weights: Record<string, number>,
+  paidBy: string,
+): { user_id: string; amount: number; weight: number }[] {
+  const ordered = payerFirst(participantIds, paidBy)
+  const used = ordered.map((id) => {
+    const w = weights[id]
+    return Number.isFinite(w) && w > 0 ? w : 1
+  })
+  const parts = splitByWeight(toMinor(amount), used)
+  return ordered.map((user_id, i) => ({
+    user_id,
+    amount: fromMinor(parts[i]),
+    weight: used[i],
+  }))
 }
