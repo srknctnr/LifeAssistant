@@ -11,6 +11,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { useEffect, useId, useState, type FormEvent } from 'react'
+import { useSearchParams } from 'react-router-dom'
 
 import { Button } from '@/components/Button'
 import { EmptyState } from '@/components/EmptyState'
@@ -79,7 +80,11 @@ export function FamilyPage() {
   const [selectedFamilyId, setSelectedFamilyId] = useState<string | null>(() =>
     localStorage.getItem('la-family'),
   )
-  const [view, setView] = useState<FamilyView>('space')
+  const [searchParams] = useSearchParams()
+  // deep link from a trip: /family?view=expenses lands on the ledger
+  const [view, setView] = useState<FamilyView>(() =>
+    searchParams.get('view') === 'expenses' ? 'expenses' : 'space',
+  )
   const [createOpen, setCreateOpen] = useState(false)
   const [joinOpen, setJoinOpen] = useState(false)
   const [inviteOpen, setInviteOpen] = useState(false)

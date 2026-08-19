@@ -12,6 +12,7 @@ import { Button } from '@/components/Button'
 import { EmptyState } from '@/components/EmptyState'
 import { PageTransition } from '@/components/PageTransition'
 import { Section } from '@/components/Section'
+import { Segmented } from '@/components/Segmented'
 import { Sheet } from '@/components/Sheet'
 import { SkeletonRows } from '@/components/SkeletonRows'
 import type {
@@ -31,6 +32,7 @@ import {
   useSetGoalPaused,
   useWishlistItems,
 } from '@/features/wishlist/hooks'
+import { TripsView } from '@/features/travel/TripsView'
 import { WishForm } from '@/features/wishlist/WishForm'
 import { formatDate, todayISO } from '@/lib/dates'
 import { formatMoney } from '@/lib/money'
@@ -38,7 +40,10 @@ import { formatMoney } from '@/lib/money'
 const kindLabels = { purchase: 'Harcama', travel: 'Seyahat' } as const
 const kindIcons = { purchase: ShoppingBag, travel: Plane } as const
 
+type WishlistView = 'wishes' | 'trips'
+
 export function WishlistPage() {
+  const [view, setView] = useState<WishlistView>('wishes')
   const wishes = useWishlistItems()
   const goals = useGoals()
   const contributions = useContributions()
@@ -82,129 +87,149 @@ export function WishlistPage() {
         bütçene ekleyelim.
       </p>
 
-      {visibleGoals.length > 0 && (
-        <Section title="Hedeflerim">
-          <ul className="space-y-2.5">
-            <AnimatePresence initial={false}>
-              {visibleGoals.map((goal) => (
-                <GoalCard
-                  key={goal.id}
-                  goal={goal}
-                  saved={savedByGoal.get(goal.id) ?? 0}
-                  onContribute={() => setContributeGoal(goal)}
-                  onManage={() => setManageGoal(goal)}
-                />
-              ))}
-            </AnimatePresence>
-          </ul>
-        </Section>
-      )}
+      <div className="mt-4">
+        <Segmented<WishlistView>
+          options={[
+            { value: 'wishes', label: 'İstekler' },
+            { value: 'trips', label: 'Geziler' },
+          ]}
+          value={view}
+          onChange={setView}
+        />
+      </div>
 
-      <Section title="İstekler" onAdd={() => setAddOpen(true)}>
-        {wishes.isPending ? (
-          <SkeletonRows />
-        ) : activeWishes.length === 0 ? (
-          <EmptyState text="Henüz istek eklemedin. Bir gezi ya da almak istediğin bir şeyle başla." />
-        ) : (
-          <ul className="space-y-2.5">
-            <AnimatePresence initial={false}>
-              {activeWishes.map((item) => (
-                <WishRow
-                  key={item.id}
-                  item={item}
-                  onEdit={() => setEditWish(item)}
-                  onConvert={() => setConvertItem(item)}
-                />
-              ))}
-            </AnimatePresence>
-          </ul>
-        )}
-      </Section>
+      {view === 'trips' ? (
+        <TripsView />
+      ) : (
+        <>
+          {visibleGoals.length > 0 && (
+            <Section title="Hedeflerim">
+              <ul className="space-y-2.5">
+                <AnimatePresence initial={false}>
+                  {visibleGoals.map((goal) => (
+                    <GoalCard
+                      key={goal.id}
+                      goal={goal}
+                      saved={savedByGoal.get(goal.id) ?? 0}
+                      onContribute={() => setContributeGoal(goal)}
+                      onManage={() => setManageGoal(goal)}
+                    />
+                  ))}
+                </AnimatePresence>
+              </ul>
+            </Section>
+          )}
 
-      {archivedGoals.length > 0 && (
-        <Section title="Tamamlanan hedefler">
-          <ul className="space-y-1.5">
-            {archivedGoals.map((goal) => (
-              <li key={goal.id}>
-                <button
-                  onClick={() => setManageGoal(goal)}
-                  className="flex w-full items-center justify-between gap-3 rounded-xl bg-white px-3.5 py-2.5 text-left opacity-75 shadow-sm shadow-zinc-200/60 transition-opacity hover:opacity-100 dark:bg-zinc-900 dark:shadow-none"
-                >
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium">
-                      🎉 {goal.wishlist_items?.name ?? 'Hedef'}
-                    </p>
-                    <p className="text-xs text-zinc-400">
-                      {formatDate(goal.updated_at)} · tamamlandı
-                    </p>
-                  </div>
-                  <p className="shrink-0 text-sm font-semibold tabular-nums">
-                    {formatMoney(goal.target_amount, goal.currency)}
-                  </p>
-                </button>
-              </li>
-            ))}
-          </ul>
-        </Section>
-      )}
-
-      <Sheet
-        open={addOpen}
-        onClose={() => setAddOpen(false)}
-        title="İstek ekle"
-      >
-        <WishForm onDone={() => setAddOpen(false)} />
-      </Sheet>
-
-      <Sheet
-        open={editWish !== null}
-        onClose={() => setEditWish(null)}
-        title="İsteği düzenle"
-      >
-        {editWish && (
-          <WishForm item={editWish} onDone={() => setEditWish(null)} />
-        )}
-      </Sheet>
-
-      <Sheet
-        open={convertItem !== null}
-        onClose={() => setConvertItem(null)}
-        title="Tasarruf hedefine dönüştür"
-      >
-        {convertItem && (
-          <ConvertForm item={convertItem} onDone={() => setConvertItem(null)} />
-        )}
-      </Sheet>
-
-      <Sheet
-        open={contributeGoal !== null}
-        onClose={() => setContributeGoal(null)}
-        title="Katkı ekle"
-      >
-        {contributeGoal && (
-          <ContributionForm
-            goal={contributeGoal}
-            onDone={() => setContributeGoal(null)}
-          />
-        )}
-      </Sheet>
-
-      <Sheet
-        open={manageGoal !== null}
-        onClose={() => setManageGoal(null)}
-        title="Hedefi yönet"
-      >
-        {manageGoal && (
-          <GoalManageActions
-            goal={manageGoal}
-            saved={savedByGoal.get(manageGoal.id) ?? 0}
-            history={(contributions.data ?? []).filter(
-              (c) => c.savings_goal_id === manageGoal.id,
+          <Section title="İstekler" onAdd={() => setAddOpen(true)}>
+            {wishes.isPending ? (
+              <SkeletonRows />
+            ) : activeWishes.length === 0 ? (
+              <EmptyState text="Henüz istek eklemedin. Bir gezi ya da almak istediğin bir şeyle başla." />
+            ) : (
+              <ul className="space-y-2.5">
+                <AnimatePresence initial={false}>
+                  {activeWishes.map((item) => (
+                    <WishRow
+                      key={item.id}
+                      item={item}
+                      onEdit={() => setEditWish(item)}
+                      onConvert={() => setConvertItem(item)}
+                    />
+                  ))}
+                </AnimatePresence>
+              </ul>
             )}
-            onDone={() => setManageGoal(null)}
-          />
-        )}
-      </Sheet>
+          </Section>
+
+          {archivedGoals.length > 0 && (
+            <Section title="Tamamlanan hedefler">
+              <ul className="space-y-1.5">
+                {archivedGoals.map((goal) => (
+                  <li key={goal.id}>
+                    <button
+                      onClick={() => setManageGoal(goal)}
+                      className="flex w-full items-center justify-between gap-3 rounded-xl bg-white px-3.5 py-2.5 text-left opacity-75 shadow-sm shadow-zinc-200/60 transition-opacity hover:opacity-100 dark:bg-zinc-900 dark:shadow-none"
+                    >
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium">
+                          🎉 {goal.wishlist_items?.name ?? 'Hedef'}
+                        </p>
+                        <p className="text-xs text-zinc-400">
+                          {formatDate(goal.updated_at)} · tamamlandı
+                        </p>
+                      </div>
+                      <p className="shrink-0 text-sm font-semibold tabular-nums">
+                        {formatMoney(goal.target_amount, goal.currency)}
+                      </p>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </Section>
+          )}
+
+          <Sheet
+            open={addOpen}
+            onClose={() => setAddOpen(false)}
+            title="İstek ekle"
+          >
+            <WishForm onDone={() => setAddOpen(false)} />
+          </Sheet>
+
+          <Sheet
+            open={editWish !== null}
+            onClose={() => setEditWish(null)}
+            title="İsteği düzenle"
+          >
+            {editWish && (
+              <WishForm item={editWish} onDone={() => setEditWish(null)} />
+            )}
+          </Sheet>
+
+          <Sheet
+            open={convertItem !== null}
+            onClose={() => setConvertItem(null)}
+            title="Tasarruf hedefine dönüştür"
+          >
+            {convertItem && (
+              <ConvertForm
+                item={convertItem}
+                onDone={() => setConvertItem(null)}
+              />
+            )}
+          </Sheet>
+
+          <Sheet
+            open={contributeGoal !== null}
+            onClose={() => setContributeGoal(null)}
+            title="Katkı ekle"
+          >
+            {contributeGoal && (
+              <ContributionForm
+                goal={contributeGoal}
+                onDone={() => setContributeGoal(null)}
+              />
+            )}
+          </Sheet>
+
+          <Sheet
+            open={manageGoal !== null}
+            onClose={() => setManageGoal(null)}
+            title="Hedefi yönet"
+          >
+            {manageGoal && (
+              <GoalManageActions
+                goal={manageGoal}
+                saved={savedByGoal.get(manageGoal.id) ?? 0}
+                history={(contributions.data ?? []).filter(
+                  (c) => c.savings_goal_id === manageGoal.id,
+                )}
+                onDone={() => setManageGoal(null)}
+              />
+            )}
+          </Sheet>
+        </>
+      )}
     </PageTransition>
   )
 }

@@ -200,6 +200,56 @@ export interface Database {
           },
         ]
       }
+      trips: {
+        Row: {
+          id: string
+          user_id: string
+          family_id: string | null
+          title: string
+          destination: string | null
+          cover_emoji: string | null
+          starts_on: string
+          ends_on: string
+          note: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          family_id?: string | null
+          title: string
+          destination?: string | null
+          cover_emoji?: string | null
+          starts_on: string
+          ends_on: string
+          note?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          family_id?: string | null
+          title?: string
+          destination?: string | null
+          cover_emoji?: string | null
+          starts_on?: string
+          ends_on?: string
+          note?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'trips_family_id_fkey'
+            columns: ['family_id']
+            isOneToOne: false
+            referencedRelation: 'families'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       shared_expenses: {
         Row: {
           id: string
@@ -483,6 +533,7 @@ export interface Database {
           currency: string
           target_date: string | null
           status: Database['public']['Enums']['wishlist_status']
+          trip_id: string | null
           is_family_visible: boolean
           created_at: string
           updated_at: string
@@ -496,6 +547,7 @@ export interface Database {
           currency?: string
           target_date?: string | null
           status?: Database['public']['Enums']['wishlist_status']
+          trip_id?: string | null
           is_family_visible?: boolean
           created_at?: string
           updated_at?: string
@@ -509,6 +561,7 @@ export interface Database {
           currency?: string
           target_date?: string | null
           status?: Database['public']['Enums']['wishlist_status']
+          trip_id?: string | null
           is_family_visible?: boolean
           created_at?: string
           updated_at?: string
@@ -688,6 +741,7 @@ export interface Database {
           starts_at: string | null
           note: string | null
           movie_id: string | null
+          trip_id: string | null
           is_family_visible: boolean
           created_at: string
           updated_at: string
@@ -701,6 +755,7 @@ export interface Database {
           starts_at?: string | null
           note?: string | null
           movie_id?: string | null
+          trip_id?: string | null
           is_family_visible?: boolean
           created_at?: string
           updated_at?: string
@@ -714,6 +769,7 @@ export interface Database {
           starts_at?: string | null
           note?: string | null
           movie_id?: string | null
+          trip_id?: string | null
           is_family_visible?: boolean
           created_at?: string
           updated_at?: string

@@ -9,7 +9,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { motion } from 'motion/react'
-import { useState, type ReactNode } from 'react'
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 
 import { AnimatedNumber } from '@/components/AnimatedNumber'
@@ -42,6 +42,14 @@ import {
   type ModuleMember,
 } from '@/features/family/space-data'
 import { useMovies } from '@/features/movies/hooks'
+import { useTrips } from '@/features/travel/hooks'
+import {
+  daysUntil,
+  sortTrips,
+  tripDayNumber,
+  tripLength,
+  tripPhase,
+} from '@/features/travel/trip-dates'
 import { useReminderSync } from '@/features/reminders/hooks'
 import { RemindersSection } from '@/features/reminders/RemindersSection'
 import { useContributions, useGoals } from '@/features/wishlist/hooks'
@@ -69,11 +77,7 @@ export function DashboardPage() {
         <MoviesModule />
         <CalendarModule />
         <FamilyModule />
-        <ComingSoonModule
-          icon={Plane}
-          title="Seyahat"
-          text="Gezi planları ve ortak masraf paylaşımı"
-        />
+        <TravelModule />
       </div>
     </PageTransition>
   )
@@ -810,26 +814,65 @@ function CtaModule({
   )
 }
 
-function ComingSoonModule({
-  icon: Icon,
-  title,
-  text,
-}: {
-  icon: LucideIcon
-  title: string
-  text: ReactNode
-}) {
+// The travel pillar's dashboard card: the next departure, or the trip you are
+// on right now. Trips live under İstekler, so that is where it points.
+function TravelModule() {
+  const trips = useTrips()
+
+  if (trips.isPending) {
+    return (
+      <div className="h-40 animate-pulse rounded-3xl bg-zinc-100 dark:bg-zinc-800" />
+    )
+  }
+
+  const next = sortTrips(trips.data ?? []).filter(
+    (trip) => tripPhase(trip) !== 'past',
+  )[0]
+
+  if (!next) {
+    return (
+      <CtaModule
+        to="/wishlist"
+        icon={Plane}
+        title="Bir gezi planla"
+        text="Tarihini gir; birikimin, takvimin ve grubun ona bağlansın."
+      />
+    )
+  }
+
+  const phase = tripPhase(next)
+  const days = daysUntil(next.starts_on)
+
   return (
-    <div className="rounded-3xl border border-dashed border-zinc-200 p-5 dark:border-zinc-800/80">
-      <div className="flex items-center justify-between">
-        <p className="flex items-center gap-2 font-semibold text-zinc-400 dark:text-zinc-500">
-          <Icon size={17} /> {title}
-        </p>
-        <span className="rounded-full bg-zinc-100 px-2.5 py-1 text-[10px] font-semibold tracking-wide text-zinc-400 uppercase dark:bg-zinc-800 dark:text-zinc-500">
-          Yakında
+    <Link
+      to="/wishlist"
+      className="group block rounded-3xl bg-gradient-to-br from-sky-600 to-indigo-600 p-5 text-white shadow-lg shadow-sky-600/20 transition-transform hover:-translate-y-0.5"
+    >
+      <div className="flex items-center justify-between text-sm text-sky-100">
+        <span className="flex items-center gap-2">
+          <Plane size={16} /> Seyahat
         </span>
+        <ArrowRight
+          size={16}
+          className="transition-transform group-hover:translate-x-0.5"
+        />
       </div>
-      <p className="mt-1.5 text-sm text-zinc-400 dark:text-zinc-600">{text}</p>
-    </div>
+      <p className="mt-3 flex items-center gap-2 text-lg font-semibold tracking-tight">
+        <span>{next.cover_emoji ?? '✈️'}</span>
+        <span className="truncate">{next.title}</span>
+      </p>
+      <p className="mt-0.5 text-3xl font-bold tracking-tight tabular-nums">
+        {phase === 'ongoing'
+          ? `${tripDayNumber(next)}. gün`
+          : days === 0
+            ? 'Bugün!'
+            : `${days} gün`}
+      </p>
+      <p className="text-sm text-sky-100">
+        {phase === 'ongoing'
+          ? `${tripLength(next)} günlük gezidesin`
+          : `${formatDate(next.starts_on)} · yola çıkışa`}
+      </p>
+    </Link>
   )
 }
