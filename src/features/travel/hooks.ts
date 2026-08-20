@@ -7,6 +7,7 @@ import {
   deleteTrip,
   listTrips,
   updateTrip,
+  updateTripEvent,
 } from '@/features/travel/api'
 
 const tripsKey = ['trips'] as const
@@ -53,6 +54,14 @@ export function useCreateTripWish() {
   return useMutation({
     mutationFn: createTripWish,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: wishesKey }),
+  })
+}
+
+export function useUpdateTripEvent() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: updateTripEvent,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: eventsKey }),
   })
 }
 

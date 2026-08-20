@@ -39,9 +39,18 @@ export async function updateTrip(params: {
   return data
 }
 
+// RLS filters a delete the caller may not make into a silent no-op, so the
+// row has to prove it went away
 export async function deleteTrip(id: string): Promise<void> {
-  const { error } = await supabase.from('trips').delete().eq('id', id)
+  const { data, error } = await supabase
+    .from('trips')
+    .delete()
+    .eq('id', id)
+    .select('id')
   if (error) throw error
+  if (!data || data.length === 0) {
+    throw new Error('Bu geziyi silme yetkin yok.')
+  }
 }
 
 // The saving side of a trip: a travel wish stamped with trip_id, which the
@@ -68,6 +77,21 @@ export async function createTripWish(params: {
     .single()
   if (error) throw error
   return data.id
+}
+
+// Keeps the caller's own anchor in step after the trip moves or is renamed;
+// the unique index means there is at most one row to touch.
+export async function updateTripEvent(params: {
+  tripId: string
+  title: string
+  startsOn: string
+}): Promise<void> {
+  const { error } = await supabase
+    .from('events')
+    .update({ title: params.title, starts_on: params.startsOn })
+    .eq('trip_id', params.tripId)
+    .eq('user_id', await currentUserId())
+  if (error) throw error
 }
 
 // The calendar side: one all-day anchor per person per trip. kind stays

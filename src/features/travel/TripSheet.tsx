@@ -17,7 +17,11 @@ import { useEvents } from '@/features/calendar/hooks'
 import type { Family } from '@/features/family/api'
 import { useMemberships } from '@/features/family/hooks'
 import type { Trip } from '@/features/travel/api'
-import { useCreateTripEvent, useCreateTripWish } from '@/features/travel/hooks'
+import {
+  useCreateTripEvent,
+  useCreateTripWish,
+  useUpdateTripEvent,
+} from '@/features/travel/hooks'
 import { TripForm } from '@/features/travel/TripForm'
 import {
   daysUntil,
@@ -33,7 +37,7 @@ import {
   useGoals,
   useWishlistItems,
 } from '@/features/wishlist/hooks'
-import { formatDate } from '@/lib/dates'
+import { formatDate, todayISO } from '@/lib/dates'
 import { saveErrorMessage } from '@/lib/errors'
 import { formatMoney, parseAmountInput } from '@/lib/money'
 
@@ -54,6 +58,7 @@ export function TripSheet({ trip, open, onClose }: TripSheetProps) {
   const events = useEvents()
   const memberships = useMemberships()
   const createEvent = useCreateTripEvent()
+  const updateEvent = useUpdateTripEvent()
 
   const [editOpen, setEditOpen] = useState(false)
   const [saveOpen, setSaveOpen] = useState(false)
@@ -73,19 +78,28 @@ export function TripSheet({ trip, open, onClose }: TripSheetProps) {
     .reduce((sum, c) => sum + c.amount, 0)
   const progress = myGoal ? Math.min(1, saved / myGoal.target_amount) : 0
 
-  const anchored = (events.data ?? []).some((e) => e.trip_id === trip.id)
+  const anchor = (events.data ?? []).find((e) => e.trip_id === trip.id)
+  const anchorStale =
+    anchor !== undefined && anchor.starts_on !== trip.starts_on
   const group = (memberships.data ?? [])
     .map((m) => m.families)
     .find((f): f is Family => f?.id === trip.family_id)
 
-  async function addToCalendar() {
+  // One anchor per person per trip, so moving the trip updates the existing
+  // event rather than trying to insert a second one
+  async function writeAnchor() {
     setError(null)
+    const values = {
+      tripId: trip.id,
+      title: `${trip.cover_emoji ?? '✈️'} ${trip.title}`,
+      startsOn: trip.starts_on,
+    }
     try {
-      await createEvent.mutateAsync({
-        tripId: trip.id,
-        title: `${trip.cover_emoji ?? '✈️'} ${trip.title}`,
-        startsOn: trip.starts_on,
-      })
+      if (anchor) {
+        await updateEvent.mutateAsync(values)
+      } else {
+        await createEvent.mutateAsync(values)
+      }
     } catch (e) {
       setError(saveErrorMessage(e))
     }
@@ -99,7 +113,11 @@ export function TripSheet({ trip, open, onClose }: TripSheetProps) {
 
   return (
     <>
-      <Sheet open={open} onClose={onClose} title={trip.title}>
+      <Sheet
+        open={open && !editOpen && !saveOpen && convertItem === null}
+        onClose={onClose}
+        title={trip.title}
+      >
         <div className="space-y-5">
           <div className="rounded-2xl bg-gradient-to-br from-sky-600 to-indigo-600 p-4 text-white">
             <p className="text-3xl">{trip.cover_emoji ?? '✈️'}</p>
@@ -200,19 +218,27 @@ export function TripSheet({ trip, open, onClose }: TripSheetProps) {
             <p className="mb-2 flex items-center gap-1.5 text-sm font-semibold tracking-tight">
               <CalendarPlus size={15} className="text-indigo-500" /> Takvim
             </p>
-            {anchored ? (
+            {anchor && !anchorStale ? (
               <p className="flex items-center gap-2 rounded-xl bg-emerald-50 px-3.5 py-3 text-sm font-medium text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300">
                 <Check size={15} /> Takvimine eklendi
               </p>
             ) : (
-              <button
-                onClick={addToCalendar}
-                disabled={createEvent.isPending}
-                className="flex w-full items-center justify-between rounded-xl bg-white px-3.5 py-3 text-left text-sm font-medium shadow-sm shadow-zinc-200/60 transition-colors hover:bg-indigo-50 disabled:opacity-60 dark:bg-zinc-900 dark:shadow-none dark:hover:bg-indigo-500/10"
-              >
-                Takvime ekle
-                <ArrowRight size={15} className="text-zinc-400" />
-              </button>
+              <>
+                <button
+                  onClick={writeAnchor}
+                  disabled={createEvent.isPending || updateEvent.isPending}
+                  className="flex w-full items-center justify-between rounded-xl bg-white px-3.5 py-3 text-left text-sm font-medium shadow-sm shadow-zinc-200/60 transition-colors hover:bg-indigo-50 disabled:opacity-60 dark:bg-zinc-900 dark:shadow-none dark:hover:bg-indigo-500/10"
+                >
+                  {anchorStale ? 'Takvimi güncelle' : 'Takvime ekle'}
+                  <ArrowRight size={15} className="text-zinc-400" />
+                </button>
+                {anchorStale && (
+                  <p className="mt-1.5 text-xs text-amber-600 dark:text-amber-400">
+                    Takvimdeki kayıt {formatDate(anchor.starts_on)} tarihinde
+                    kaldı.
+                  </p>
+                )}
+              </>
             )}
           </div>
 
@@ -298,7 +324,7 @@ function TripSavingForm({
         tripId: trip.id,
         name: trip.title,
         amount: parsed,
-        targetDate: trip.starts_on,
+        targetDate: trip.starts_on < todayISO() ? todayISO() : trip.starts_on,
       })
       const created = await wishes.refetch()
       const wish = (created.data ?? []).find((w) => w.id === id)

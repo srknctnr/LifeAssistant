@@ -50,6 +50,14 @@ export function TripForm({ trip, onDone }: TripFormProps) {
 
   // only the creator may move a trip between groups (pin_trip_owner)
   const canChangeGroup = !trip || trip.user_id === userId
+  // and only the creator or the group owner may delete it (trips_delete_owner)
+  const isGroupOwner = (memberships.data ?? []).some(
+    (m) =>
+      m.user_id === userId &&
+      m.family_id === trip?.family_id &&
+      m.role === 'owner',
+  )
+  const canDelete = Boolean(trip) && (trip?.user_id === userId || isGroupOwner)
   const isPending = create.isPending || update.isPending || remove.isPending
 
   async function handleSubmit(event: FormEvent) {
@@ -206,7 +214,7 @@ export function TripForm({ trip, onDone }: TripFormProps) {
         Kaydet
       </Button>
 
-      {trip && (
+      {canDelete && (
         <button
           type="button"
           onClick={handleDelete}
@@ -216,7 +224,7 @@ export function TripForm({ trip, onDone }: TripFormProps) {
           {armed ? 'Emin misin? Tekrar dokun' : 'Geziyi sil'}
         </button>
       )}
-      {trip && (
+      {canDelete && (
         <p className="text-center text-xs text-zinc-400">
           Gezi silinse de birikimin, bütçe kalemin ve takvim kaydın durur.
         </p>
