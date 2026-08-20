@@ -250,6 +250,62 @@ export interface Database {
           },
         ]
       }
+      trip_items: {
+        Row: {
+          id: string
+          trip_id: string
+          user_id: string
+          kind: Database['public']['Enums']['trip_item_kind']
+          title: string
+          starts_on: string | null
+          starts_at: string | null
+          location: string | null
+          link: string | null
+          confirmation_no: string | null
+          note: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          trip_id: string
+          user_id: string
+          kind?: Database['public']['Enums']['trip_item_kind']
+          title: string
+          starts_on?: string | null
+          starts_at?: string | null
+          location?: string | null
+          link?: string | null
+          confirmation_no?: string | null
+          note?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          trip_id?: string
+          user_id?: string
+          kind?: Database['public']['Enums']['trip_item_kind']
+          title?: string
+          starts_on?: string | null
+          starts_at?: string | null
+          location?: string | null
+          link?: string | null
+          confirmation_no?: string | null
+          note?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'trip_items_trip_id_fkey'
+            columns: ['trip_id']
+            isOneToOne: false
+            referencedRelation: 'trips'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       shared_expenses: {
         Row: {
           id: string
@@ -917,6 +973,7 @@ export interface Database {
       expense_period: 'weekly' | 'monthly' | 'yearly' | 'once'
       movie_status: 'to_watch' | 'watched'
       event_kind: 'general' | 'movie'
+      trip_item_kind: 'stay' | 'transport' | 'activity' | 'note'
       expense_source: 'manual' | 'savings_goal'
       wishlist_kind: 'purchase' | 'travel'
       wishlist_status: 'active' | 'converted' | 'completed' | 'archived'
@@ -947,6 +1004,7 @@ export const Constants = {
       expense_period: ['weekly', 'monthly', 'yearly', 'once'],
       movie_status: ['to_watch', 'watched'],
       event_kind: ['general', 'movie'],
+      trip_item_kind: ['stay', 'transport', 'activity', 'note'],
       expense_source: ['manual', 'savings_goal'],
       wishlist_kind: ['purchase', 'travel'],
       wishlist_status: ['active', 'converted', 'completed', 'archived'],

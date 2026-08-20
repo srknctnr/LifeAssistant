@@ -3,10 +3,14 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   createTrip,
   createTripEvent,
+  createTripItem,
   createTripWish,
   deleteTrip,
+  deleteTripItem,
+  listTripItems,
   listTrips,
   updateTrip,
+  updateTripItem,
   updateTripEvent,
 } from '@/features/travel/api'
 
@@ -71,4 +75,33 @@ export function useCreateTripEvent() {
     mutationFn: createTripEvent,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: eventsKey }),
   })
+}
+
+const itemsKey = (tripId: string) => ['trip_items', tripId] as const
+
+export function useTripItems(tripId: string) {
+  return useQuery({
+    queryKey: itemsKey(tripId),
+    queryFn: () => listTripItems(tripId),
+  })
+}
+
+function useItemsInvalidation(tripId: string) {
+  const queryClient = useQueryClient()
+  return () => queryClient.invalidateQueries({ queryKey: itemsKey(tripId) })
+}
+
+export function useCreateTripItem(tripId: string) {
+  const invalidate = useItemsInvalidation(tripId)
+  return useMutation({ mutationFn: createTripItem, onSettled: invalidate })
+}
+
+export function useUpdateTripItem(tripId: string) {
+  const invalidate = useItemsInvalidation(tripId)
+  return useMutation({ mutationFn: updateTripItem, onSettled: invalidate })
+}
+
+export function useDeleteTripItem(tripId: string) {
+  const invalidate = useItemsInvalidation(tripId)
+  return useMutation({ mutationFn: deleteTripItem, onSettled: invalidate })
 }

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import {
   daysUntil,
+  sortTripItems,
   sortTrips,
   tripDayNumber,
   tripLength,
@@ -104,5 +105,38 @@ describe('sortTrips', () => {
     ]
     sortTrips(trips, today)
     expect(trips.map((t) => t.id)).toEqual(['b', 'a'])
+  })
+})
+
+describe('sortTripItems', () => {
+  const row = (
+    id: string,
+    starts_on: string | null,
+    starts_at: string | null,
+    created_at = '2026-01-01',
+  ) => ({ id, starts_on, starts_at, created_at })
+
+  it('orders by day, then by time, with all-day rows first in a day', () => {
+    const sorted = sortTripItems([
+      row('c', '2026-09-13', '09:00:00'),
+      row('b', '2026-09-12', '20:00:00'),
+      row('a', '2026-09-12', null),
+    ])
+    expect(sorted.map((r) => r.id)).toEqual(['a', 'b', 'c'])
+  })
+
+  it('puts undated rows last, in the order they were written', () => {
+    const sorted = sortTripItems([
+      row('note2', null, null, '2026-01-02'),
+      row('dated', '2026-09-12', null),
+      row('note1', null, null, '2026-01-01'),
+    ])
+    expect(sorted.map((r) => r.id)).toEqual(['dated', 'note1', 'note2'])
+  })
+
+  it('does not mutate the input', () => {
+    const items = [row('b', '2026-09-13', null), row('a', '2026-09-12', null)]
+    sortTripItems(items)
+    expect(items.map((r) => r.id)).toEqual(['b', 'a'])
   })
 })

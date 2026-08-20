@@ -23,6 +23,7 @@ import {
   useUpdateTripEvent,
 } from '@/features/travel/hooks'
 import { TripForm } from '@/features/travel/TripForm'
+import { TripPlan } from '@/features/travel/TripPlan'
 import {
   daysUntil,
   tripDayNumber,
@@ -63,6 +64,8 @@ export function TripSheet({ trip, open, onClose }: TripSheetProps) {
   const [editOpen, setEditOpen] = useState(false)
   const [saveOpen, setSaveOpen] = useState(false)
   const [convertItem, setConvertItem] = useState<WishlistItem | null>(null)
+  // the notebook opens its own sheets; this parent gets out of the way
+  const [planSheetOpen, setPlanSheetOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const phase = tripPhase(trip)
@@ -114,7 +117,13 @@ export function TripSheet({ trip, open, onClose }: TripSheetProps) {
   return (
     <>
       <Sheet
-        open={open && !editOpen && !saveOpen && convertItem === null}
+        open={
+          open &&
+          !editOpen &&
+          !saveOpen &&
+          !planSheetOpen &&
+          convertItem === null
+        }
         onClose={onClose}
         title={trip.title}
       >
@@ -145,6 +154,8 @@ export function TripSheet({ trip, open, onClose }: TripSheetProps) {
               {trip.note}
             </p>
           )}
+
+          <TripPlan trip={trip} onSheetChange={setPlanSheetOpen} />
 
           <div>
             <p className="mb-2 flex items-center gap-1.5 text-sm font-semibold tracking-tight">

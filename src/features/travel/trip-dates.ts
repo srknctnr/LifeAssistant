@@ -62,3 +62,31 @@ export function sortTrips<T extends TripRange>(
     return a.starts_on.localeCompare(b.starts_on)
   })
 }
+
+export interface TripItemOrder {
+  starts_on: string | null
+  starts_at: string | null
+  created_at: string
+}
+
+// Dated rows first in day order; within a day the all-day ones come first and
+// then the timed ones ascending, matching the calendar (event-day.ts). Undated
+// rows (passport, packing) sit last in the order they were written.
+export function sortTripItems<T extends TripItemOrder>(items: T[]): T[] {
+  return [...items].sort((a, b) => {
+    if (a.starts_on === null && b.starts_on === null) {
+      return a.created_at.localeCompare(b.created_at)
+    }
+    if (a.starts_on === null) return 1
+    if (b.starts_on === null) return -1
+    if (a.starts_on !== b.starts_on) {
+      return a.starts_on.localeCompare(b.starts_on)
+    }
+    if (a.starts_at === b.starts_at) {
+      return a.created_at.localeCompare(b.created_at)
+    }
+    if (a.starts_at === null) return -1
+    if (b.starts_at === null) return 1
+    return a.starts_at.localeCompare(b.starts_at)
+  })
+}

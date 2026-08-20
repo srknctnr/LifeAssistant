@@ -1,7 +1,14 @@
-import type { Tables, TablesInsert, TablesUpdate } from '@/lib/database.types'
+import type {
+  Enums,
+  Tables,
+  TablesInsert,
+  TablesUpdate,
+} from '@/lib/database.types'
 import { currentUserId, supabase } from '@/lib/supabase'
 
 export type Trip = Tables<'trips'>
+export type TripItem = Tables<'trip_items'>
+export type TripItemKind = Enums<'trip_item_kind'>
 
 // A trip is personal when family_id is null and the group's when it is set;
 // the SELECT policy covers both, so this query is deliberately NOT pinned to
@@ -110,4 +117,56 @@ export async function createTripEvent(params: {
     trip_id: params.tripId,
   })
   if (error) throw error
+}
+
+// The trip's notebook. Visibility rides on the trip (can_use_trip), so this
+// query is scoped by trip id and nothing else — a group trip's notebook is
+// the group's. Ordered by day only; the time-of-day sort happens client-side
+// so the query keeps a single .order().
+export async function listTripItems(tripId: string): Promise<TripItem[]> {
+  const { data, error } = await supabase
+    .from('trip_items')
+    .select('*')
+    .eq('trip_id', tripId)
+    .order('starts_on', { ascending: true })
+  if (error) throw error
+  return data
+}
+
+export async function createTripItem(
+  input: TablesInsert<'trip_items'>,
+): Promise<TripItem> {
+  const { data, error } = await supabase
+    .from('trip_items')
+    .insert(input)
+    .select()
+    .single()
+  if (error) throw error
+  return data
+}
+
+export async function updateTripItem(params: {
+  id: string
+  patch: TablesUpdate<'trip_items'>
+}): Promise<TripItem> {
+  const { data, error } = await supabase
+    .from('trip_items')
+    .update(params.patch)
+    .eq('id', params.id)
+    .select()
+    .single()
+  if (error) throw error
+  return data
+}
+
+export async function deleteTripItem(id: string): Promise<void> {
+  const { data, error } = await supabase
+    .from('trip_items')
+    .delete()
+    .eq('id', id)
+    .select('id')
+  if (error) throw error
+  if (!data || data.length === 0) {
+    throw new Error('Bu kaydı silme yetkin yok.')
+  }
 }
