@@ -16,13 +16,14 @@ import { TextField } from '@/components/TextField'
 import { useEvents } from '@/features/calendar/hooks'
 import type { Family } from '@/features/family/api'
 import { useMemberships } from '@/features/family/hooks'
-import type { Trip } from '@/features/travel/api'
+import type { Trip, TripItem } from '@/features/travel/api'
 import {
   useCreateTripEvent,
   useCreateTripWish,
   useUpdateTripEvent,
 } from '@/features/travel/hooks'
 import { TripForm } from '@/features/travel/TripForm'
+import { TripItemForm } from '@/features/travel/TripItemForm'
 import { TripPlan } from '@/features/travel/TripPlan'
 import {
   daysUntil,
@@ -64,8 +65,10 @@ export function TripSheet({ trip, open, onClose }: TripSheetProps) {
   const [editOpen, setEditOpen] = useState(false)
   const [saveOpen, setSaveOpen] = useState(false)
   const [convertItem, setConvertItem] = useState<WishlistItem | null>(null)
-  // the notebook opens its own sheets; this parent gets out of the way
-  const [planSheetOpen, setPlanSheetOpen] = useState(false)
+  // the notebook's sheets are owned here, as siblings of the trip sheet:
+  // a sheet rendered inside it would unmount as soon as it steps aside
+  const [planAddOpen, setPlanAddOpen] = useState(false)
+  const [planEditItem, setPlanEditItem] = useState<TripItem | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const phase = tripPhase(trip)
@@ -121,7 +124,8 @@ export function TripSheet({ trip, open, onClose }: TripSheetProps) {
           open &&
           !editOpen &&
           !saveOpen &&
-          !planSheetOpen &&
+          !planAddOpen &&
+          planEditItem === null &&
           convertItem === null
         }
         onClose={onClose}
@@ -155,7 +159,11 @@ export function TripSheet({ trip, open, onClose }: TripSheetProps) {
             </p>
           )}
 
-          <TripPlan trip={trip} onSheetChange={setPlanSheetOpen} />
+          <TripPlan
+            trip={trip}
+            onAdd={() => setPlanAddOpen(true)}
+            onEdit={setPlanEditItem}
+          />
 
           <div>
             <p className="mb-2 flex items-center gap-1.5 text-sm font-semibold tracking-tight">
@@ -265,6 +273,28 @@ export function TripSheet({ trip, open, onClose }: TripSheetProps) {
             Geziyi düzenle
           </Button>
         </div>
+      </Sheet>
+
+      <Sheet
+        open={planAddOpen}
+        onClose={() => setPlanAddOpen(false)}
+        title="Plana ekle"
+      >
+        <TripItemForm trip={trip} onDone={() => setPlanAddOpen(false)} />
+      </Sheet>
+
+      <Sheet
+        open={planEditItem !== null}
+        onClose={() => setPlanEditItem(null)}
+        title="Kaydı düzenle"
+      >
+        {planEditItem && (
+          <TripItemForm
+            trip={trip}
+            item={planEditItem}
+            onDone={() => setPlanEditItem(null)}
+          />
+        )}
       </Sheet>
 
       <Sheet

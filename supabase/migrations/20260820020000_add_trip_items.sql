@@ -65,6 +65,28 @@ $fn$;
 revoke execute on function public.can_use_trip(uuid) from public, anon;
 grant execute on function public.can_use_trip(uuid) to authenticated, service_role;
 
+-- A row belongs to the trip and the person it was written for; only its
+-- content is editable. Without this an UPDATE could re-point trip_id (USING
+-- sees the old trip, WITH CHECK the new one, and both pass for anyone who can
+-- use both) and move somebody else's booking into a private trip — the same
+-- hole that expense_shares had before 20260818020000.
+create or replace function public.pin_trip_item()
+returns trigger
+language plpgsql
+security invoker
+set search_path = ''
+as $fn$
+begin
+  new.trip_id := old.trip_id;
+  new.user_id := old.user_id;
+  return new;
+end;
+$fn$;
+
+create trigger pin_trip_items
+  before update on public.trip_items
+  for each row execute function public.pin_trip_item();
+
 alter table public.trip_items enable row level security;
 
 create policy "trip_items_select_trip" on public.trip_items
