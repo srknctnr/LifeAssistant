@@ -9,6 +9,7 @@ import {
 } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 
 import { EmptyState } from '@/components/EmptyState'
 import { PageTransition } from '@/components/PageTransition'
@@ -44,6 +45,12 @@ import {
   startOfWeek,
   weekDays,
 } from '@/features/calendar/week-math'
+import { useTrips } from '@/features/travel/hooks'
+import {
+  tripDayMap,
+  tripDayNumber,
+  tripLength,
+} from '@/features/travel/trip-dates'
 import type { Reminder } from '@/features/reminders/api'
 import {
   useReminders,
@@ -72,6 +79,7 @@ export function CalendarPage() {
   const categories = useLifeCategories()
   const entries = useCategoryEntries()
   const events = useEvents()
+  const trips = useTrips()
   useReminderSync()
 
   const [view, setView] = useState<CalendarView>('week')
@@ -86,6 +94,11 @@ export function CalendarPage() {
   const selectedISO = toISODate(selected)
   const categoryDays = weekDays(selected)
   const busy = busyDates(events.data ?? [])
+  const tripDays = tripDayMap(trips.data ?? [])
+  const selectedTrip = tripDays.get(selectedISO)
+  const selectedTripRow = (trips.data ?? []).find(
+    (t) => t.id === selectedTrip?.tripId,
+  )
 
   const isAway =
     view === 'week'
@@ -159,6 +172,7 @@ export function CalendarPage() {
           selectedISO={selectedISO}
           anchorMonth={view === 'month' ? selected.getMonth() : null}
           busy={busy}
+          tripDays={tripDays}
           onSelect={setSelected}
         />
       </motion.div>
@@ -167,6 +181,23 @@ export function CalendarPage() {
         title={agendaDayLabel.format(selected)}
         onAdd={() => setAddEventOpen(true)}
       >
+        {selectedTripRow && (
+          <Link
+            to="/wishlist"
+            className="mb-2 flex items-center gap-2.5 rounded-xl bg-sky-50 px-3.5 py-2.5 text-sm transition-colors hover:bg-sky-100 dark:bg-sky-500/10 dark:hover:bg-sky-500/20"
+          >
+            <span className="text-base">
+              {selectedTripRow.cover_emoji ?? '✈️'}
+            </span>
+            <span className="min-w-0 flex-1 truncate font-medium text-sky-800 dark:text-sky-200">
+              {selectedTripRow.title}
+            </span>
+            <span className="shrink-0 text-xs text-sky-700/70 tabular-nums dark:text-sky-300/70">
+              {tripDayNumber(selectedTripRow, selectedISO)}. gün /{' '}
+              {tripLength(selectedTripRow)}
+            </span>
+          </Link>
+        )}
         <DayPlans
           selectedISO={selectedISO}
           onEditEvent={(event) => setEditEvent(event)}

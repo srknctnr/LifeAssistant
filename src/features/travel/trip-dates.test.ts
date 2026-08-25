@@ -2,11 +2,13 @@ import { describe, expect, it } from 'vitest'
 
 import {
   daysUntil,
+  addDaysISO,
   sortTripItems,
   sortTrips,
   tripDayNumber,
   tripLength,
   tripNights,
+  tripDayMap,
   tripPhase,
 } from '@/features/travel/trip-dates'
 
@@ -138,5 +140,61 @@ describe('sortTripItems', () => {
     const items = [row('b', '2026-09-13', null), row('a', '2026-09-12', null)]
     sortTripItems(items)
     expect(items.map((r) => r.id)).toEqual(['b', 'a'])
+  })
+})
+
+describe('addDaysISO', () => {
+  it('crosses months, years and a DST change', () => {
+    expect(addDaysISO('2026-09-28', 3)).toBe('2026-10-01')
+    expect(addDaysISO('2026-12-30', 3)).toBe('2027-01-02')
+    expect(addDaysISO('2026-03-27', 3)).toBe('2026-03-30')
+    expect(addDaysISO('2026-09-12', -1)).toBe('2026-09-11')
+  })
+})
+
+describe('tripDayMap', () => {
+  const trip = (id: string, starts_on: string, ends_on: string) => ({
+    id,
+    title: id,
+    cover_emoji: null,
+    starts_on,
+    ends_on,
+  })
+
+  it('covers every day of a trip and marks the ends', () => {
+    const map = tripDayMap([trip('rome', '2026-09-12', '2026-09-15')])
+    expect([...map.keys()]).toEqual([
+      '2026-09-12',
+      '2026-09-13',
+      '2026-09-14',
+      '2026-09-15',
+    ])
+    expect(map.get('2026-09-12')?.isStart).toBe(true)
+    expect(map.get('2026-09-12')?.isEnd).toBe(false)
+    expect(map.get('2026-09-15')?.isEnd).toBe(true)
+    expect(map.get('2026-09-13')?.isStart).toBe(false)
+  })
+
+  it('marks a day trip as both ends', () => {
+    const map = tripDayMap([trip('day', '2026-09-12', '2026-09-12')])
+    expect(map.get('2026-09-12')).toMatchObject({ isStart: true, isEnd: true })
+  })
+
+  it('gives an overlapping day to the trip that started first', () => {
+    const map = tripDayMap([
+      trip('second', '2026-09-14', '2026-09-16'),
+      trip('first', '2026-09-12', '2026-09-15'),
+    ])
+    expect(map.get('2026-09-14')?.tripId).toBe('first')
+    expect(map.get('2026-09-16')?.tripId).toBe('second')
+  })
+
+  it('falls back to a plane when the trip has no emoji', () => {
+    const map = tripDayMap([trip('x', '2026-09-12', '2026-09-12')])
+    expect(map.get('2026-09-12')?.emoji).toBe('✈️')
+  })
+
+  it('returns an empty map for no trips', () => {
+    expect(tripDayMap([]).size).toBe(0)
   })
 })

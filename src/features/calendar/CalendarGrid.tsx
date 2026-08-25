@@ -1,6 +1,7 @@
 import { motion } from 'motion/react'
 
 import { DAY_INITIALS } from '@/features/calendar/week-math'
+import type { TripSpan } from '@/features/travel/trip-dates'
 import { formatDate, toISODate, todayISO } from '@/lib/dates'
 
 interface CalendarGridProps {
@@ -10,6 +11,8 @@ interface CalendarGridProps {
   // legitimately spans two months and nothing should be dimmed
   anchorMonth: number | null
   busy: Set<string> // ISO days carrying at least one event
+  // days covered by a trip, painted as one band running behind the numbers
+  tripDays: Map<string, TripSpan>
   onSelect: (day: Date) => void
 }
 
@@ -20,6 +23,7 @@ export function CalendarGrid({
   selectedISO,
   anchorMonth,
   busy,
+  tripDays,
   onSelect,
 }: CalendarGridProps) {
   const today = todayISO()
@@ -46,12 +50,15 @@ export function CalendarGrid({
               const isSelected = iso === selectedISO
               const isToday = iso === today
               const isBusy = busy.has(iso)
+              const span = tripDays.get(iso)
               return (
                 <button
                   key={iso}
                   type="button"
                   onClick={() => onSelect(day)}
-                  aria-label={`${formatDate(day)}${isBusy ? ', planlı' : ''}`}
+                  aria-label={`${formatDate(day)}${isBusy ? ', planlı' : ''}${
+                    span ? `, ${span.title}` : ''
+                  }`}
                   aria-pressed={isSelected}
                   aria-current={isToday ? 'date' : undefined}
                   className={`relative mx-auto flex h-9 w-9 flex-col items-center justify-center rounded-full transition-colors ${
@@ -68,6 +75,16 @@ export function CalendarGrid({
                       : ''
                   }`}
                 >
+                  {/* the band bleeds past the cell so consecutive days join
+                      up, and only the real ends of the run get a round cap */}
+                  {span && (
+                    <span
+                      aria-hidden
+                      className={`absolute -inset-x-1 inset-y-0.5 bg-sky-100 dark:bg-sky-500/15 ${
+                        span.isStart ? 'left-0 rounded-l-full' : ''
+                      } ${span.isEnd ? 'right-0 rounded-r-full' : ''}`}
+                    />
+                  )}
                   {isSelected && (
                     <motion.span
                       layoutId="calendar-selected"
@@ -82,13 +99,22 @@ export function CalendarGrid({
                   <span className="relative text-sm font-medium tabular-nums">
                     {day.getDate()}
                   </span>
-                  {isBusy && (
+                  {isBusy ? (
                     <span
                       aria-hidden
                       className={`relative mt-0.5 h-1 w-1 rounded-full ${
                         isSelected ? 'bg-white/70' : 'bg-indigo-500'
                       }`}
                     />
+                  ) : (
+                    span?.isStart && (
+                      <span
+                        aria-hidden
+                        className="relative -mb-0.5 text-[9px] leading-none"
+                      >
+                        {span.emoji}
+                      </span>
+                    )
                   )}
                 </button>
               )

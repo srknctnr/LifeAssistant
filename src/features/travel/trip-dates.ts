@@ -90,3 +90,51 @@ export function sortTripItems<T extends TripItemOrder>(items: T[]): T[] {
     return a.starts_at.localeCompare(b.starts_at)
   })
 }
+
+export interface TripSpan {
+  tripId: string
+  title: string
+  emoji: string
+  isStart: boolean
+  isEnd: boolean
+}
+
+interface TripLike extends TripRange {
+  id: string
+  title: string
+  cover_emoji: string | null
+}
+
+// Every day covered by a trip, so the calendar can paint the range as one
+// continuous band. Overlapping trips: the one that starts earlier wins the
+// day, which keeps the band stable while you scroll.
+export function tripDayMap(trips: TripLike[]): Map<string, TripSpan> {
+  const days = new Map<string, TripSpan>()
+  const ordered = [...trips].sort((a, b) =>
+    a.starts_on.localeCompare(b.starts_on),
+  )
+
+  for (const trip of ordered) {
+    const total = daysBetween(trip.starts_on, trip.ends_on)
+    if (total < 0) continue
+    for (let offset = 0; offset <= total; offset += 1) {
+      const iso = addDaysISO(trip.starts_on, offset)
+      if (days.has(iso)) continue
+      days.set(iso, {
+        tripId: trip.id,
+        title: trip.title,
+        emoji: trip.cover_emoji ?? '✈️',
+        isStart: offset === 0,
+        isEnd: offset === total,
+      })
+    }
+  }
+  return days
+}
+
+// UTC arithmetic, same reason as daysBetween: a DST change must not shift a day
+export function addDaysISO(iso: string, days: number): string {
+  const [y, m, d] = iso.split('-').map(Number)
+  const shifted = new Date(Date.UTC(y, m - 1, d + days))
+  return shifted.toISOString().slice(0, 10)
+}
