@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import {
   daysUntil,
+  groupTripItemsByDay,
   addDaysISO,
   sortTripItems,
   sortTrips,
@@ -196,5 +197,39 @@ describe('tripDayMap', () => {
 
   it('returns an empty map for no trips', () => {
     expect(tripDayMap([]).size).toBe(0)
+  })
+})
+
+describe('groupTripItemsByDay', () => {
+  const row = (
+    id: string,
+    starts_on: string | null,
+    starts_at: string | null = null,
+    created_at = '2026-01-01',
+  ) => ({ id, starts_on, starts_at, created_at })
+
+  it('groups by day in trip order and keeps the undated rows last', () => {
+    const groups = groupTripItemsByDay([
+      row('note', null),
+      row('dinner', '2026-09-12', '20:00:00'),
+      row('museum', '2026-09-13'),
+      row('hotel', '2026-09-12'),
+    ])
+    expect(groups.map((g) => g.iso)).toEqual(['2026-09-12', '2026-09-13', null])
+    expect(groups[0].items.map((i) => i.id)).toEqual(['hotel', 'dinner'])
+    expect(groups[2].items.map((i) => i.id)).toEqual(['note'])
+  })
+
+  it('returns one group when everything shares a day', () => {
+    const groups = groupTripItemsByDay([
+      row('a', '2026-09-12'),
+      row('b', '2026-09-12', '09:00:00'),
+    ])
+    expect(groups).toHaveLength(1)
+    expect(groups[0].items).toHaveLength(2)
+  })
+
+  it('returns nothing for an empty notebook', () => {
+    expect(groupTripItemsByDay([])).toEqual([])
   })
 })

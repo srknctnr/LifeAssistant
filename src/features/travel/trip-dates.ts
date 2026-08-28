@@ -138,3 +138,28 @@ export function addDaysISO(iso: string, days: number): string {
   const shifted = new Date(Date.UTC(y, m - 1, d + days))
   return shifted.toISOString().slice(0, 10)
 }
+
+export interface TripItemDay<T> {
+  // null is the "no date yet" group, which always comes last
+  iso: string | null
+  items: T[]
+}
+
+// The notebook read as an itinerary: one group per day in trip order, with the
+// undated rows (passport, packing) gathered at the end. Days with nothing on
+// them are not invented — this groups what exists, it does not lay out a grid.
+export function groupTripItemsByDay<T extends TripItemOrder>(
+  items: T[],
+): TripItemDay<T>[] {
+  const groups: TripItemDay<T>[] = []
+  for (const item of sortTripItems(items)) {
+    const iso = item.starts_on
+    const last = groups[groups.length - 1]
+    if (last && last.iso === iso) {
+      last.items.push(item)
+    } else {
+      groups.push({ iso, items: [item] })
+    }
+  }
+  return groups
+}
