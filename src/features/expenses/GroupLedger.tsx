@@ -23,6 +23,7 @@ import {
 import { SettlementForm } from '@/features/expenses/SettlementForm'
 import { SharedExpenseForm } from '@/features/expenses/SharedExpenseForm'
 import { useShareMirror } from '@/features/expenses/useShareMirror'
+import { useTrips } from '@/features/travel/hooks'
 import { formatDate } from '@/lib/dates'
 import { describeError, saveErrorMessage } from '@/lib/errors'
 import { formatMoney } from '@/lib/money'
@@ -41,12 +42,15 @@ export function GroupLedger({ familyId, currency, members }: GroupLedgerProps) {
   const settlements = useSettlements(familyId)
   const deleteSettlement = useDeleteSettlement(familyId)
   const mirror = useShareMirror(session?.user.id)
+  const trips = useTrips()
 
   const [addOpen, setAddOpen] = useState(false)
   const [editExpense, setEditExpense] = useState<ExpenseWithShares | null>(null)
   const [settleWith, setSettleWith] = useState<LedgerTransfer | null>(null)
   const [settleOpen, setSettleOpen] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
+  // a label, never part of the balance: this filters the list only
+  const [tripFilter, setTripFilter] = useState<string | null>(null)
 
   const isPending = expenses.isPending || settlements.isPending
   // current members plus anyone who only lives in the ledger's history
@@ -61,6 +65,14 @@ export function GroupLedger({ familyId, currency, members }: GroupLedgerProps) {
     settlements: settlements.data ?? [],
     userId: session?.user.id,
   })
+
+  const groupTrips = (trips.data ?? []).filter((t) => t.family_id === familyId)
+  const allExpenses = expenses.data ?? []
+  const shownExpenses = tripFilter
+    ? allExpenses.filter((e) => e.trip_id === tripFilter)
+    : allExpenses
+  const tripOf = (id: string | null) =>
+    id ? groupTrips.find((t) => t.id === id) : undefined
 
   const nameOf = (userId: string) => {
     const member = participants.find((m) => m.userId === userId)
@@ -176,48 +188,91 @@ export function GroupLedger({ familyId, currency, members }: GroupLedgerProps) {
       </Section>
 
       <Section title="Ortak harcamalar" onAdd={() => setAddOpen(true)}>
-        {(expenses.data ?? []).length === 0 ? (
+        {allExpenses.length === 0 ? (
           <EmptyState text="Henüz ortak harcama yok. + ile ilkini ekle; kim ödedi, kimler paylaştı seç." />
         ) : (
-          <ul className="space-y-1.5">
-            <AnimatePresence initial={false}>
-              {(expenses.data ?? []).map((expense) => (
-                <motion.li
-                  key={expense.id}
-                  layout
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, x: -16 }}
-                >
-                  <div className="flex items-center gap-3 rounded-xl bg-white px-3.5 py-2.5 shadow-sm shadow-zinc-200/60 dark:bg-zinc-900 dark:shadow-none">
-                    <button
-                      onClick={() => setEditExpense(expense)}
-                      aria-label={`${expense.title}, düzenle`}
-                      className="flex min-w-0 flex-1 items-center gap-3 text-left"
+          <>
+            {groupTrips.length > 0 && (
+              <div className="mb-2.5 flex gap-1.5 overflow-x-auto pb-1">
+                <FilterChip
+                  label="Tümü"
+                  active={tripFilter === null}
+                  onClick={() => setTripFilter(null)}
+                />
+                {groupTrips.map((t) => (
+                  <FilterChip
+                    key={t.id}
+                    label={`${t.cover_emoji ?? '✈️'} ${t.title}`}
+                    active={tripFilter === t.id}
+                    onClick={() =>
+                      setTripFilter(tripFilter === t.id ? null : t.id)
+                    }
+                  />
+                ))}
+              </div>
+            )}
+            {tripFilter && (
+              <p className="mb-2 text-xs text-zinc-400">
+                Bu gezide harcanan:{' '}
+                <span className="font-semibold text-zinc-600 tabular-nums dark:text-zinc-300">
+                  {formatMoney(
+                    shownExpenses.reduce((sum, e) => sum + e.amount, 0),
+                    currency,
+                  )}
+                </span>{' '}
+                · bakiye yukarıda, grubun tamamı üzerinden
+              </p>
+            )}
+            {shownExpenses.length === 0 ? (
+              <p className="text-sm text-zinc-400">
+                Bu geziye ait harcama yok.
+              </p>
+            ) : (
+              <ul className="space-y-1.5">
+                <AnimatePresence initial={false}>
+                  {shownExpenses.map((expense) => (
+                    <motion.li
+                      key={expense.id}
+                      layout
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, x: -16 }}
                     >
-                      <span className="shrink-0 rounded-lg bg-indigo-50 p-2 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400">
-                        <Receipt size={15} />
-                      </span>
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate text-sm font-medium">
-                          {expense.title}
-                        </span>
-                        <span className="mt-0.5 block truncate text-xs text-zinc-400">
-                          {nameOf(expense.paid_by)} ödedi ·{' '}
-                          {expense.expense_shares.length} kişi ·{' '}
-                          {formatDate(expense.spent_on)}
-                        </span>
-                      </span>
-                      <span className="shrink-0 text-sm font-semibold tabular-nums">
-                        {formatMoney(expense.amount, expense.currency)}
-                      </span>
-                    </button>
-                    <ShareMirrorButton expense={expense} mirror={mirror} />
-                  </div>
-                </motion.li>
-              ))}
-            </AnimatePresence>
-          </ul>
+                      <div className="flex items-center gap-3 rounded-xl bg-white px-3.5 py-2.5 shadow-sm shadow-zinc-200/60 dark:bg-zinc-900 dark:shadow-none">
+                        <button
+                          onClick={() => setEditExpense(expense)}
+                          aria-label={`${expense.title}, düzenle`}
+                          className="flex min-w-0 flex-1 items-center gap-3 text-left"
+                        >
+                          <span className="shrink-0 rounded-lg bg-indigo-50 p-2 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400">
+                            <Receipt size={15} />
+                          </span>
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate text-sm font-medium">
+                              {expense.title}
+                            </span>
+                            <span className="mt-0.5 block truncate text-xs text-zinc-400">
+                              {nameOf(expense.paid_by)} ödedi ·{' '}
+                              {expense.expense_shares.length} kişi ·{' '}
+                              {formatDate(expense.spent_on)}
+                              {tripOf(expense.trip_id) &&
+                                ` · ${tripOf(expense.trip_id)?.cover_emoji ?? '✈️'} ${
+                                  tripOf(expense.trip_id)?.title
+                                }`}
+                            </span>
+                          </span>
+                          <span className="shrink-0 text-sm font-semibold tabular-nums">
+                            {formatMoney(expense.amount, expense.currency)}
+                          </span>
+                        </button>
+                        <ShareMirrorButton expense={expense} mirror={mirror} />
+                      </div>
+                    </motion.li>
+                  ))}
+                </AnimatePresence>
+              </ul>
+            )}
+          </>
         )}
       </Section>
 
@@ -369,6 +424,30 @@ function ShareMirrorButton({
       }`}
     >
       <Wallet size={15} />
+    </button>
+  )
+}
+
+function FilterChip({
+  label,
+  active,
+  onClick,
+}: {
+  label: string
+  active: boolean
+  onClick: () => void
+}) {
+  return (
+    <button
+      onClick={onClick}
+      aria-pressed={active}
+      className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+        active
+          ? 'bg-indigo-600 text-white'
+          : 'bg-zinc-100 text-zinc-500 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700'
+      }`}
+    >
+      {label}
     </button>
   )
 }

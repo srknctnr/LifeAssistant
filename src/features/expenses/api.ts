@@ -44,6 +44,7 @@ export interface SaveExpenseInput {
   spentOn: string
   category?: string | null
   note?: string | null
+  tripId?: string | null
   splitMode: 'equal' | 'weight' | 'amount'
   // weight only travels for split_mode 'weight'; amount is always authoritative
   shares: { user_id: string; amount: number; weight?: number }[]
@@ -63,6 +64,7 @@ export async function saveExpense(input: SaveExpenseInput): Promise<string> {
     p_category: input.category ?? null,
     p_note: input.note ?? null,
     p_expense_id: input.expenseId ?? null,
+    p_trip_id: input.tripId ?? null,
   })
   if (error) throw error
   return data

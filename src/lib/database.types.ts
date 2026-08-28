@@ -318,6 +318,7 @@ export interface Database {
           category: string | null
           note: string | null
           split_mode: 'equal' | 'weight' | 'amount'
+          trip_id: string | null
           created_by: string
           created_at: string
           updated_at: string
@@ -333,6 +334,7 @@ export interface Database {
           category?: string | null
           note?: string | null
           split_mode?: 'equal' | 'weight' | 'amount'
+          trip_id?: string | null
           created_by: string
           created_at?: string
           updated_at?: string
@@ -348,6 +350,7 @@ export interface Database {
           category?: string | null
           note?: string | null
           split_mode?: 'equal' | 'weight' | 'amount'
+          trip_id?: string | null
           created_by?: string
           created_at?: string
           updated_at?: string
@@ -956,6 +959,7 @@ export interface Database {
           p_category?: string | null
           p_note?: string | null
           p_expense_id?: string | null
+          p_trip_id?: string | null
         }
         Returns: string
       }

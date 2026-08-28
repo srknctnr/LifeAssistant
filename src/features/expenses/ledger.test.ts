@@ -29,6 +29,7 @@ function expense(over: Partial<ExpenseWithShares> = {}): ExpenseWithShares {
     category: null,
     note: null,
     split_mode: 'equal',
+    trip_id: null,
     created_by: 'a',
     created_at: '',
     updated_at: '',

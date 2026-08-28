@@ -7,6 +7,7 @@ import { TextField } from '@/components/TextField'
 import { CategoryPicker } from '@/features/budget/CategoryPicker'
 import type { ExpenseWithShares } from '@/features/expenses/api'
 import { useDeleteExpense, useSaveExpense } from '@/features/expenses/hooks'
+import { useTrips } from '@/features/travel/hooks'
 import {
   equalShares,
   weightedShares,
@@ -39,6 +40,8 @@ export function SharedExpenseForm({
   const save = useSaveExpense(familyId)
   const remove = useDeleteExpense(familyId)
   const payerId = useId()
+  const tripId = useId()
+  const trips = useTrips()
 
   const me = members.find((m) => m.isSelf)
   const [title, setTitle] = useState(expense?.title ?? '')
@@ -49,6 +52,7 @@ export function SharedExpenseForm({
   const [spentOn, setSpentOn] = useState(expense?.spent_on ?? todayISO())
   const [category, setCategory] = useState(expense?.category ?? '')
   const [note, setNote] = useState(expense?.note ?? '')
+  const [trip, setTrip] = useState(expense?.trip_id ?? '')
   const [splitMode, setSplitMode] = useState<SplitMode>(
     expense?.split_mode ?? 'equal',
   )
@@ -74,6 +78,8 @@ export function SharedExpenseForm({
   const [error, setError] = useState<string | null>(null)
   const [armed, setArmed] = useState(false)
 
+  // only this group's trips can label its expenses (trip_in_family)
+  const groupTrips = (trips.data ?? []).filter((t) => t.family_id === familyId)
   const parsedAmount = parseAmountInput(amount) ?? 0
   const isPending = save.isPending || remove.isPending
 
@@ -147,6 +153,7 @@ export function SharedExpenseForm({
         spentOn,
         category: category.trim() || null,
         note: note.trim() || null,
+        tripId: trip || null,
         splitMode,
         shares,
       })
@@ -350,6 +357,34 @@ export function SharedExpenseForm({
         value={note}
         onChange={(e) => setNote(e.target.value)}
       />
+
+      {groupTrips.length > 0 && (
+        <div className="space-y-1.5">
+          <label
+            htmlFor={tripId}
+            className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
+          >
+            Gezi (isteğe bağlı)
+          </label>
+          <select
+            id={tripId}
+            value={trip}
+            onChange={(e) => setTrip(e.target.value)}
+            className={fieldClass}
+          >
+            <option value="">Geziye ait değil</option>
+            {groupTrips.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.cover_emoji ?? '✈️'} {t.title}
+              </option>
+            ))}
+          </select>
+          <p className="text-xs text-zinc-400">
+            Etiketlemek yalnızca listeyi ve gezi toplamını değiştirir; kim kime
+            ne borçlu hesabı her zaman grubun tamamı üzerinden yapılır.
+          </p>
+        </div>
+      )}
 
       {error && (
         <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
