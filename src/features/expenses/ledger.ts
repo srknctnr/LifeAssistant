@@ -176,3 +176,21 @@ export function weightedShares(
     weight: used[i],
   }))
 }
+
+/**
+ * A trip id only means something while the trip is still one of the group's.
+ *
+ * Both places that hold one — the ledger's filter chips and the expense form's
+ * picker — keep it in state that outlives the trip: the group can be switched
+ * under a mounted ledger, and a trip can be deleted or moved to another group.
+ * A raw id would then filter the list by a trip no chip can clear, or send the
+ * server a tag it refuses on every later write. Resolve it against what the
+ * group actually has instead; an id it no longer knows is simply no tag.
+ */
+export function resolveTripTag(
+  tripId: string | null | undefined,
+  groupTrips: readonly { id: string }[],
+): string | null {
+  if (!tripId) return null
+  return groupTrips.some((trip) => trip.id === tripId) ? tripId : null
+}

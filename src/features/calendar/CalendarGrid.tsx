@@ -99,22 +99,27 @@ export function CalendarGrid({
                   <span className="relative text-sm font-medium tabular-nums">
                     {day.getDate()}
                   </span>
-                  {isBusy ? (
+                  {/* both marks share the sub-row: "Takvime ekle" files an
+                      anchor event on the departure day, so a single slot would
+                      hide the emoji on exactly the trips the user put here */}
+                  {(isBusy || span?.isStart) && (
                     <span
                       aria-hidden
-                      className={`relative mt-0.5 h-1 w-1 rounded-full ${
-                        isSelected ? 'bg-white/70' : 'bg-indigo-500'
-                      }`}
-                    />
-                  ) : (
-                    span?.isStart && (
-                      <span
-                        aria-hidden
-                        className="relative -mb-0.5 text-[9px] leading-none"
-                      >
-                        {span.emoji}
-                      </span>
-                    )
+                      className="relative mt-0.5 flex items-center gap-0.5 leading-none"
+                    >
+                      {isBusy && (
+                        <span
+                          className={`h-1 w-1 rounded-full ${
+                            isSelected ? 'bg-white/70' : 'bg-indigo-500'
+                          }`}
+                        />
+                      )}
+                      {span?.isStart && (
+                        <span className="text-[9px] leading-none">
+                          {span.emoji}
+                        </span>
+                      )}
+                    </span>
                   )}
                 </button>
               )

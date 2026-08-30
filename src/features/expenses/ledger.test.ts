@@ -9,6 +9,7 @@ import {
   equalShares,
   ledgerMembers,
   ledgerParticipants,
+  resolveTripTag,
   weightedShares,
 } from '@/features/expenses/ledger'
 
@@ -235,5 +236,27 @@ describe('weightedShares', () => {
     )
     expect(shares[0].user_id).toBe('b')
     expect(shares.reduce((sum, s) => sum + s.amount, 0)).toBe(10)
+  })
+})
+
+describe('resolveTripTag', () => {
+  const trips = [{ id: 'roma' }, { id: 'kas' }]
+
+  it('keeps an id the group still has', () => {
+    expect(resolveTripTag('roma', trips)).toBe('roma')
+  })
+
+  it('drops an id the group no longer has, so a stale filter cannot hide the list', () => {
+    expect(resolveTripTag('roma', [{ id: 'kas' }])).toBeNull()
+  })
+
+  it('drops every id once the group has no trips left', () => {
+    expect(resolveTripTag('roma', [])).toBeNull()
+  })
+
+  it('treats empty, null and undefined alike', () => {
+    expect(resolveTripTag('', trips)).toBeNull()
+    expect(resolveTripTag(null, trips)).toBeNull()
+    expect(resolveTripTag(undefined, trips)).toBeNull()
   })
 })

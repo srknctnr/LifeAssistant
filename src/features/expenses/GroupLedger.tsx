@@ -17,6 +17,7 @@ import {
 import {
   buildLedgerView,
   ledgerMembers,
+  resolveTripTag,
   type LedgerMember,
   type LedgerTransfer,
 } from '@/features/expenses/ledger'
@@ -67,9 +68,12 @@ export function GroupLedger({ familyId, currency, members }: GroupLedgerProps) {
   })
 
   const groupTrips = (trips.data ?? []).filter((t) => t.family_id === familyId)
+  // never the raw state: a stale id would filter the list by a trip no chip
+  // can clear — an empty ledger over a group full of expenses
+  const activeTrip = resolveTripTag(tripFilter, groupTrips)
   const allExpenses = expenses.data ?? []
-  const shownExpenses = tripFilter
-    ? allExpenses.filter((e) => e.trip_id === tripFilter)
+  const shownExpenses = activeTrip
+    ? allExpenses.filter((e) => e.trip_id === activeTrip)
     : allExpenses
   const tripOf = (id: string | null) =>
     id ? groupTrips.find((t) => t.id === id) : undefined
@@ -196,22 +200,22 @@ export function GroupLedger({ familyId, currency, members }: GroupLedgerProps) {
               <div className="mb-2.5 flex gap-1.5 overflow-x-auto pb-1">
                 <FilterChip
                   label="Tümü"
-                  active={tripFilter === null}
+                  active={activeTrip === null}
                   onClick={() => setTripFilter(null)}
                 />
                 {groupTrips.map((t) => (
                   <FilterChip
                     key={t.id}
                     label={`${t.cover_emoji ?? '✈️'} ${t.title}`}
-                    active={tripFilter === t.id}
+                    active={activeTrip === t.id}
                     onClick={() =>
-                      setTripFilter(tripFilter === t.id ? null : t.id)
+                      setTripFilter(activeTrip === t.id ? null : t.id)
                     }
                   />
                 ))}
               </div>
             )}
-            {tripFilter && (
+            {activeTrip && (
               <p className="mb-2 text-xs text-zinc-400">
                 Bu gezide harcanan:{' '}
                 <span className="font-semibold text-zinc-600 tabular-nums dark:text-zinc-300">

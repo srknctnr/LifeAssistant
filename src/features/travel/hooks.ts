@@ -17,6 +17,10 @@ import {
 const tripsKey = ['trips'] as const
 const wishesKey = ['wishlist_items'] as const
 const eventsKey = ['events'] as const
+// A trip that is deleted or moved to another group drops its tag off that
+// group's shared expenses (server side), so their cached rows are stale.
+// Prefix only — the real keys carry a group id we do not know here.
+const sharedExpensesKey = ['shared_expenses'] as const
 
 export function useTrips() {
   return useQuery({ queryKey: tripsKey, queryFn: listTrips })
@@ -34,7 +38,10 @@ export function useUpdateTrip() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: updateTrip,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: tripsKey }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: tripsKey })
+      queryClient.invalidateQueries({ queryKey: sharedExpensesKey })
+    },
   })
 }
 
@@ -49,6 +56,7 @@ export function useDeleteTrip() {
       queryClient.invalidateQueries({ queryKey: tripsKey })
       queryClient.invalidateQueries({ queryKey: wishesKey })
       queryClient.invalidateQueries({ queryKey: eventsKey })
+      queryClient.invalidateQueries({ queryKey: sharedExpensesKey })
     },
   })
 }

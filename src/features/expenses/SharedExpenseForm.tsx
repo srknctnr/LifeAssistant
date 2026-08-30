@@ -10,6 +10,7 @@ import { useDeleteExpense, useSaveExpense } from '@/features/expenses/hooks'
 import { useTrips } from '@/features/travel/hooks'
 import {
   equalShares,
+  resolveTripTag,
   weightedShares,
   type LedgerMember,
 } from '@/features/expenses/ledger'
@@ -80,6 +81,11 @@ export function SharedExpenseForm({
 
   // only this group's trips can label its expenses (trip_in_family)
   const groupTrips = (trips.data ?? []).filter((t) => t.family_id === familyId)
+  // A trip that was deleted or moved to another group leaves an id the server
+  // now refuses — on every later save, including edits that never touch the
+  // tag, which would lock the expense. Drop it; the next save clears it, even
+  // if the picker itself is gone by then.
+  const validTrip = resolveTripTag(trip, groupTrips) ?? ''
   const parsedAmount = parseAmountInput(amount) ?? 0
   const isPending = save.isPending || remove.isPending
 
@@ -153,7 +159,7 @@ export function SharedExpenseForm({
         spentOn,
         category: category.trim() || null,
         note: note.trim() || null,
-        tripId: trip || null,
+        tripId: validTrip || null,
         splitMode,
         shares,
       })
@@ -368,7 +374,7 @@ export function SharedExpenseForm({
           </label>
           <select
             id={tripId}
-            value={trip}
+            value={validTrip}
             onChange={(e) => setTrip(e.target.value)}
             className={fieldClass}
           >
