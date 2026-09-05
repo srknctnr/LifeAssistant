@@ -38,128 +38,174 @@ describe('suggestedMonthlyAmount', () => {
 })
 
 describe('goalPace', () => {
-  // 12.000₺ over 4 months of 3.000₺, started 15 Ocak
+  // 12.000₺ over four months of 3.000₺, target date 6 Kasım 2026 — the shape
+  // ConvertForm produces: monthly = ceil(target / monthsUntil(date))
   const plan = {
-    startDate: '2026-01-15',
+    targetDate: '2026-11-06',
     monthlyAmount: 3000,
     targetAmount: 12000,
   }
 
-  it('expects the first payment in the starting month itself', () => {
-    const pace = goalPace({
-      ...plan,
-      saved: 3000,
-      today: new Date(2026, 0, 20),
-    })
-    expect(pace.expectedSaved).toBe(3000)
-    expect(pace.delta).toBe(0)
-    expect(pace.monthsBehind).toBe(0)
+  it('owes nothing on the day the goal is created', () => {
+    // the reminder for this month is not due until the 30th; the pace line
+    // must not contradict it by saying the goal is already a month behind
+    const pace = goalPace({ ...plan, saved: 0, today: new Date(2026, 6, 6) })
+    expect(pace?.expectedSaved).toBe(0)
+    expect(pace?.monthsBehind).toBe(0)
   })
 
-  it('does not call a goal late before its day of the month comes round again', () => {
-    // 10 Şubat: the 15th has not arrived, so only one payment is due
-    const pace = goalPace({
-      ...plan,
-      saved: 3000,
-      today: new Date(2026, 1, 10),
-    })
-    expect(pace.expectedSaved).toBe(3000)
-    expect(pace.monthsBehind).toBe(0)
+  it('still owes nothing on the last day of the opening month', () => {
+    const pace = goalPace({ ...plan, saved: 0, today: new Date(2026, 6, 31) })
+    expect(pace?.monthsBehind).toBe(0)
   })
 
-  it('counts the second payment once the day comes round', () => {
-    const pace = goalPace({
-      ...plan,
-      saved: 3000,
-      today: new Date(2026, 1, 15),
-    })
-    expect(pace.expectedSaved).toBe(6000)
-    expect(pace.delta).toBe(-3000)
-    expect(pace.monthsBehind).toBe(1)
+  it('owes the first payment once the opening month has passed', () => {
+    const pace = goalPace({ ...plan, saved: 0, today: new Date(2026, 7, 1) })
+    expect(pace?.expectedSaved).toBe(3000)
+    expect(pace?.monthsBehind).toBe(1)
   })
 
-  it('reports two months behind when two are missed', () => {
+  it('is on plan when the payments kept up', () => {
     const pace = goalPace({
       ...plan,
       saved: 3000,
-      today: new Date(2026, 2, 15),
+      today: new Date(2026, 7, 15),
     })
-    expect(pace.monthsBehind).toBe(2)
-    expect(pace.monthsAhead).toBe(0)
+    expect(pace?.delta).toBe(0)
+    expect(pace?.monthsBehind).toBe(0)
+    expect(pace?.monthsAhead).toBe(0)
+  })
+
+  it('counts two missed months as two', () => {
+    const pace = goalPace({ ...plan, saved: 0, today: new Date(2026, 8, 10) })
+    expect(pace?.expectedSaved).toBe(6000)
+    expect(pace?.monthsBehind).toBe(2)
   })
 
   it('reports being ahead', () => {
     const pace = goalPace({
       ...plan,
-      saved: 9000,
-      today: new Date(2026, 1, 15),
+      saved: 6000,
+      today: new Date(2026, 7, 15),
     })
-    expect(pace.delta).toBe(3000)
-    expect(pace.monthsAhead).toBe(1)
-    expect(pace.monthsBehind).toBe(0)
+    expect(pace?.delta).toBe(3000)
+    expect(pace?.monthsAhead).toBe(1)
   })
 
-  it('rounds a part-month shortfall up to a whole month behind', () => {
+  it('rounds a part-month shortfall up to a whole month', () => {
     const pace = goalPace({
       ...plan,
-      saved: 5000,
-      today: new Date(2026, 1, 15),
+      saved: 2000,
+      today: new Date(2026, 7, 15),
     })
-    expect(pace.delta).toBe(-1000)
-    expect(pace.monthsBehind).toBe(1)
+    expect(pace?.delta).toBe(-1000)
+    expect(pace?.monthsBehind).toBe(1)
   })
 
-  it('never expects more than the target, so a finished goal is never behind', () => {
-    // long past the end of the schedule
+  it('expects the whole target once the target month has arrived', () => {
+    const pace = goalPace({
+      ...plan,
+      saved: 9000,
+      today: new Date(2026, 10, 1),
+    })
+    expect(pace?.expectedSaved).toBe(12000)
+    expect(pace?.monthsBehind).toBe(1)
+  })
+
+  it('expects the whole target after the date has passed, not one payment less', () => {
+    const pace = goalPace({ ...plan, saved: 9000, today: new Date(2027, 2, 1) })
+    expect(pace?.expectedSaved).toBe(12000)
+    expect(pace?.delta).toBe(-3000)
+  })
+
+  it('never expects more than the target, so a saved-up goal is never behind', () => {
     const pace = goalPace({
       ...plan,
       saved: 12000,
-      today: new Date(2027, 5, 15),
+      today: new Date(2027, 2, 1),
     })
-    expect(pace.expectedSaved).toBe(12000)
-    expect(pace.delta).toBe(0)
-    expect(pace.monthsBehind).toBe(0)
+    expect(pace?.delta).toBe(0)
+    expect(pace?.monthsBehind).toBe(0)
   })
 
-  it('survives a 31 Ocak start rolling through Şubat', () => {
-    const jan31 = {
-      startDate: '2026-01-31',
-      monthlyAmount: 1000,
-      targetAmount: 6000,
-    }
-    // 28 Şubat: the 31st never arrives, so Şubat does not add a payment
-    expect(
-      goalPace({ ...jan31, saved: 1000, today: new Date(2026, 1, 28) })
-        .monthsBehind,
-    ).toBe(0)
-    // 31 Mart: two full months have passed
-    expect(
-      goalPace({ ...jan31, saved: 1000, today: new Date(2026, 2, 31) })
-        .expectedSaved,
-    ).toBe(3000)
+  // The two halves of re-planning have to agree: accepting a new plan means
+  // being on it. Both presets in GoalPlanForm solve remaining = monthly ×
+  // months-left, which is exactly the equation goalPace measures.
+  describe('after a re-plan', () => {
+    const behind = goalPace({
+      ...plan,
+      saved: 3000,
+      today: new Date(2026, 9, 1),
+    })
+
+    it('was behind before the re-plan', () => {
+      expect(behind?.monthsBehind).toBe(2) // 9.000 due, 3.000 saved
+    })
+
+    it('"Tarihi ertele" — keep the monthly amount, push the date — lands on plan', () => {
+      // 9.000 left at 3.000/ay needs three more months: Kasım, Aralık, Ocak
+      const pace = goalPace({
+        ...plan,
+        targetDate: '2027-01-01',
+        saved: 3000,
+        today: new Date(2026, 9, 1),
+      })
+      expect(pace?.monthsBehind).toBe(0)
+      expect(pace?.delta).toBe(0)
+    })
+
+    it('"Aynı tarihe yetiş" — raise the monthly amount, keep the date — lands on plan', () => {
+      // 9.000 left over the one month still ahead
+      const pace = goalPace({
+        ...plan,
+        monthlyAmount: 9000,
+        saved: 3000,
+        today: new Date(2026, 9, 1),
+      })
+      expect(pace?.monthsBehind).toBe(0)
+    })
+
+    it('does not charge a raised monthly amount to months already paid', () => {
+      // the old bug: 7.000 saved exactly on plan at 1.000/ay, target rises to
+      // 18.000, the preset sets 2.200 — and the goal read "4 ay geride"
+      const pace = goalPace({
+        targetDate: '2026-12-05',
+        monthlyAmount: 2200,
+        targetAmount: 18000,
+        saved: 7000,
+        today: new Date(2026, 6, 5),
+      })
+      expect(pace?.monthsBehind).toBe(0)
+    })
+
+    it('does not credit a long saver with phantom months ahead', () => {
+      // 30.000 of 45.000 saved over a year, three months left at 5.000
+      const pace = goalPace({
+        targetDate: '2026-10-01',
+        monthlyAmount: 5000,
+        targetAmount: 45000,
+        saved: 30000,
+        today: new Date(2026, 6, 1),
+      })
+      expect(pace?.monthsAhead).toBe(0)
+      expect(pace?.monthsBehind).toBe(0)
+    })
   })
 
   it('compares in kuruş, so float dust is not a month of debt', () => {
     const pace = goalPace({
-      startDate: '2026-01-15',
+      targetDate: '2026-08-06',
       monthlyAmount: 0.1,
-      targetAmount: 1,
+      targetAmount: 0.2,
       saved: 0.1 + 0.2 - 0.2, // 0.10000000000000003
-      today: new Date(2026, 0, 20),
+      today: new Date(2026, 6, 6),
     })
-    expect(pace.monthsBehind).toBe(0)
-    expect(pace.delta).toBe(0)
+    expect(pace?.delta).toBe(0)
+    expect(pace?.monthsBehind).toBe(0)
   })
 
-  it('treats a goal with no monthly plan as never behind', () => {
-    const pace = goalPace({
-      startDate: '2026-01-15',
-      monthlyAmount: 0,
-      targetAmount: 100,
-      saved: 10,
-      today: new Date(2026, 5, 1),
-    })
-    expect(pace.monthsBehind).toBe(0)
-    expect(pace.monthsAhead).toBe(0)
+  it('has nothing to measure without a target date or a monthly amount', () => {
+    expect(goalPace({ ...plan, targetDate: null, saved: 0 })).toBeNull()
+    expect(goalPace({ ...plan, monthlyAmount: 0, saved: 0 })).toBeNull()
   })
 })

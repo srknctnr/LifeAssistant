@@ -37,17 +37,26 @@ export function GoalPlanForm({ goal, saved, onDone }: GoalPlanFormProps) {
   const parsedMonthly = parseAmountInput(monthly)
   const remaining = Math.max(0, (parsedTarget ?? 0) - saved)
   const months = targetDate ? monthsUntil(new Date(targetDate)) : null
+  // an overdue goal is exactly the one this form is for, so its past date must
+  // not be treated as a usable one
+  const dateIsFuture = Boolean(targetDate) && targetDate > todayISO()
 
-  const pace = goalPace({
-    startDate: goal.start_date,
-    monthlyAmount: goal.monthly_amount,
-    targetAmount: goal.target_amount,
-    saved,
-  })
+  // a paused plan is not a broken promise — the same rule GoalPaceLine applies
+  const pace =
+    goal.status === 'active'
+      ? goalPace({
+          targetDate: goal.wishlist_items?.target_date,
+          monthlyAmount: goal.monthly_amount,
+          targetAmount: goal.target_amount,
+          saved,
+        })
+      : null
 
   // catch up by paying more each month, keeping the date you promised yourself
   function catchUp() {
-    if (!targetDate || remaining <= 0) return
+    // monthsUntil floors at 1, so on a date already gone this would drop the
+    // entire remaining balance into the monthly field
+    if (!dateIsFuture || remaining <= 0) return
     setMonthly(
       String(
         suggestedMonthlyAmount(remaining, monthsUntil(new Date(targetDate))),
@@ -78,6 +87,12 @@ export function GoalPlanForm({ goal, saved, onDone }: GoalPlanFormProps) {
       setError('Hedefe ulaşmak istediğin tarihi seç.')
       return
     }
+    if (!dateIsFuture) {
+      setError(
+        'Hedef tarih geçmişte kalmış. İleri bir tarih seç ya da “Tarihi ertele”ye dokun.',
+      )
+      return
+    }
 
     try {
       await update.mutateAsync({
@@ -96,7 +111,7 @@ export function GoalPlanForm({ goal, saved, onDone }: GoalPlanFormProps) {
 
   return (
     <form className="space-y-4" onSubmit={handleSubmit}>
-      {pace.monthsBehind > 0 && (
+      {pace !== null && pace.monthsBehind > 0 && (
         <div className="rounded-2xl bg-amber-50 p-4 text-sm dark:bg-amber-500/10">
           <p className="font-medium text-amber-700 dark:text-amber-400">
             {pace.monthsBehind} ay geridesin
@@ -118,11 +133,14 @@ export function GoalPlanForm({ goal, saved, onDone }: GoalPlanFormProps) {
         onChange={(e) => setTarget(e.target.value)}
       />
 
+      {/* deliberately no min: the field is seeded with the goal's existing
+          date, and on an overdue goal a native min silently blocks submit —
+          no Turkish message, no pending state, nothing. handleSubmit says so
+          in words instead. */}
       <TextField
         label="Hedef tarih"
         type="date"
         required
-        min={todayISO()}
         value={targetDate}
         onChange={(e) => setTargetDate(e.target.value)}
       />
@@ -140,7 +158,7 @@ export function GoalPlanForm({ goal, saved, onDone }: GoalPlanFormProps) {
           <PresetButton
             icon={<Gauge size={14} />}
             label="Aynı tarihe yetiş"
-            disabled={!targetDate}
+            disabled={!dateIsFuture}
             onClick={catchUp}
           />
           <PresetButton

@@ -19,11 +19,14 @@ export function GoalPaceLine({
   if (saved >= goal.target_amount) return null
 
   const pace = goalPace({
-    startDate: goal.start_date,
+    targetDate: goal.wishlist_items?.target_date,
     monthlyAmount: goal.monthly_amount,
     targetAmount: goal.target_amount,
     saved,
   })
+
+  // an undated goal has no schedule to be on or off
+  if (!pace) return null
 
   if (pace.monthsBehind > 0) {
     return (

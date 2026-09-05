@@ -109,11 +109,12 @@ export function RemindersSection() {
           <ContributionForm
             goal={contributeFor.goal}
             onDone={() => {
-              // the contribution fulfils this month's nudge
-              setStatus.mutate({
-                id: contributeFor.reminder.id,
-                status: 'done',
-              })
+              // Deliberately NOT marking the reminder done here. The month is
+              // closed by the amount, and only planContributionReminders can
+              // see whether this contribution reached it — forcing 'done' on
+              // the gesture closed a 9.000₺ month with 1₺, and because the
+              // re-insert guard counts rows regardless of status, that month
+              // could never be reopened.
               setContributeFor(null)
             }}
           />

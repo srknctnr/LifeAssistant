@@ -30,56 +30,60 @@ export interface GoalPace {
   monthsAhead: number
 }
 
-// Full calendar months from `start` to `today`, using monthsUntil's day rule
-// inverted: the day of the month has to come round again before another month
-// counts. A goal started on the 15th is not late on the 10th of the next month.
-function elapsedMonths(start: Date, today: Date): number {
-  const months =
-    (today.getFullYear() - start.getFullYear()) * 12 +
-    (today.getMonth() - start.getMonth())
-  const adjusted = today.getDate() >= start.getDate() ? months : months - 1
-  return Math.max(0, adjusted)
+// Whole calendar months of saving still ahead of you. Counted in months, not
+// days, because that is the unit a plan is actually paid in — the reminder
+// falls due at the END of each month, so the month you are standing in is
+// still a month you can pay into, and only a month that has fully passed is
+// gone. Never negative: once the target month arrives, nothing is left.
+function monthsLeft(target: Date, today: Date): number {
+  return Math.max(
+    0,
+    (target.getFullYear() - today.getFullYear()) * 12 +
+      (target.getMonth() - today.getMonth()),
+  )
 }
 
 /**
  * Is this goal still on its own plan?
  *
- * The conversion writes start_date and a monthly amount and then nothing ever
- * reads them again — the card shows a percentage, which answers "how far" but
- * never "am I on time". Two goals at 40% are not the same goal if one started
- * in January and the other last week.
+ * The progress bar answers "how far", never "am I on time" — two goals at 40%
+ * are not the same goal if one is due next month and the other next year.
  *
- * The first contribution is due in the starting month itself (the budget line
- * starts that month), so the plan expects elapsed + 1 payments. Everything is
- * compared in kuruş: numeric(12,2) values reach us as floats, and a hundredth
- * of a lira of float dust must not read as "1 ay geridesin".
+ * Read it backwards from the finish line rather than forwards from the start:
+ * by now you should hold everything the months still ahead of you cannot
+ * cover. That is what makes it stay true when a plan CHANGES. Counting
+ * forwards from a start date bakes an old rate into months already paid, so
+ * re-planning would charge the new monthly amount retroactively and tell a
+ * user who has just corrected their plan that they are further behind than
+ * before. Backwards from the target, applying a preset lands you exactly on
+ * plan — which is what accepting a new plan should mean.
+ *
+ * It also agrees with the reminder, which falls due at the end of the month:
+ * a goal converted today owes nothing yet, and owes its first payment once
+ * the opening month has passed.
+ *
+ * Everything is compared in kuruş — numeric(12,2) reaches us as floats, and a
+ * hundredth of a lira of dust must not read as "1 ay geridesin". Returns null
+ * when there is no plan to measure: no target date, or no monthly amount.
  */
 export function goalPace(params: {
-  startDate: string
+  targetDate: string | null | undefined
   monthlyAmount: number
   targetAmount: number
   saved: number
   today?: Date
-}): GoalPace {
-  const { startDate, monthlyAmount, targetAmount, saved } = params
+}): GoalPace | null {
+  const { targetDate, monthlyAmount, targetAmount, saved } = params
   const today = params.today ?? new Date()
   const monthlyMinor = toMinor(monthlyAmount)
   const targetMinor = toMinor(targetAmount)
   const savedMinor = toMinor(saved)
 
-  // a goal with no monthly plan can't be behind one
-  if (monthlyMinor <= 0) {
-    return {
-      expectedSaved: 0,
-      delta: fromMinor(savedMinor),
-      monthsBehind: 0,
-      monthsAhead: 0,
-    }
-  }
+  if (!targetDate || monthlyMinor <= 0) return null
 
-  const due = elapsedMonths(new Date(startDate), today) + 1
-  // clamped at the target so a finished goal never reads "geride"
-  const expectedMinor = Math.min(targetMinor, monthlyMinor * due)
+  const left = monthsLeft(new Date(targetDate), today)
+  // what the remaining months cannot cover, you should already be holding
+  const expectedMinor = Math.max(0, targetMinor - monthlyMinor * left)
   const deltaMinor = savedMinor - expectedMinor
 
   return {
