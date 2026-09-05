@@ -276,3 +276,53 @@ export function monthlyFlowSeries({
 
   return series
 }
+
+interface TransactionLike {
+  amount: number
+  category: string | null
+  spent_on: string
+}
+
+/**
+ * What was ACTUALLY spent in a month, by category, largest first.
+ *
+ * The form asks for a category on every single spend and until now nothing
+ * ever read it back: "Kategori dökümü" was expenseTotalsByCategory over the
+ * PLANNED budget, so it answered "what did I commit to" while looking like an
+ * answer to "where does my money go". This is the other half.
+ *
+ * Summed in kuruş: a month is a long list of small amounts, and adding lira
+ * floats one by one drifts.
+ */
+export function transactionTotalsByCategory(
+  transactions: TransactionLike[],
+  today: Date = new Date(),
+): { category: string; total: number }[] {
+  const month = monthKey(today)
+  const totals = new Map<string, number>()
+
+  for (const t of transactions) {
+    if (!t.spent_on.startsWith(month)) continue
+    const category = t.category?.trim() || 'Diğer'
+    totals.set(category, (totals.get(category) ?? 0) + toMinor(t.amount))
+  }
+
+  return [...totals.entries()]
+    .map(([category, minor]) => ({ category, total: fromMinor(minor) }))
+    .sort((a, b) => b.total - a.total)
+}
+
+// This month's actual spend. Kuruş-summed for the same reason.
+export function monthSpendTotal(
+  transactions: TransactionLike[],
+  today: Date = new Date(),
+): number {
+  const month = monthKey(today)
+  return fromMinor(
+    transactions.reduce(
+      (sum, t) =>
+        t.spent_on.startsWith(month) ? sum + toMinor(t.amount) : sum,
+      0,
+    ),
+  )
+}

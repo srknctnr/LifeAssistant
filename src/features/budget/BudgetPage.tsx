@@ -22,9 +22,9 @@ import {
 import { IncomeForm } from '@/features/budget/IncomeForm'
 import { MonthlyTrend } from '@/features/budget/MonthlyTrend'
 import { PaceCard } from '@/features/budget/PaceCard'
+import { CategoryBreakdown } from '@/features/budget/CategoryBreakdown'
 import { TransactionForm } from '@/features/budget/TransactionForm'
 import {
-  expenseTotalsByCategory,
   monthlyEquivalent,
   monthlyExpenseTotal,
   monthlyIncomeTotal,
@@ -55,7 +55,6 @@ export function BudgetPage() {
 
   const totalIncome = monthlyIncomeTotal(incomes.data ?? [])
   const totalExpense = monthlyExpenseTotal(expenses.data ?? [])
-  const byCategory = expenseTotalsByCategory(expenses.data ?? [])
   const remaining = totalIncome - totalExpense - spentThisMonth
   const isLoading =
     incomes.isPending || expenses.isPending || transactions.isPending
@@ -189,32 +188,10 @@ export function BudgetPage() {
         </Section>
       </div>
 
-      {byCategory.length > 0 && (
-        <Section title="Kategori dökümü">
-          <div className="space-y-3 rounded-2xl bg-white p-4 shadow-sm shadow-zinc-200/60 dark:bg-zinc-900 dark:shadow-none">
-            {byCategory.map(({ category, total }) => (
-              <div key={category}>
-                <div className="flex items-baseline justify-between gap-3 text-sm">
-                  <span className="truncate font-medium">{category}</span>
-                  <span className="text-zinc-400 tabular-nums">
-                    {formatMoney(total)}
-                  </span>
-                </div>
-                <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">
-                  <motion.div
-                    className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-violet-500"
-                    initial={{ width: 0 }}
-                    animate={{
-                      width: `${(total / byCategory[0].total) * 100}%`,
-                    }}
-                    transition={{ type: 'spring', stiffness: 90, damping: 22 }}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
-        </Section>
-      )}
+      <CategoryBreakdown
+        transactions={transactions.data ?? []}
+        expenses={expenses.data ?? []}
+      />
 
       <Sheet
         open={openSheet === 'income'}

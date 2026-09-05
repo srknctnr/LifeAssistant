@@ -6,7 +6,9 @@ import {
   monthlyExpenseTotal,
   monthlyFlowSeries,
   monthlyIncomeTotal,
+  monthSpendTotal,
   paceReport,
+  transactionTotalsByCategory,
 } from '@/features/budget/money'
 import { toMinor } from '@/features/expenses/split-math'
 
@@ -445,5 +447,66 @@ describe('monthlyFlowSeries', () => {
     expect(byKey['2026-07']).toMatchObject({ income: 0, expense: 0 })
     expect(byKey['2026-08']).toMatchObject({ income: 0, expense: 300 })
     expect(byKey['2026-09']).toMatchObject({ income: 10000, expense: 0 })
+  })
+})
+
+describe('transactionTotalsByCategory', () => {
+  const today = new Date(2026, 6, 15) // Temmuz 2026
+  const rows = [
+    { amount: 250.5, category: 'Market', spent_on: '2026-07-02' },
+    { amount: 120.25, category: 'market', spent_on: '2026-07-09' },
+    { amount: 80, category: ' Ulaşım ', spent_on: '2026-07-11' },
+    { amount: 45, category: null, spent_on: '2026-07-12' },
+    { amount: 30, category: '', spent_on: '2026-07-13' },
+    { amount: 9999, category: 'Market', spent_on: '2026-06-30' }, // önceki ay
+    { amount: 8888, category: 'Market', spent_on: '2026-08-01' }, // sonraki ay
+  ]
+
+  it('reports what was actually spent this month, largest first', () => {
+    const totals = transactionTotalsByCategory(rows, today)
+    expect(totals.map((t) => t.category)).toEqual([
+      'Market', // 250,50
+      'market', // 120,25 — ayrı bir etiket, aşağıdaki teste bak
+      'Ulaşım', // 80
+      'Diğer', // 45 + 30
+    ])
+    expect(totals[0].total).toBe(250.5)
+  })
+
+  it('trims the label but does not fold case — the picker decides that, not the sum', () => {
+    const totals = transactionTotalsByCategory(rows, today)
+    expect(totals.find((t) => t.category === 'Ulaşım')?.total).toBe(80)
+    expect(totals.find((t) => t.category === 'market')?.total).toBe(120.25)
+  })
+
+  it('groups blank and missing categories together', () => {
+    const totals = transactionTotalsByCategory(rows, today)
+    expect(totals.find((t) => t.category === 'Diğer')?.total).toBe(75)
+  })
+
+  it('sums in kuruş, so a long month of small amounts does not drift', () => {
+    const many = Array.from({ length: 300 }, (_, i) => ({
+      amount: 0.1,
+      category: 'Kahve',
+      spent_on: `2026-07-${String((i % 28) + 1).padStart(2, '0')}`,
+    }))
+    expect(transactionTotalsByCategory(many, today)[0].total).toBe(30)
+  })
+
+  it('says nothing for a month with no spending', () => {
+    expect(transactionTotalsByCategory(rows, new Date(2026, 8, 15))).toEqual([])
+  })
+})
+
+describe('monthSpendTotal', () => {
+  it('adds up only the month asked for', () => {
+    const rows = [
+      { amount: 100.1, category: null, spent_on: '2026-07-01' },
+      { amount: 200.2, category: null, spent_on: '2026-07-31' },
+      { amount: 500, category: null, spent_on: '2026-08-01' },
+    ]
+    expect(monthSpendTotal(rows, new Date(2026, 6, 15))).toBe(300.3)
+    expect(monthSpendTotal(rows, new Date(2026, 7, 15))).toBe(500)
+    expect(monthSpendTotal(rows, new Date(2026, 8, 15))).toBe(0)
   })
 })
