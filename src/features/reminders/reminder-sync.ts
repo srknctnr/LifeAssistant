@@ -1,6 +1,8 @@
 import type { Reminder, ReminderSyncPlan } from '@/features/reminders/api'
 import type { GoalWithWish, SavingsContribution } from '@/features/wishlist/api'
+import { toMinor } from '@/features/expenses/split-math'
 import { formatClock, toISODate } from '@/lib/dates'
+import { formatMoney } from '@/lib/money'
 
 interface PlanInput {
   userId: string
@@ -24,8 +26,10 @@ function endOfMonthISO(date: Date): string {
 }
 
 // For every active, unfinished goal: create this month's contribution
-// reminder if it doesn't exist yet, and auto-complete a pending one once
-// the contribution has been made. Dismissed reminders are not re-created.
+// reminder if it doesn't exist yet, and auto-complete a pending one once this
+// month's contributions COVER the monthly amount. Pending reminders from
+// months that have already ended are dismissed. Dismissed reminders are not
+// re-created.
 export function planContributionReminders({
   userId,
   goals,
@@ -49,10 +53,18 @@ export function planContributionReminders({
 
     const saved = savedByGoal.get(goal.id) ?? 0
     const isComplete = saved >= goal.target_amount
-    const hasContributionThisMonth = contributions.some(
-      (c) =>
-        c.savings_goal_id === goal.id && c.contributed_on.startsWith(month),
+    // The month is closed by the AMOUNT the plan asks for, not by the gesture
+    // of contributing: 1₺ used to satisfy a 9.000₺ month, which let a goal
+    // fall a month behind while the reminder said everything was handled.
+    const contributedThisMonth = contributions.reduce(
+      (sum, c) =>
+        c.savings_goal_id === goal.id && c.contributed_on.startsWith(month)
+          ? sum + c.amount
+          : sum,
+      0,
     )
+    const monthSatisfied =
+      toMinor(contributedThisMonth) >= toMinor(goal.monthly_amount)
     const remindersThisMonth = reminders.filter(
       (r) =>
         r.source_type === 'savings_goal' &&
@@ -61,20 +73,37 @@ export function planContributionReminders({
     )
     const pending = remindersThisMonth.find((r) => r.status === 'pending')
 
-    if (hasContributionThisMonth || isComplete) {
+    if (monthSatisfied || isComplete) {
       if (pending) plan.toComplete.push(pending.id)
       continue
     }
 
     if (remindersThisMonth.length === 0) {
+      const name = goal.wishlist_items?.name ?? 'Hedefin'
+      const shortfall = goal.monthly_amount - contributedThisMonth
       plan.toInsert.push({
         user_id: userId,
-        title: `${goal.wishlist_items?.name ?? 'Hedefin'}: bu ayın katkısını ekle`,
+        title:
+          contributedThisMonth > 0
+            ? `${name}: bu ay ${formatMoney(shortfall, goal.currency)} daha ekle`
+            : `${name}: bu ayın katkısını ekle`,
         due_on: endOfMonthISO(today),
         source_type: 'savings_goal',
         source_id: goal.id,
       })
     }
+  }
+
+  // A month that has ended can no longer be paid into, so its pending reminder
+  // is not actionable — and under the stricter rule above it would otherwise
+  // never close, piling up one dead row per missed month. Dismissed, not done:
+  // it was not done, and the pace line on the goal card now carries that truth
+  // honestly. Dismissed reminders are never re-created.
+  for (const reminder of reminders) {
+    if (reminder.source_type !== 'savings_goal') continue
+    if (reminder.status !== 'pending') continue
+    if (reminder.due_on.slice(0, 7) >= month) continue
+    plan.toDismiss.push(reminder.id)
   }
 
   return plan

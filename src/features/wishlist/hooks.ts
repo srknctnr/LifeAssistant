@@ -7,6 +7,7 @@ import {
   createWishlistItem,
   deleteContribution,
   deleteGoal,
+  updateGoalPlan,
   deleteWishlistItem,
   listContributions,
   listGoals,
@@ -110,4 +111,8 @@ export function useConvertWishlistItem() {
       queryClient.invalidateQueries({ queryKey: ['expense_items'] })
     },
   })
+}
+
+export function useUpdateGoalPlan() {
+  return useGoalMutation(updateGoalPlan)
 }

@@ -22,6 +22,8 @@ import type {
 } from '@/features/wishlist/api'
 import { ContributionForm } from '@/features/wishlist/ContributionForm'
 import { ConvertForm } from '@/features/wishlist/ConvertForm'
+import { GoalPaceLine } from '@/features/wishlist/GoalPaceLine'
+import { GoalPlanForm } from '@/features/wishlist/GoalPlanForm'
 import {
   useCompleteGoal,
   useContributions,
@@ -309,7 +311,7 @@ function GoalCard({
           transition={{ type: 'spring', stiffness: 90, damping: 22 }}
         />
       </div>
-      <div className="mt-1.5 flex justify-between text-xs text-zinc-400">
+      <div className="mt-1.5 flex items-center justify-between gap-2 text-xs text-zinc-400">
         <span className="tabular-nums">
           {formatMoney(saved, goal.currency)} /{' '}
           {formatMoney(goal.target_amount, goal.currency)}
@@ -318,6 +320,7 @@ function GoalCard({
           %{Math.round(progress * 100)}
         </span>
       </div>
+      <GoalPaceLine goal={goal} saved={saved} className="mt-1" />
     </motion.li>
   )
 }
@@ -398,6 +401,15 @@ function GoalManageActions({
               ))}
             </AnimatePresence>
           </ul>
+        </div>
+      )}
+
+      {goal.status !== 'completed' && (
+        <div className="rounded-2xl border border-zinc-100 p-4 dark:border-zinc-800">
+          <p className="mb-3 text-sm font-semibold tracking-tight">
+            Planı güncelle
+          </p>
+          <GoalPlanForm goal={goal} saved={saved} onDone={onDone} />
         </div>
       )}
 

@@ -53,6 +53,7 @@ import {
 import { useReminderSync } from '@/features/reminders/hooks'
 import { RemindersSection } from '@/features/reminders/RemindersSection'
 import { useContributions, useGoals } from '@/features/wishlist/hooks'
+import { GoalPaceLine } from '@/features/wishlist/GoalPaceLine'
 import { formatDate, toISODate } from '@/lib/dates'
 import { formatMoney } from '@/lib/money'
 
@@ -156,12 +157,30 @@ function BudgetModule() {
     expenses.isPending ||
     transactions.isPending ||
     (source === 'family' && family.isPending)
+  // `?? []` makes a failed query indistinguishable from an empty one, and the
+  // two mean opposite things here: an established user would be told to set up
+  // the budget they already have, on the home screen, because of one dropped
+  // request. Only an answer we actually received can say the budget is empty.
+  const failed = incomes.isError || expenses.isError || transactions.isError
   const hasBudget =
     (incomes.data ?? []).length > 0 || (expenses.data ?? []).length > 0
 
   if (isLoading) {
     return (
       <div className="h-40 animate-pulse rounded-3xl bg-zinc-100 dark:bg-zinc-800" />
+    )
+  }
+
+  if (failed) {
+    return (
+      <div className="rounded-3xl border border-dashed border-zinc-200 p-6 text-center dark:border-zinc-700">
+        <p className="text-sm font-medium text-zinc-600 dark:text-zinc-300">
+          Bütçen şu an yüklenemedi
+        </p>
+        <p className="mt-1 text-sm text-zinc-400">
+          Bağlantını kontrol et; rakamları tahmin etmektense göstermiyoruz.
+        </p>
+      </div>
     )
   }
 
@@ -373,6 +392,7 @@ function GoalsModule() {
                     transition={{ type: 'spring', stiffness: 90, damping: 22 }}
                   />
                 </div>
+                <GoalPaceLine goal={goal} saved={saved} className="mt-1" />
               </li>
             )
           })}

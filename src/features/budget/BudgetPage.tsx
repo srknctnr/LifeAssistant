@@ -1,6 +1,7 @@
 import { Sparkles, Trash2 } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 
 import { AnimatedNumber } from '@/components/AnimatedNumber'
 import { EmptyState } from '@/components/EmptyState'
@@ -386,10 +387,15 @@ function ExpenseRow({
         <div className="min-w-0 flex-1">
           <p className="flex items-center gap-1.5 truncate font-medium">
             {item.name}
-            <span className="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-semibold text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400">
+            {/* the row is not editable here; the chip says where it is */}
+            <Link
+              to="/wishlist"
+              aria-label={`${item.name} hedefini aç`}
+              className="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-semibold text-indigo-600 transition-colors hover:bg-indigo-100 dark:bg-indigo-500/10 dark:text-indigo-400 dark:hover:bg-indigo-500/20"
+            >
               <Sparkles size={10} />
               Hedef
-            </span>
+            </Link>
           </p>
           {meta}
         </div>

@@ -1,3 +1,4 @@
+import { useQueryClient } from '@tanstack/react-query'
 import type { Session } from '@supabase/supabase-js'
 import {
   useCallback,
@@ -11,6 +12,7 @@ import { AuthContext } from '@/features/auth/auth-context'
 import { supabase } from '@/lib/supabase'
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const queryClient = useQueryClient()
   const [session, setSession] = useState<Session | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
@@ -29,9 +31,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe()
   }, [])
 
+  // Query keys are global, not scoped by user, so without this the next person
+  // to sign in on the same device sees the previous member's goals and budget
+  // from cache until every query refetches — on a shared family tablet that is
+  // someone else's money on screen.
   const signOut = useCallback(async () => {
     await supabase.auth.signOut()
-  }, [])
+    queryClient.clear()
+  }, [queryClient])
 
   const value = useMemo(
     () => ({ session, isLoading, signOut }),

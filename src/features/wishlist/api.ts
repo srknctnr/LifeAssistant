@@ -184,3 +184,61 @@ export async function convertWishlistItem({
   if (error) throw error
   return data
 }
+
+export interface UpdateGoalPlanParams {
+  goal: GoalWithWish
+  targetAmount: number
+  monthlyAmount: number
+  targetDate: string | null
+}
+
+/**
+ * Re-plan a live goal without destroying what has already been saved.
+ *
+ * Until this existed the only way to change a goal's numbers was deleteGoal,
+ * and savings_contributions cascades from savings_goals — so correcting a
+ * price or catching up after a missed month silently wiped the whole katkı
+ * ledger. Re-planning must never touch savings_contributions, and this
+ * function does not.
+ *
+ * Three writes, deliberately not an RPC: every one is an absolute set on a row
+ * the user already owns, so a half-applied update is repaired by submitting
+ * the same form again. Making it atomic would mean a new definer function and
+ * another migration pasted by hand, which is not worth it for that.
+ */
+export async function updateGoalPlan({
+  goal,
+  targetAmount,
+  monthlyAmount,
+  targetDate,
+}: UpdateGoalPlanParams): Promise<void> {
+  // .select('id') on every write: an RLS-blocked update comes back 204 with no
+  // rows and would otherwise look exactly like success
+  const { data, error } = await supabase
+    .from('savings_goals')
+    .update({ target_amount: targetAmount, monthly_amount: monthlyAmount })
+    .eq('id', goal.id)
+    .select('id')
+  if (error) throw error
+  if (!data || data.length === 0) {
+    throw new Error('Bu hedefi güncelleme yetkin yok.')
+  }
+
+  // the budget line is the goal's shadow in the monthly plan; it has to move
+  // with the monthly amount or the budget quietly stops matching the goal
+  if (goal.expense_item_id) {
+    const { error: expenseError } = await supabase
+      .from('expense_items')
+      .update({ amount: monthlyAmount })
+      .eq('id', goal.expense_item_id)
+    if (expenseError) throw expenseError
+  }
+
+  // keep the wish itself honest, so deleting the goal returns a wish that
+  // still says what the thing costs and when it is wanted
+  const { error: wishError } = await supabase
+    .from('wishlist_items')
+    .update({ estimated_amount: targetAmount, target_date: targetDate })
+    .eq('id', goal.wishlist_item_id)
+  if (wishError) throw wishError
+}

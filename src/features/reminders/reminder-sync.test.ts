@@ -429,3 +429,117 @@ describe('planMovieReminders + events', () => {
     expect(plan.toInsert).toEqual([])
   })
 })
+
+describe('planContributionReminders — the month is closed by the amount', () => {
+  const base = {
+    userId: 'user-1',
+    goals: [makeGoal()], // 9.000₺ / ay
+    today,
+  }
+
+  it('does not let a token contribution close a 9.000₺ month', () => {
+    const plan = planContributionReminders({
+      ...base,
+      contributions: [makeContribution({ amount: 1 })],
+      reminders: [makeReminder()],
+    })
+    expect(plan.toComplete).toEqual([])
+  })
+
+  it('closes the month once the contributions reach the monthly amount', () => {
+    const plan = planContributionReminders({
+      ...base,
+      contributions: [
+        makeContribution({ id: 'c1', amount: 4000 }),
+        makeContribution({ id: 'c2', amount: 5000 }),
+      ],
+      reminders: [makeReminder()],
+    })
+    expect(plan.toComplete).toEqual(['reminder-1'])
+  })
+
+  it('closes the month when the goal is already fully saved', () => {
+    const plan = planContributionReminders({
+      ...base,
+      contributions: [makeContribution({ amount: 45000 })],
+      reminders: [makeReminder()],
+    })
+    expect(plan.toComplete).toEqual(['reminder-1'])
+  })
+
+  it('names the shortfall when a partial contribution came before the reminder', () => {
+    const plan = planContributionReminders({
+      ...base,
+      contributions: [makeContribution({ amount: 4000 })],
+      reminders: [],
+    })
+    expect(plan.toInsert).toHaveLength(1)
+    expect(plan.toInsert[0].title).toContain('daha ekle')
+  })
+
+  it('asks plainly when nothing has been put aside this month', () => {
+    const plan = planContributionReminders({
+      ...base,
+      contributions: [],
+      reminders: [],
+    })
+    expect(plan.toInsert[0].title).toBe(
+      'Kapadokya gezisi: bu ayın katkısını ekle',
+    )
+  })
+
+  it('ignores another goal contributions and other months', () => {
+    const plan = planContributionReminders({
+      ...base,
+      contributions: [
+        makeContribution({ id: 'c1', savings_goal_id: 'goal-2' }),
+        makeContribution({ id: 'c2', contributed_on: '2026-06-30' }),
+      ],
+      reminders: [makeReminder()],
+    })
+    expect(plan.toComplete).toEqual([])
+  })
+
+  it('dismisses a pending reminder from a month that has already ended', () => {
+    const plan = planContributionReminders({
+      ...base,
+      contributions: [makeContribution()],
+      reminders: [
+        makeReminder({ id: 'eski', due_on: '2026-06-30' }),
+        makeReminder(),
+      ],
+    })
+    // the stale June row is cleared, and July closes on its own terms
+    expect(plan.toDismiss).toEqual(['eski'])
+    expect(plan.toComplete).toEqual(['reminder-1'])
+  })
+
+  it('leaves an already-handled past reminder alone', () => {
+    const plan = planContributionReminders({
+      ...base,
+      contributions: [],
+      reminders: [
+        makeReminder({ id: 'eski', due_on: '2026-06-30', status: 'done' }),
+      ],
+    })
+    expect(plan.toDismiss).toEqual([])
+  })
+
+  it('stays idempotent: applying it twice asks for nothing more', () => {
+    const first = planContributionReminders({
+      ...base,
+      contributions: [],
+      reminders: [],
+    })
+    expect(first.toInsert).toHaveLength(1)
+    // the inserted reminder now exists and is pending
+    const second = planContributionReminders({
+      ...base,
+      contributions: [],
+      reminders: [makeReminder({ due_on: first.toInsert[0].due_on })],
+    })
+    expect(second.toInsert).toEqual([])
+    expect(second.toComplete).toEqual([])
+    expect(second.toDismiss).toEqual([])
+  })
+})
