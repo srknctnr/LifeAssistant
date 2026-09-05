@@ -92,30 +92,35 @@ export function useTransactions() {
   return useQuery({ queryKey: transactionsKey, queryFn: listTransactions })
 }
 
-export function useCreateTransaction() {
+// A spend of mine is also a row in the group space: the family surfaces read
+// their own per-member keys (space-data.ts), which nothing else invalidates.
+// Now that a spend can be logged from any route — including while standing on
+// the group page — those have to be refreshed too, or the group card keeps
+// showing a total that the personal card has already moved past.
+function useTransactionInvalidation() {
   const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: createTransaction,
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: transactionsKey }),
-  })
+  return () => {
+    queryClient.invalidateQueries({ queryKey: transactionsKey })
+    queryClient.invalidateQueries({ queryKey: ['member-transactions'] })
+    queryClient.invalidateQueries({ queryKey: ['member-budget-summary'] })
+  }
+}
+
+export function useCreateTransaction() {
+  const invalidate = useTransactionInvalidation()
+  return useMutation({ mutationFn: createTransaction, onSuccess: invalidate })
 }
 
 export function useUpdateTransaction() {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: updateTransaction,
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: transactionsKey }),
-  })
+  const invalidate = useTransactionInvalidation()
+  return useMutation({ mutationFn: updateTransaction, onSuccess: invalidate })
 }
 
 export function useDeleteTransaction() {
-  const queryClient = useQueryClient()
+  const invalidate = useTransactionInvalidation()
   return useMutation({
     mutationFn: deleteTransaction,
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: transactionsKey }),
+    onSuccess: invalidate,
   })
 }
 

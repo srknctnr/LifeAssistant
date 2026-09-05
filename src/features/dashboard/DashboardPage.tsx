@@ -271,8 +271,10 @@ function BudgetModule() {
             </div>
             {report.tomorrowRate !== null && (
               <div>
-                {/* literally tomorrow's headline, shown a day early */}
-                <p className="text-indigo-200">Yarından</p>
+                {/* literally tomorrow's headline, shown a day early — the
+                    label has to carry "günde" or a rate reads as a total
+                    beside the two month figures next to it */}
+                <p className="text-indigo-200">Yarından günde</p>
                 <p className="font-semibold tabular-nums">
                   {formatMoney(report.tomorrowRate)}
                 </p>

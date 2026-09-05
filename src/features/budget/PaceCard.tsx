@@ -104,7 +104,12 @@ export function PaceCard({
       >
         {report.onTrack
           ? `Bu hızla ay sonunu rahat getirirsin — ${report.daysLeft} gün için ${formatMoney(Math.max(0, report.remaining))} kaldı. 🎯`
-          : `Bu hızla ay sonunda bütçeni yaklaşık ${formatMoney(overshoot)} aşarsın. Günlük ${formatMoney(report.todayBudget)} altında kalmayı dene.`}
+          : // the corrective cap has to be the FORWARD rate. todayBudget is
+            // blind to today's own spending by design, so it stays frozen
+            // while you overspend — and it is largest exactly when this branch
+            // fires, which had the card advising a daily limit higher than the
+            // "Yarından günde" figure printed directly above it.
+            `Bu hızla ay sonunda bütçeni yaklaşık ${formatMoney(overshoot)} aşarsın. Günlük ${formatMoney(report.tomorrowRate ?? report.dailyAllowance)} altında kalmayı dene.`}
       </p>
     </div>
   )

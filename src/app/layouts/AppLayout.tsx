@@ -116,7 +116,10 @@ export function AppLayout() {
           </div>
         </header>
 
-        <main className="mx-auto max-w-md px-5 pt-6 pb-28 md:max-w-3xl md:px-10 md:pt-10 md:pb-16">
+        {/* the bottom padding has to clear the FAB, not just the nav bar:
+            76px of offset + the 56px button + a little room, plus the safe
+            area, or the last control on a long page sits under it */}
+        <main className="mx-auto max-w-md px-5 pt-6 pb-[calc(9rem+env(safe-area-inset-bottom))] md:max-w-3xl md:px-10 md:pt-10 md:pb-16">
           <Suspense
             fallback={
               <div className="mt-2 space-y-4">

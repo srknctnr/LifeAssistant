@@ -335,6 +335,31 @@ describe('paceReport — bugün', () => {
     })
     expect(tonight.tomorrowRate).toBe(tomorrow.todayBudget)
   })
+
+  // The boundary the first version got wrong: a spend can legitimately be
+  // dated ahead, and tomorrow's budget will be blind to its own day just as
+  // today's is — so tonight's promise has to leave that row out too.
+  it('keeps the promise even when a spend is already booked for tomorrow', () => {
+    const transactions = [{ amount: 11000, spent_on: '2026-07-11' }]
+    const tonight = paceReport({ ...base, transactions })
+    const tomorrow = paceReport({
+      ...base,
+      transactions,
+      today: new Date(2026, 6, 11),
+    })
+    expect(tonight.tomorrowRate).toBe(tomorrow.todayBudget)
+  })
+
+  it('does not let a spend dated further out inflate tomorrow', () => {
+    const transactions = [{ amount: 11000, spent_on: '2026-07-20' }]
+    const tonight = paceReport({ ...base, transactions })
+    const tomorrow = paceReport({
+      ...base,
+      transactions,
+      today: new Date(2026, 6, 11),
+    })
+    expect(tonight.tomorrowRate).toBe(tomorrow.todayBudget)
+  })
 })
 
 describe('monthlyFlowSeries', () => {

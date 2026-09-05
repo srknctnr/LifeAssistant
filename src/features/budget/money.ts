@@ -179,6 +179,26 @@ export function paceReport({
   const poolMinor = Math.max(0, spendableMinor - spentBeforeMinor)
   const todayBudgetMinor = Math.floor(poolMinor / daysLeft)
 
+  // Tomorrow's own budget, worked out exactly the way tomorrow will work it
+  // out — which means leaving out what is already booked FOR tomorrow, since
+  // tomorrow's budget will be blind to its own day too. Subtracting the whole
+  // month instead makes tonight's promise smaller than the number the user
+  // actually wakes up to, and a spend can legitimately be dated ahead.
+  const tomorrow = new Date(
+    today.getFullYear(),
+    today.getMonth(),
+    today.getDate() + 1,
+  )
+  const tomorrowIso = toISODate(tomorrow)
+  const spentTomorrowMinor = transactions.reduce(
+    (sum, t) => (t.spent_on === tomorrowIso ? sum + toMinor(t.amount) : sum),
+    0,
+  )
+  const tomorrowPoolMinor = Math.max(
+    0,
+    spendableMinor - (spentMinor - spentTomorrowMinor),
+  )
+
   return {
     spendable,
     spent,
@@ -190,20 +210,13 @@ export function paceReport({
     spentToday: fromMinor(spentTodayMinor),
     todayBudget: fromMinor(todayBudgetMinor),
     todayLeft: fromMinor(todayBudgetMinor - spentTodayMinor),
-    // Tomorrow's rate IS tomorrow's todayBudget — same numerator (what is
-    // left once today is over), same denominator (the days after today) — so
-    // tonight's forecast and tomorrow's headline can never disagree. That only
-    // holds if it is floored in kuruş exactly like todayBudget; an unrounded
-    // float promises a kuruş more than tomorrow will hand over. On the last
-    // day there is no tomorrow to promise: null forces the card to say so
-    // rather than print a 0 ₺ target.
+    // Tomorrow's rate IS tomorrow's todayBudget — same numerator, same
+    // denominator, floored the same way — so tonight's forecast and tomorrow's
+    // headline can never disagree. On the last day there is no tomorrow to
+    // promise: null forces the card to say so rather than print a 0 ₺ target.
     tomorrowRate:
       daysLeft > 1
-        ? fromMinor(
-            Math.floor(
-              Math.max(0, spendableMinor - spentMinor) / (daysLeft - 1),
-            ),
-          )
+        ? fromMinor(Math.floor(tomorrowPoolMinor / (daysLeft - 1)))
         : null,
   }
 }
