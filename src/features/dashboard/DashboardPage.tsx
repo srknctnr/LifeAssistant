@@ -201,6 +201,20 @@ function BudgetModule() {
 
   const totalIncome = monthlyIncomeTotal(incomes.data ?? [])
   const totalExpense = monthlyExpenseTotal(expenses.data ?? [])
+
+  // With nothing left over there is no daily budget to divide — a 0 ₺ headline
+  // would read as a bug rather than as the plan not adding up.
+  if (totalIncome - totalExpense <= 0) {
+    return (
+      <CtaModule
+        to="/budget"
+        icon={Wallet}
+        title="Planın açık veriyor"
+        text="Planlı giderlerin gelirini aşıyor, o yüzden günlük bir bütçe hesaplanamıyor."
+      />
+    )
+  }
+
   const report = paceReport({
     monthlyIncome: totalIncome,
     plannedExpense: totalExpense,
@@ -226,13 +240,23 @@ function BudgetModule() {
           onClick={() => setDetailOpen(true)}
           className="mt-3 block w-full text-left"
         >
-          <p className="text-sm text-indigo-100">Günlük güvenli harcama</p>
+          <p className="text-sm text-indigo-100">
+            {report.todayLeft < 0 ? 'Bugünü aştın' : 'Bugün kalan'}
+          </p>
           <AnimatedNumber
             className="mt-0.5 block text-4xl font-bold tracking-tight tabular-nums"
-            value={report.dailyAllowance}
+            value={Math.abs(report.todayLeft)}
             format={(v) => formatMoney(v)}
           />
-          <div className="mt-4 flex gap-6 text-sm">
+          {/* the day's share is what makes the headline legible: it does not
+              move when you spend, so the headline drops by exactly the spend */}
+          <p className="mt-1 text-xs text-indigo-200 tabular-nums">
+            günün payı {formatMoney(report.todayBudget)}
+            {report.spentToday > 0
+              ? ` · bugün ${formatMoney(report.spentToday)} harcadın`
+              : ''}
+          </p>
+          <div className="mt-4 flex gap-5 text-sm">
             <div>
               <p className="text-indigo-200">Bu ay kalan</p>
               <p className="font-semibold tabular-nums">
@@ -245,6 +269,15 @@ function BudgetModule() {
                 {formatMoney(report.spent)}
               </p>
             </div>
+            {report.tomorrowRate !== null && (
+              <div>
+                {/* literally tomorrow's headline, shown a day early */}
+                <p className="text-indigo-200">Yarından</p>
+                <p className="font-semibold tabular-nums">
+                  {formatMoney(report.tomorrowRate)}
+                </p>
+              </div>
+            )}
           </div>
           {!report.onTrack && (
             <p className="mt-3 rounded-xl bg-white/15 px-3 py-2 text-xs font-medium">

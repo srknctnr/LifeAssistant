@@ -1,3 +1,5 @@
+import { fromMinor, toMinor } from '@/features/expenses/split-math'
+import { toISODate } from '@/lib/dates'
 import type { Enums } from '@/lib/database.types'
 
 export type ExpensePeriod = Enums<'expense_period'>
@@ -113,6 +115,10 @@ export interface PaceReport {
   projectedTotal: number // bu hızla ay sonu tahmini toplam harcama
   onTrack: boolean
   daysLeft: number
+  spentToday: number
+  todayBudget: number // bugünün payı — gün boyunca sabit
+  todayLeft: number // bugünün payından kalan; eksiye düşebilir
+  tomorrowRate: number | null // yarından itibaren günlük; ayın son günü null
 }
 
 interface PaceInput {
@@ -149,6 +155,30 @@ export function paceReport({
   const projectedTotal = (spent / dayOfMonth) * daysInMonth
   const onTrack = projectedTotal <= spendable
 
+  // Today's share of what is left, and what is left OF today.
+  //
+  // The whole point is that logging 200₺ takes 200₺ off the headline. That
+  // only holds if today's budget is blind to today's own spending, so the
+  // numerator is spendable minus what was spent on OTHER days. Deriving it
+  // from `remaining` instead looks like the same thing — algebraically
+  // `spendable - spentBefore === remaining + spentToday` — but `remaining`
+  // already contains today, so the headline would move by 200/daysLeft again,
+  // which is the invisible feedback this exists to fix. It would also pass a
+  // test that logs nothing today, because with spentToday = 0 the two agree.
+  //
+  // Only the pool is clamped, never todayLeft: a day you have blown reads
+  // negative, because it is.
+  const todayIso = toISODate(today)
+  const spendableMinor = toMinor(spendable)
+  const spentMinor = toMinor(spent)
+  const spentTodayMinor = transactions.reduce(
+    (sum, t) => (t.spent_on === todayIso ? sum + toMinor(t.amount) : sum),
+    0,
+  )
+  const spentBeforeMinor = spentMinor - spentTodayMinor
+  const poolMinor = Math.max(0, spendableMinor - spentBeforeMinor)
+  const todayBudgetMinor = Math.floor(poolMinor / daysLeft)
+
   return {
     spendable,
     spent,
@@ -157,6 +187,24 @@ export function paceReport({
     projectedTotal,
     onTrack,
     daysLeft,
+    spentToday: fromMinor(spentTodayMinor),
+    todayBudget: fromMinor(todayBudgetMinor),
+    todayLeft: fromMinor(todayBudgetMinor - spentTodayMinor),
+    // Tomorrow's rate IS tomorrow's todayBudget — same numerator (what is
+    // left once today is over), same denominator (the days after today) — so
+    // tonight's forecast and tomorrow's headline can never disagree. That only
+    // holds if it is floored in kuruş exactly like todayBudget; an unrounded
+    // float promises a kuruş more than tomorrow will hand over. On the last
+    // day there is no tomorrow to promise: null forces the card to say so
+    // rather than print a 0 ₺ target.
+    tomorrowRate:
+      daysLeft > 1
+        ? fromMinor(
+            Math.floor(
+              Math.max(0, spendableMinor - spentMinor) / (daysLeft - 1),
+            ),
+          )
+        : null,
   }
 }
 

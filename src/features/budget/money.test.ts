@@ -8,6 +8,7 @@ import {
   monthlyIncomeTotal,
   paceReport,
 } from '@/features/budget/money'
+import { toMinor } from '@/features/expenses/split-math'
 
 describe('monthlyEquivalent', () => {
   it('converts weekly amounts using 52 weeks per year', () => {
@@ -217,6 +218,122 @@ describe('paceReport', () => {
     })
     expect(report.remaining).toBe(-3000)
     expect(report.dailyAllowance).toBe(0)
+  })
+})
+
+describe('paceReport — bugün', () => {
+  const today = new Date(2026, 6, 10) // 10 Temmuz 2026, ayın 31 günü var
+  const base = { monthlyIncome: 60000, plannedExpense: 29000, today } // 31.000₺
+
+  it('gives today its share of what the other days left behind', () => {
+    const report = paceReport({
+      ...base,
+      transactions: [{ amount: 9000, spent_on: '2026-07-03' }],
+    })
+    // 22.000₺ over the 22 days from the 10th to the 31st
+    expect(report.daysLeft).toBe(22)
+    expect(report.todayBudget).toBe(1000)
+    expect(report.todayLeft).toBe(1000)
+    expect(report.spentToday).toBe(0)
+  })
+
+  // The invariant the whole slice exists for. dailyAllowance moves by
+  // amount/daysLeft, which is why logging a spend used to feel ignored.
+  it('a spend logged today leaves the headline by exactly its own size', () => {
+    const before = paceReport({
+      ...base,
+      transactions: [{ amount: 9000, spent_on: '2026-07-03' }],
+    })
+    const after = paceReport({
+      ...base,
+      transactions: [
+        { amount: 9000, spent_on: '2026-07-03' },
+        { amount: 200, spent_on: '2026-07-10' },
+      ],
+    })
+    expect(toMinor(before.todayLeft) - toMinor(after.todayLeft)).toBe(20000)
+    // today's budget must not notice today's own spending, or the drop shrinks
+    expect(after.todayBudget).toBe(before.todayBudget)
+    expect(after.spentToday).toBe(200)
+    // for contrast: the old number barely moves
+    expect(before.dailyAllowance - after.dailyAllowance).toBeCloseTo(200 / 22)
+  })
+
+  it('holds to the kuruş, so 349,90₺ moves it by 349,90₺', () => {
+    const before = paceReport({ ...base, transactions: [] })
+    const after = paceReport({
+      ...base,
+      transactions: [{ amount: 349.9, spent_on: '2026-07-10' }],
+    })
+    // exact in kuruş; two lira floats subtracted are not, which is why every
+    // comparison in this codebase happens in minor units
+    expect(toMinor(before.todayLeft) - toMinor(after.todayLeft)).toBe(34990)
+  })
+
+  it('lets a blown day read negative rather than clamping it to zero', () => {
+    const report = paceReport({
+      ...base,
+      transactions: [{ amount: 4000, spent_on: '2026-07-10' }],
+    })
+    expect(report.todayBudget).toBeGreaterThan(0)
+    expect(report.todayLeft).toBeLessThan(0)
+  })
+
+  it('spreads yesterday overspend across the days left instead of zeroing today', () => {
+    const report = paceReport({
+      ...base,
+      transactions: [{ amount: 20000, spent_on: '2026-07-09' }],
+    })
+    expect(report.todayBudget).toBe(500) // 11.000 / 22
+    expect(report.todayLeft).toBe(500)
+  })
+
+  it('gives nothing to spend once the month itself is spent', () => {
+    const report = paceReport({
+      ...base,
+      transactions: [
+        { amount: 35000, spent_on: '2026-07-02' },
+        { amount: 200, spent_on: '2026-07-10' },
+      ],
+    })
+    expect(report.todayBudget).toBe(0)
+    expect(report.todayLeft).toBe(-200) // still moves 1:1
+  })
+
+  it('counts only rows dated today, not the rest of the month', () => {
+    const report = paceReport({
+      ...base,
+      transactions: [
+        { amount: 100, spent_on: '2026-07-09' },
+        { amount: 200, spent_on: '2026-07-10' },
+        { amount: 400, spent_on: '2026-07-11' }, // ileri tarihli
+        { amount: 800, spent_on: '2026-06-10' }, // önceki ay
+      ],
+    })
+    expect(report.spentToday).toBe(200)
+  })
+
+  it('hands the whole remainder over on the last day, and promises no tomorrow', () => {
+    const report = paceReport({
+      monthlyIncome: 60000,
+      plannedExpense: 29000,
+      transactions: [{ amount: 30000, spent_on: '2026-07-02' }],
+      today: new Date(2026, 6, 31),
+    })
+    expect(report.daysLeft).toBe(1)
+    expect(report.todayBudget).toBe(1000)
+    expect(report.tomorrowRate).toBeNull()
+  })
+
+  it("tomorrow's rate is tomorrow's budget, so the forecast cannot contradict it", () => {
+    const transactions = [{ amount: 9000, spent_on: '2026-07-03' }]
+    const tonight = paceReport({ ...base, transactions })
+    const tomorrow = paceReport({
+      ...base,
+      transactions,
+      today: new Date(2026, 6, 11),
+    })
+    expect(tonight.tomorrowRate).toBe(tomorrow.todayBudget)
   })
 })
 

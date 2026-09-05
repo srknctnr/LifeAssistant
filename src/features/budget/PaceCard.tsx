@@ -38,12 +38,45 @@ export function PaceCard({
         </span>
       </div>
 
-      <p className="mt-3 text-xs text-zinc-400">Günlük güvenli harcama</p>
-      <AnimatedNumber
-        className="mt-0.5 block text-3xl font-bold tracking-tight tabular-nums"
-        value={report.dailyAllowance}
-        format={(v) => formatMoney(v)}
-      />
+      {/* Two numbers, two jobs — one can't do both. "Bugün" answers "can I
+          buy this now" and so must fall by the whole spend; "Yarından" answers
+          "will I make it" and so spreads the same spend over the days left.
+          They are the same quantity a day apart: tonight's right-hand number
+          is tomorrow's left-hand one. */}
+      <div className="mt-3 flex divide-x divide-zinc-100 dark:divide-zinc-800">
+        <div className="flex-1 pr-4">
+          <p className="text-xs text-zinc-400">
+            {report.todayLeft < 0 ? 'Bugünü aştın' : 'Bugün kalan'}
+          </p>
+          <AnimatedNumber
+            className={`mt-0.5 block text-3xl font-bold tracking-tight tabular-nums ${
+              report.todayLeft < 0 ? 'text-red-600 dark:text-red-400' : ''
+            }`}
+            value={Math.abs(report.todayLeft)}
+            format={(v) => formatMoney(v)}
+          />
+          <p className="mt-1 text-xs text-zinc-400 tabular-nums">
+            günün payı {formatMoney(report.todayBudget)}
+          </p>
+        </div>
+        <div className="flex-1 pl-4">
+          <p className="text-xs text-zinc-400">
+            {report.tomorrowRate === null
+              ? 'Bugün ayın sonu'
+              : 'Yarından günde'}
+          </p>
+          <p className="mt-0.5 text-3xl font-bold tracking-tight tabular-nums">
+            {report.tomorrowRate === null
+              ? '—'
+              : formatMoney(report.tomorrowRate)}
+          </p>
+          <p className="mt-1 text-xs text-zinc-400">
+            {report.tomorrowRate === null
+              ? 'kalanı bugün harcayabilirsin'
+              : `${report.daysLeft - 1} gün için`}
+          </p>
+        </div>
+      </div>
 
       <div className="mt-4 h-2 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">
         <motion.div
@@ -71,7 +104,7 @@ export function PaceCard({
       >
         {report.onTrack
           ? `Bu hızla ay sonunu rahat getirirsin — ${report.daysLeft} gün için ${formatMoney(Math.max(0, report.remaining))} kaldı. 🎯`
-          : `Bu hızla ay sonunda bütçeni yaklaşık ${formatMoney(overshoot)} aşarsın. Günlük ${formatMoney(report.dailyAllowance)} altında kalmayı dene.`}
+          : `Bu hızla ay sonunda bütçeni yaklaşık ${formatMoney(overshoot)} aşarsın. Günlük ${formatMoney(report.todayBudget)} altında kalmayı dene.`}
       </p>
     </div>
   )

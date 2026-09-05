@@ -48,3 +48,12 @@ export const FamilyPage = lazy(() =>
     default: m.FamilyPage,
   })),
 )
+
+// Not a page: the quick-spend form lives in the layout so it is reachable from
+// every route, but it must not drag the budget module into the shell chunk —
+// it only downloads when someone actually opens the form.
+export const QuickTransactionForm = lazy(() =>
+  import('@/features/budget/TransactionForm').then((m) => ({
+    default: m.TransactionForm,
+  })),
+)

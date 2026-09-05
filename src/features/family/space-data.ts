@@ -186,7 +186,12 @@ export function useFamilyBudget(members: ModuleMember[]): FamilyBudgetData {
     income += summary.income
     planned += summary.planned
     if (summary.spent > 0) {
-      paceTransactions.push({ amount: summary.spent, spent_on: todayISO() })
+      // a whole month of one member's spending, not a spend made today — dating
+      // it to the 1st keeps it out of any "bugün" reading of this report
+      paceTransactions.push({
+        amount: summary.spent,
+        spent_on: `${todayISO().slice(0, 7)}-01`,
+      })
     }
   })
 

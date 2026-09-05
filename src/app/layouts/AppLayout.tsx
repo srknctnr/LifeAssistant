@@ -3,14 +3,17 @@ import {
   Clapperboard,
   Home,
   LogOut,
+  Plus,
   Sparkles,
   Users,
   Wallet,
 } from 'lucide-react'
 import { motion } from 'motion/react'
-import { Suspense } from 'react'
+import { Suspense, useState } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
 
+import { QuickTransactionForm } from '@/app/lazy-pages'
+import { Sheet } from '@/components/Sheet'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { useAuth } from '@/features/auth/useAuth'
 
@@ -25,6 +28,11 @@ const navItems = [
 
 export function AppLayout() {
   const { signOut } = useAuth()
+  // Logging a spend is the thing done most often and it used to be the
+  // deepest: six tabs, no add button anywhere, and the only way in was a
+  // section header on the budget page below two cards. It lives in the layout
+  // so it is one touch from wherever you happen to be.
+  const [spendOpen, setSpendOpen] = useState(false)
 
   const signOutButton = (
     <button
@@ -48,7 +56,15 @@ export function AppLayout() {
           <span className="font-semibold tracking-tight">Life Assistant</span>
         </div>
 
-        <nav aria-label="Ana gezinme" className="mt-8 space-y-1">
+        <button
+          onClick={() => setSpendOpen(true)}
+          className="mt-7 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-br from-indigo-600 to-violet-600 py-2.5 text-sm font-semibold text-white shadow-lg shadow-indigo-600/20 transition-transform hover:-translate-y-0.5"
+        >
+          <Plus size={17} />
+          Harcama ekle
+        </button>
+
+        <nav aria-label="Ana gezinme" className="mt-4 space-y-1">
           {navItems.map(({ to, label, icon: Icon }) => (
             <NavLink
               key={to}
@@ -113,6 +129,34 @@ export function AppLayout() {
           </Suspense>
         </main>
       </div>
+
+      {/* sits just above the bottom bar and below the Sheet's overlay (z-40),
+          so opening the form covers it like everything else */}
+      <motion.button
+        onClick={() => setSpendOpen(true)}
+        aria-label="Harcama ekle"
+        whileTap={{ scale: 0.92 }}
+        className="fixed right-5 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-30 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-indigo-600 to-violet-600 text-white shadow-xl shadow-indigo-600/30 md:hidden"
+      >
+        <Plus size={26} />
+      </motion.button>
+
+      <Sheet
+        open={spendOpen}
+        onClose={() => setSpendOpen(false)}
+        title="Harcama ekle"
+      >
+        <Suspense
+          fallback={
+            <div className="space-y-4">
+              <div className="h-12 animate-pulse rounded-xl bg-zinc-100 dark:bg-zinc-800" />
+              <div className="h-12 animate-pulse rounded-xl bg-zinc-100 dark:bg-zinc-800" />
+            </div>
+          }
+        >
+          <QuickTransactionForm onDone={() => setSpendOpen(false)} />
+        </Suspense>
+      </Sheet>
 
       <nav
         aria-label="Alt gezinme"
