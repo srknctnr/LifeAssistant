@@ -9,6 +9,7 @@ import {
   addPackingItems,
   deletePackingItem,
   deleteTripItem,
+  listAllPackingItems,
   listPackingItems,
   setPacked,
   updatePackingItem,
@@ -129,23 +130,25 @@ export function usePackingItems(tripId: string) {
   })
 }
 
-function usePackingInvalidation(tripId: string) {
+// The prefix, not one trip's key: the pool "copy a previous list" reads from
+// lives under ['trip_packing', 'all'] and goes stale on the very same writes.
+function usePackingInvalidation() {
   const queryClient = useQueryClient()
-  return () => queryClient.invalidateQueries({ queryKey: packingKey(tripId) })
+  return () => queryClient.invalidateQueries({ queryKey: ['trip_packing'] })
 }
 
-export function useAddPackingItems(tripId: string) {
-  const invalidate = usePackingInvalidation(tripId)
+export function useAddPackingItems() {
+  const invalidate = usePackingInvalidation()
   return useMutation({ mutationFn: addPackingItems, onSettled: invalidate })
 }
 
-export function useUpdatePackingItem(tripId: string) {
-  const invalidate = usePackingInvalidation(tripId)
+export function useUpdatePackingItem() {
+  const invalidate = usePackingInvalidation()
   return useMutation({ mutationFn: updatePackingItem, onSettled: invalidate })
 }
 
-export function useDeletePackingItem(tripId: string) {
-  const invalidate = usePackingInvalidation(tripId)
+export function useDeletePackingItem() {
+  const invalidate = usePackingInvalidation()
   return useMutation({ mutationFn: deletePackingItem, onSettled: invalidate })
 }
 
@@ -195,5 +198,14 @@ export function useSetPacked(tripId: string, userId: string | undefined) {
     },
     onSettled: () =>
       queryClient.invalidateQueries({ queryKey: packingKey(tripId) }),
+  })
+}
+
+// Not scoped to a trip: this is the pool "copy a previous list" chooses from,
+// and it is the same rows RLS would hand over trip by trip.
+export function useAllPackingItems() {
+  return useQuery({
+    queryKey: ['trip_packing', 'all'] as const,
+    queryFn: listAllPackingItems,
   })
 }

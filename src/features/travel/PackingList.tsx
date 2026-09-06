@@ -4,6 +4,7 @@ import { useState, type FormEvent } from 'react'
 
 import { SkeletonRows } from '@/components/SkeletonRows'
 import { useAuth } from '@/features/auth/useAuth'
+import { useMemberships } from '@/features/family/hooks'
 import type { Trip } from '@/features/travel/api'
 import {
   useAddPackingItems,
@@ -39,8 +40,15 @@ export function PackingList({
   const { session } = useAuth()
   const userId = session?.user.id
   const items = usePackingItems(trip.id)
-  const add = useAddPackingItems(trip.id)
+  const add = useAddPackingItems()
   const setPacked = useSetPacked(trip.id, userId)
+  // Names cost nothing: listMemberships is not filtered to the caller, so the
+  // rows for this trip's group — display_name embedded — are already cached.
+  const memberships = useMemberships()
+  const nameOf = (id: string) =>
+    (memberships.data ?? []).find(
+      (m) => m.family_id === trip.family_id && m.user_id === id,
+    )?.profiles?.display_name ?? undefined
   const [title, setTitle] = useState('')
   const [error, setError] = useState<string | null>(null)
 
@@ -55,7 +63,7 @@ export function PackingList({
     if (!trimmed) return
     setError(null)
     try {
-      await add.mutateAsync({ tripId: trip.id, titles: [trimmed] })
+      await add.mutateAsync({ tripId: trip.id, items: [{ title: trimmed }] })
       // the field keeps focus and empties: twenty short things in a row is the
       // whole interaction
       setTitle('')
@@ -117,9 +125,9 @@ export function PackingList({
                     <PackingRowView
                       key={row.item.id}
                       row={row}
-                      tripId={trip.id}
                       isGroupTrip={isGroupTrip}
                       userId={userId}
+                      nameOf={nameOf}
                       onToggle={() =>
                         setPacked.mutate({
                           itemId: row.item.id,
@@ -167,23 +175,23 @@ export function PackingList({
 
 function PackingRowView({
   row,
-  tripId,
   isGroupTrip,
   userId,
+  nameOf,
   onToggle,
 }: {
   row: PackingRow
-  tripId: string
   isGroupTrip: boolean
   userId: string | undefined
+  nameOf: (id: string) => string | undefined
   onToggle: () => void
 }) {
-  const update = useUpdatePackingItem(tripId)
-  const remove = useDeletePackingItem(tripId)
+  const update = useUpdatePackingItem()
+  const remove = useDeletePackingItem()
   const [armed, setArmed] = useState(false)
 
   const { item, done, mineChecked } = row
-  const checkedLabel = packingCheckedLabel(row, isGroupTrip, userId)
+  const checkedLabel = packingCheckedLabel(row, isGroupTrip, userId, nameOf)
 
   function handleDelete() {
     if (!armed) {

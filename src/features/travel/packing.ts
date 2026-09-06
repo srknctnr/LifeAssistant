@@ -201,15 +201,62 @@ export function packingCheckedLabel(
   row: PackingRow,
   isGroupTrip: boolean,
   userId: string | undefined,
+  nameOf?: (id: string) => string | undefined,
 ): string | null {
   if (!isGroupTrip) return null
-  const others = row.checkedBy.filter((id) => id !== userId).length
-  if (others === 0) return null
+  const others = row.checkedBy.filter((id) => id !== userId)
+  if (others.length === 0) return null
 
-  if (row.item.is_group_item) {
-    return row.mineChecked
-      ? `sen ve ${others} kişi aldı`
-      : `${others} kişi aldı`
+  // Names beat a count — "Ayşe aldı" ends the question, "1 kişi aldı" starts
+  // one. Two at most, because the row is one line: beyond that the tail is
+  // still a count, and the count is what tells the group whether anyone needs
+  // to bring the thing.
+  const named = others
+    .map((id) => nameOf?.(id))
+    .filter((n): n is string => Boolean(n))
+  const rest = others.length - named.length
+  const shown = named.slice(0, 2)
+  const hidden = named.length - shown.length + rest
+
+  const who =
+    shown.length === 0
+      ? `${others.length} kişi`
+      : hidden > 0
+        ? `${shown.join(', ')} ve ${hidden} kişi`
+        : shown.join(', ')
+
+  const verb = row.item.is_group_item ? 'aldı' : 'hazırladı'
+  return row.item.is_group_item && row.mineChecked
+    ? `sen ve ${who} ${verb}`
+    : `${who} ${verb}`
+}
+
+export interface PackingSource<T> {
+  trip: T
+  count: number
+}
+
+/**
+ * Which earlier trips have a list worth copying.
+ *
+ * Nothing new is asked of the database: the rows this reads are the ones RLS
+ * already lets the caller see, so a trip appears here exactly when its list
+ * could be opened directly. The current trip is never offered as its own
+ * source.
+ */
+export function packingSources<T extends { id: string; starts_on: string }>(
+  items: { trip_id: string }[],
+  trips: T[],
+  currentTripId: string,
+): PackingSource<T>[] {
+  const counts = new Map<string, number>()
+  for (const item of items) {
+    if (item.trip_id === currentTripId) continue
+    counts.set(item.trip_id, (counts.get(item.trip_id) ?? 0) + 1)
   }
-  return `${others} kişi hazırladı`
+
+  return trips
+    .filter((trip) => counts.has(trip.id))
+    .map((trip) => ({ trip, count: counts.get(trip.id) ?? 0 }))
+    .sort((a, b) => b.trip.starts_on.localeCompare(a.trip.starts_on))
 }

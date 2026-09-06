@@ -6,6 +6,7 @@ import {
   mergePackingTitles,
   packingCheckedLabel,
   packingProgress,
+  packingSources,
   type PackingItemLike,
 } from '@/features/travel/packing'
 
@@ -199,5 +200,89 @@ describe('packingCheckedLabel', () => {
   it('counts them when you have not ticked it yourself', () => {
     const r = row({ is_group_item: true }, [check(AYSE), check('ali')])
     expect(packingCheckedLabel(r, true, ME)).toBe('2 kişi aldı')
+  })
+})
+
+describe('packingCheckedLabel with names', () => {
+  const names: Record<string, string> = {
+    ayse: 'Ayşe',
+    ali: 'Ali',
+    veli: 'Veli',
+  }
+  const nameOf = (id: string) => names[id]
+  const row = (
+    overrides: Partial<PackingItemLike>,
+    checks: { user_id: string; checked_at: string }[],
+  ) =>
+    buildPackingView(
+      [item({ ...overrides, trip_packing_checks: checks })],
+      ME,
+    )[0]
+
+  it('names one person instead of counting them', () => {
+    const r = row({ is_group_item: true }, [check(AYSE)])
+    expect(packingCheckedLabel(r, true, ME, nameOf)).toBe('Ayşe aldı')
+  })
+
+  it('names two', () => {
+    const r = row({}, [check(AYSE), check('ali')])
+    expect(packingCheckedLabel(r, true, ME, nameOf)).toBe('Ayşe, Ali hazırladı')
+  })
+
+  it('keeps the row one line by counting the tail', () => {
+    const r = row({}, [check(AYSE), check('ali'), check('veli')])
+    expect(packingCheckedLabel(r, true, ME, nameOf)).toBe(
+      'Ayşe, Ali ve 1 kişi hazırladı',
+    )
+  })
+
+  it('says "sen ve" on a group item you also ticked', () => {
+    const r = row({ is_group_item: true }, [check(AYSE), check(ME)])
+    expect(packingCheckedLabel(r, true, ME, nameOf)).toBe('sen ve Ayşe aldı')
+  })
+
+  it('falls back to a count for a member it cannot name', () => {
+    const r = row({}, [check('eski-uye')])
+    expect(packingCheckedLabel(r, true, ME, nameOf)).toBe('1 kişi hazırladı')
+  })
+
+  it('still works with no name source at all', () => {
+    const r = row({}, [check(AYSE), check('ali')])
+    expect(packingCheckedLabel(r, true, ME)).toBe('2 kişi hazırladı')
+  })
+})
+
+describe('packingSources', () => {
+  const trips = [
+    { id: 't1', starts_on: '2026-03-01' },
+    { id: 't2', starts_on: '2026-08-01' },
+    { id: 't3', starts_on: '2026-01-01' },
+  ]
+  const items = [
+    { trip_id: 't1' },
+    { trip_id: 't1' },
+    { trip_id: 't2' },
+    { trip_id: 'current' },
+  ]
+
+  it('offers trips that have a list, newest departure first', () => {
+    const sources = packingSources(items, trips, 'current')
+    expect(sources.map((s) => s.trip.id)).toEqual(['t2', 't1'])
+    expect(sources.map((s) => s.count)).toEqual([1, 2])
+  })
+
+  it('never offers the trip you are standing in', () => {
+    const sources = packingSources(
+      items,
+      [...trips, { id: 'current', starts_on: '2026-09-01' }],
+      'current',
+    )
+    expect(sources.map((s) => s.trip.id)).not.toContain('current')
+  })
+
+  it('skips trips with no packing rows', () => {
+    expect(
+      packingSources(items, trips, 'current').map((s) => s.trip.id),
+    ).not.toContain('t3')
   })
 })

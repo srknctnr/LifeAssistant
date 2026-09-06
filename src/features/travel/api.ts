@@ -192,19 +192,23 @@ export async function listPackingItems(
   return data as unknown as PackingItemWithChecks[]
 }
 
-export async function addPackingItems(params: {
-  tripId: string
-  titles: string[]
+export interface PackingDraft {
+  title: string
   category?: string | null
   isGroupItem?: boolean
+}
+
+export async function addPackingItems(params: {
+  tripId: string
+  items: PackingDraft[]
 }): Promise<number> {
   const userId = await currentUserId()
-  const rows = params.titles.map((title) => ({
+  const rows = params.items.map((item) => ({
     trip_id: params.tripId,
     user_id: userId,
-    title,
-    category: params.category ?? null,
-    is_group_item: params.isGroupItem ?? false,
+    title: item.title,
+    category: item.category ?? null,
+    is_group_item: item.isGroupItem ?? false,
   }))
   // ignoreDuplicates so applying a template twice, or on two devices, is a
   // no-op rather than an error — the unique (trip_id, title_key) does the work
@@ -214,6 +218,20 @@ export async function addPackingItems(params: {
     .select('id')
   if (error) throw error
   return data?.length ?? 0
+}
+
+// Every packing row the caller may see, across all their trips — the source
+// pool for "copy a previous list". No new permission question: RLS returns
+// exactly the trips whose list could be opened directly anyway.
+export async function listAllPackingItems(): Promise<
+  Pick<PackingItem, 'trip_id' | 'title' | 'category' | 'is_group_item'>[]
+> {
+  const { data, error } = await supabase
+    .from('trip_packing_items')
+    .select('trip_id, title, category, is_group_item')
+    .order('created_at', { ascending: true })
+  if (error) throw error
+  return data
 }
 
 export async function updatePackingItem(params: {
