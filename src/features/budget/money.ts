@@ -46,6 +46,19 @@ interface ExpenseLike {
   period: ExpensePeriod
   expense_date: string | null
   is_active: boolean
+  // optional so callers with synthetic rows still type-check; when present it
+  // bounds how far back the item existed
+  created_at?: string
+}
+
+// A recurring row did not exist before the month it was created in. Two
+// readers of the same data disagreed about this — the totals counted every
+// recurring row in every month while the flow series gated on created_at — and
+// nothing showed, because both were only ever asked about the current month.
+// The moment a month can be chosen, that asymmetry prints two different
+// figures for one month side by side. One definition, used by both.
+function existedIn(createdAt: string | undefined, month: string): boolean {
+  return !createdAt || monthKey(new Date(createdAt)) <= month
 }
 
 // What this item contributes to the given month: recurring items are
@@ -56,6 +69,7 @@ function monthlyValue(item: ExpenseLike, month: string): number {
   if (item.period === 'once') {
     return item.expense_date?.startsWith(month) ? item.amount : 0
   }
+  if (!existedIn(item.created_at, month)) return 0
   return monthlyEquivalent(item.amount, item.period)
 }
 
@@ -91,20 +105,24 @@ export function expenseTotalsByCategory(
 interface IncomeLike {
   amount: number
   income_date: string | null
+  created_at?: string
 }
 
-// Recurring incomes count every month; one-time incomes only in their month
+// Same rule as expenses: recurring incomes count from the month they were
+// created onward, one-time incomes only in their own month
+function monthlyIncomeValue(item: IncomeLike, month: string): number {
+  if (item.income_date) {
+    return item.income_date.startsWith(month) ? item.amount : 0
+  }
+  return existedIn(item.created_at, month) ? item.amount : 0
+}
+
 export function monthlyIncomeTotal(
   items: IncomeLike[],
   today: Date = new Date(),
 ): number {
   const month = monthKey(today)
-  return items.reduce((sum, item) => {
-    if (item.income_date) {
-      return item.income_date.startsWith(month) ? sum + item.amount : sum
-    }
-    return sum + item.amount
-  }, 0)
+  return items.reduce((sum, item) => sum + monthlyIncomeValue(item, month), 0)
 }
 
 export interface PaceReport {
@@ -225,24 +243,27 @@ export interface MonthFlow {
   key: string // yyyy-mm
   date: Date // first day of the month
   income: number
-  expense: number
+  expense: number // planned
+  spent: number // actually logged
 }
 
 interface FlowSeriesInput {
   incomes: (IncomeLike & { created_at: string })[]
   expenses: (ExpenseLike & { created_at: string })[]
+  transactions?: TransactionLike[]
   monthsBack?: number
   monthsForward?: number
   today?: Date
 }
 
-// Month-by-month planned flow. Recurring items count from the month they
-// were created onward (past months before an item existed stay empty);
-// one-time items land exactly in their own month.
+// Month by month: what was planned to come in, what was planned to go out, and
+// what was actually spent. The same monthlyValue/monthlyIncomeValue the totals
+// use, so a month reads identically here and in the header above it.
 export function monthlyFlowSeries({
   incomes,
   expenses,
-  monthsBack = 4,
+  transactions = [],
+  monthsBack = 11,
   monthsForward = 7,
   today = new Date(),
 }: FlowSeriesInput): MonthFlow[] {
@@ -252,26 +273,22 @@ export function monthlyFlowSeries({
     const date = new Date(today.getFullYear(), today.getMonth() + offset, 1)
     const key = monthKey(date)
 
-    const income = incomes.reduce((sum, item) => {
-      if (item.income_date) {
-        return item.income_date.startsWith(key) ? sum + item.amount : sum
-      }
-      return monthKey(new Date(item.created_at)) <= key
-        ? sum + item.amount
-        : sum
-    }, 0)
-
-    const expense = expenses.reduce((sum, item) => {
-      if (!item.is_active) return sum
-      if (item.period === 'once') {
-        return item.expense_date?.startsWith(key) ? sum + item.amount : sum
-      }
-      return monthKey(new Date(item.created_at)) <= key
-        ? sum + monthlyEquivalent(item.amount, item.period)
-        : sum
-    }, 0)
-
-    series.push({ key, date, income, expense })
+    series.push({
+      key,
+      date,
+      income: incomes.reduce(
+        (sum, item) => sum + monthlyIncomeValue(item, key),
+        0,
+      ),
+      expense: expenses.reduce((sum, item) => sum + monthlyValue(item, key), 0),
+      spent: fromMinor(
+        transactions.reduce(
+          (sum, t) =>
+            t.spent_on.startsWith(key) ? sum + toMinor(t.amount) : sum,
+          0,
+        ),
+      ),
+    })
   }
 
   return series

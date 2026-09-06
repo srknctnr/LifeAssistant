@@ -510,3 +510,61 @@ describe('monthSpendTotal', () => {
     expect(monthSpendTotal(rows, new Date(2026, 8, 15))).toBe(0)
   })
 })
+
+// The asymmetry that would have shipped with month navigation: the totals
+// counted every recurring row in every month while the flow series gated on
+// created_at, so the header and the chart below it would have printed two
+// different figures for the same month, side by side.
+describe('the header and the chart agree about a month', () => {
+  const incomes = [
+    { amount: 60000, income_date: null, created_at: '2026-05-04T00:00:00Z' },
+  ]
+  const expenses = [
+    {
+      amount: 20000,
+      period: 'monthly' as const,
+      expense_date: null,
+      is_active: true,
+      created_at: '2026-05-04T00:00:00Z',
+    },
+  ]
+
+  it('does not count a recurring row in a month before it existed', () => {
+    const april = new Date(2026, 3, 15)
+    expect(monthlyIncomeTotal(incomes, april)).toBe(0)
+    expect(monthlyExpenseTotal(expenses, april)).toBe(0)
+  })
+
+  it('counts it from its own month onward', () => {
+    expect(monthlyIncomeTotal(incomes, new Date(2026, 4, 1))).toBe(60000)
+    expect(monthlyExpenseTotal(expenses, new Date(2026, 6, 15))).toBe(20000)
+  })
+
+  it('gives the flow series the same answer for every month it covers', () => {
+    const series = monthlyFlowSeries({
+      incomes,
+      expenses,
+      today: new Date(2026, 6, 15),
+    })
+    for (const month of series) {
+      expect(monthlyIncomeTotal(incomes, month.date)).toBe(month.income)
+      expect(monthlyExpenseTotal(expenses, month.date)).toBe(month.expense)
+    }
+  })
+
+  it('carries actual spend alongside the plan', () => {
+    const series = monthlyFlowSeries({
+      incomes,
+      expenses,
+      transactions: [
+        { amount: 1500.5, category: null, spent_on: '2026-06-11' },
+        { amount: 499.5, category: null, spent_on: '2026-06-20' },
+        { amount: 700, category: null, spent_on: '2026-07-02' },
+      ],
+      today: new Date(2026, 6, 15),
+    })
+    expect(series.find((m) => m.key === '2026-06')?.spent).toBe(2000)
+    expect(series.find((m) => m.key === '2026-07')?.spent).toBe(700)
+    expect(series.find((m) => m.key === '2026-05')?.spent).toBe(0)
+  })
+})

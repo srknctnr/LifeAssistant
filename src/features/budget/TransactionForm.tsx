@@ -18,10 +18,19 @@ import { parseAmountInput } from '@/lib/money'
 
 interface TransactionFormProps {
   transaction?: Transaction
+  // Which day a NEW spend lands on. The budget page passes the month you are
+  // looking at, so adding from a past month does not save the row into today
+  // and leave it invisible on the screen you added it from. The layout's FAB
+  // deliberately does not pass it: it always means "right now".
+  defaultSpentOn?: string
   onDone: () => void
 }
 
-export function TransactionForm({ transaction, onDone }: TransactionFormProps) {
+export function TransactionForm({
+  transaction,
+  defaultSpentOn,
+  onDone,
+}: TransactionFormProps) {
   const { session } = useAuth()
   const createTransaction = useCreateTransaction()
   const updateTransaction = useUpdateTransaction()
@@ -30,7 +39,9 @@ export function TransactionForm({ transaction, onDone }: TransactionFormProps) {
   )
   const [category, setCategory] = useState(transaction?.category ?? '')
   const [note, setNote] = useState(transaction?.note ?? '')
-  const [spentOn, setSpentOn] = useState(transaction?.spent_on ?? todayISO())
+  const [spentOn, setSpentOn] = useState(
+    transaction?.spent_on ?? defaultSpentOn ?? todayISO(),
+  )
   const shareMode = useMyShareMode('budget')
   const [familyVisible, setFamilyVisible] = useState(
     transaction?.is_family_visible ?? false,

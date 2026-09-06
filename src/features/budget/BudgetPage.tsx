@@ -28,11 +28,23 @@ import {
   monthlyEquivalent,
   monthlyExpenseTotal,
   monthlyIncomeTotal,
+  monthSpendTotal,
   PERIOD_LABELS,
   PERIOD_SUFFIX,
 } from '@/features/budget/money'
 import { formatDate, todayISO } from '@/lib/dates'
 import { formatMoney } from '@/lib/money'
+
+const monthName = new Intl.DateTimeFormat('tr-TR', {
+  month: 'long',
+  year: 'numeric',
+})
+
+// Where a spend added while browsing another month should land by default
+function lastDayOf(anchor: Date): string {
+  const end = new Date(anchor.getFullYear(), anchor.getMonth() + 1, 0)
+  return `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, '0')}-${String(end.getDate()).padStart(2, '0')}`
+}
 
 type SheetKind = 'income' | 'expense' | 'transaction' | null
 
@@ -46,16 +58,31 @@ export function BudgetPage() {
   const [editTransaction, setEditTransaction] = useState<Transaction | null>(
     null,
   )
+  const [showAllSpends, setShowAllSpends] = useState(false)
 
-  const month = todayISO().slice(0, 7)
+  // The page is a view of a month; it just never let you pick which one, so
+  // on the 1st the whole spend log vanished. The month strip below is the
+  // picker — one anchor, threaded into every pure reader on the page, because
+  // two month selectors on one screen is how surfaces start disagreeing.
+  const currentKey = todayISO().slice(0, 7)
+  const [month, setMonth] = useState(currentKey)
+  const status =
+    month === currentKey ? 'current' : month < currentKey ? 'past' : 'future'
+  const anchor = new Date(
+    Number(month.slice(0, 4)),
+    Number(month.slice(5, 7)) - 1,
+    1,
+  )
+
   const monthTransactions = (transactions.data ?? []).filter((t) =>
     t.spent_on.startsWith(month),
   )
-  const spentThisMonth = monthTransactions.reduce((s, t) => s + t.amount, 0)
+  const spentThisMonth = monthSpendTotal(transactions.data ?? [], anchor)
 
-  const totalIncome = monthlyIncomeTotal(incomes.data ?? [])
-  const totalExpense = monthlyExpenseTotal(expenses.data ?? [])
-  const remaining = totalIncome - totalExpense - spentThisMonth
+  const totalIncome = monthlyIncomeTotal(incomes.data ?? [], anchor)
+  const totalExpense = monthlyExpenseTotal(expenses.data ?? [], anchor)
+  const spendable = totalIncome - totalExpense
+  const remaining = spendable - spentThisMonth
   const isLoading =
     incomes.isPending || expenses.isPending || transactions.isPending
   const hasError = incomes.isError || expenses.isError || transactions.isError
@@ -65,7 +92,18 @@ export function BudgetPage() {
       <h1 className="text-2xl font-semibold tracking-tight">Bütçe</h1>
 
       <div className="mt-4 rounded-3xl bg-gradient-to-br from-indigo-600 to-violet-600 p-6 text-white shadow-lg shadow-indigo-600/20">
-        <p className="text-sm text-indigo-100">Aylık kalan</p>
+        <p className="flex items-center gap-2 text-sm text-indigo-100">
+          {status === 'current'
+            ? 'Aylık kalan'
+            : status === 'past'
+              ? 'Ay sonu kalanı'
+              : 'Ay planı'}
+          {status !== 'current' && (
+            <span className="rounded-full bg-white/15 px-2 py-0.5 text-[11px] font-semibold">
+              {monthName.format(anchor)}
+            </span>
+          )}
+        </p>
         {isLoading ? (
           <div className="mt-2 h-10 w-40 animate-pulse rounded-lg bg-white/20" />
         ) : (
@@ -97,12 +135,27 @@ export function BudgetPage() {
         </div>
       </div>
 
-      {!isLoading && (
+      {/* "Bugün kalan" and "Yarından günde" have no referent in a month that
+          is over or has not started — a closed month gets its verdict instead */}
+      {!isLoading && status === 'current' && (
         <PaceCard
           monthlyIncome={totalIncome}
           plannedExpense={totalExpense}
           transactions={transactions.data ?? []}
         />
+      )}
+      {!isLoading && status === 'past' && spendable > 0 && (
+        <p
+          className={`mt-4 rounded-2xl px-4 py-3 text-sm font-medium ${
+            remaining >= 0
+              ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400'
+              : 'bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-400'
+          }`}
+        >
+          {remaining >= 0
+            ? `Bütçenin içinde kaldın — ${formatMoney(remaining)} artmış.`
+            : `Bütçeyi ${formatMoney(-remaining)} aşmışsın.`}
+        </p>
       )}
 
       {hasError && (
@@ -114,21 +167,34 @@ export function BudgetPage() {
       <MonthlyTrend
         incomes={incomes.data ?? []}
         expenses={expenses.data ?? []}
+        transactions={transactions.data ?? []}
+        currentKey={currentKey}
+        value={month}
+        onChange={setMonth}
       />
 
       <Section
-        title="Harcamalar · bu ay"
+        title={`Harcamalar · ${status === 'current' ? 'bu ay' : monthName.format(anchor)}`}
         onAdd={() => setOpenSheet('transaction')}
       >
         {transactions.isPending ? (
           <SkeletonRows />
         ) : monthTransactions.length === 0 ? (
-          <EmptyState text="Bu ay henüz harcama girmedin. Kahve, market, ulaşım… + ile saniyeler içinde ekle." />
+          <EmptyState
+            text={
+              status === 'current'
+                ? 'Bu ay henüz harcama girmedin. Kahve, market, ulaşım… + ile saniyeler içinde ekle.'
+                : 'Bu ayda kayıtlı harcama yok.'
+            }
+          />
         ) : (
           <>
             <ul className="space-y-2.5">
               <AnimatePresence initial={false}>
-                {monthTransactions.slice(0, 8).map((transaction) => (
+                {(showAllSpends
+                  ? monthTransactions
+                  : monthTransactions.slice(0, 8)
+                ).map((transaction) => (
                   <TransactionRow
                     key={transaction.id}
                     transaction={transaction}
@@ -137,10 +203,17 @@ export function BudgetPage() {
                 ))}
               </AnimatePresence>
             </ul>
+            {/* used to be a dead-end "+N harcama daha" line: the rows existed
+                and simply could not be reached */}
             {monthTransactions.length > 8 && (
-              <p className="mt-2 text-xs text-zinc-400">
-                +{monthTransactions.length - 8} harcama daha bu ay
-              </p>
+              <button
+                onClick={() => setShowAllSpends((open) => !open)}
+                className="mt-2 text-xs font-medium text-indigo-600 dark:text-indigo-400"
+              >
+                {showAllSpends
+                  ? 'Daha az göster'
+                  : `Tümünü göster (${monthTransactions.length})`}
+              </button>
             )}
           </>
         )}
@@ -191,6 +264,7 @@ export function BudgetPage() {
       <CategoryBreakdown
         transactions={transactions.data ?? []}
         expenses={expenses.data ?? []}
+        month={anchor}
       />
 
       <Sheet
@@ -230,7 +304,10 @@ export function BudgetPage() {
         onClose={() => setOpenSheet(null)}
         title="Harcama gir"
       >
-        <TransactionForm onDone={() => setOpenSheet(null)} />
+        <TransactionForm
+          defaultSpentOn={status === 'current' ? undefined : lastDayOf(anchor)}
+          onDone={() => setOpenSheet(null)}
+        />
       </Sheet>
       <Sheet
         open={editTransaction !== null}
