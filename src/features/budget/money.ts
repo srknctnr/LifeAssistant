@@ -126,7 +126,9 @@ export function monthlyIncomeTotal(
 }
 
 export interface PaceReport {
-  spendable: number // ay bütçesi: gelir − planlı giderler
+  planSpendable: number // planın verdiği: gelir − planlı giderler
+  carry: number // geçen aydan devreden borç (≤ 0)
+  spendable: number // gerçekte harcanabilir: planSpendable + carry
   spent: number // bu ayki gerçek harcamalar (transactions)
   remaining: number
   dailyAllowance: number // kalan güne bölünmüş güvenli günlük harcama
@@ -143,6 +145,9 @@ interface PaceInput {
   monthlyIncome: number
   plannedExpense: number
   transactions: { amount: number; spent_on: string }[]
+  // last month's unpaid overspend, from previousMonthCarry. Zero or negative;
+  // it shrinks what there is to spend without touching what the plan says.
+  carry?: number
   today?: Date
 }
 
@@ -152,6 +157,7 @@ export function paceReport({
   monthlyIncome,
   plannedExpense,
   transactions,
+  carry = 0,
   today = new Date(),
 }: PaceInput): PaceReport {
   const month = monthKey(today)
@@ -167,7 +173,11 @@ export function paceReport({
   const dayOfMonth = today.getDate()
   const daysLeft = daysInMonth - dayOfMonth + 1
 
-  const spendable = monthlyIncome - plannedExpense
+  const planSpendable = monthlyIncome - plannedExpense
+  // the debt comes off the top: it is money this month no longer has, which is
+  // a different statement from "the plan does not add up" — both surfaces need
+  // to tell those apart, so both numbers are returned
+  const spendable = fromMinor(toMinor(planSpendable) + toMinor(carry))
   const remaining = spendable - spent
   const dailyAllowance = Math.max(0, remaining / daysLeft)
   const projectedTotal = (spent / dayOfMonth) * daysInMonth
@@ -218,6 +228,8 @@ export function paceReport({
   )
 
   return {
+    planSpendable,
+    carry,
     spendable,
     spent,
     remaining,
@@ -342,4 +354,43 @@ export function monthSpendTotal(
       0,
     ),
   )
+}
+
+/**
+ * What last month's overspending still owes this month.
+ *
+ * Every month used to start from a clean slate: blow the budget in late
+ * January and on 1 February the app hands you a full month's worth again, as
+ * if the money were still there. It is not — February's salary has to cover
+ * February AND the hole. That amnesia is the real lie at the month boundary,
+ * and unlike the timing of when a salary lands, the daily envelope cannot
+ * protect the user from it.
+ *
+ * ONLY DEBT CARRIES, never a surplus. An overspend is evidenced — the
+ * transactions that caused it are right there. A surplus is only ever inferred
+ * from ABSENCE: a month with nothing logged looks identical to a month of
+ * perfect thrift, and carrying that forward would invent money out of a gap in
+ * the record. So this returns 0 or a negative number, never a positive one.
+ *
+ * One step only: February answers for January, March does not. A debt two
+ * months old is water under the bridge, and chaining it would mean walking the
+ * whole history on every render.
+ */
+export function previousMonthCarry({
+  incomes,
+  expenses,
+  transactions,
+  today = new Date(),
+}: {
+  incomes: IncomeLike[]
+  expenses: ExpenseLike[]
+  transactions: TransactionLike[]
+  today?: Date
+}): number {
+  const previous = new Date(today.getFullYear(), today.getMonth() - 1, 1)
+  const spendableMinor =
+    toMinor(monthlyIncomeTotal(incomes, previous)) -
+    toMinor(monthlyExpenseTotal(expenses, previous))
+  const spentMinor = toMinor(monthSpendTotal(transactions, previous))
+  return Math.min(0, fromMinor(spendableMinor - spentMinor))
 }

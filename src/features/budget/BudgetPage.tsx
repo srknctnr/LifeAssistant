@@ -29,6 +29,7 @@ import {
   monthlyExpenseTotal,
   monthlyIncomeTotal,
   monthSpendTotal,
+  previousMonthCarry,
   PERIOD_LABELS,
   PERIOD_SUFFIX,
 } from '@/features/budget/money'
@@ -83,6 +84,16 @@ export function BudgetPage() {
   const totalExpense = monthlyExpenseTotal(expenses.data ?? [], anchor)
   const spendable = totalIncome - totalExpense
   const remaining = spendable - spentThisMonth
+  // Only the live month answers for last month's overspend; a closed month
+  // already has its own verdict and must not be re-judged against a debt.
+  const carry =
+    status === 'current'
+      ? previousMonthCarry({
+          incomes: incomes.data ?? [],
+          expenses: expenses.data ?? [],
+          transactions: transactions.data ?? [],
+        })
+      : 0
   const isLoading =
     incomes.isPending || expenses.isPending || transactions.isPending
   const hasError = incomes.isError || expenses.isError || transactions.isError
@@ -142,6 +153,7 @@ export function BudgetPage() {
           monthlyIncome={totalIncome}
           plannedExpense={totalExpense}
           transactions={transactions.data ?? []}
+          carry={carry}
         />
       )}
       {!isLoading && status === 'past' && spendable > 0 && (
