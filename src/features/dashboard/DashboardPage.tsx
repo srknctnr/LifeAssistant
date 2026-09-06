@@ -24,7 +24,6 @@ import {
   monthlyExpenseTotal,
   monthlyIncomeTotal,
   paceReport,
-  previousMonthCarry,
 } from '@/features/budget/money'
 import {
   useCategoryEntries,
@@ -220,13 +219,6 @@ function BudgetModule() {
     monthlyIncome: totalIncome,
     plannedExpense: totalExpense,
     transactions: transactions.data ?? [],
-    // last month's overspend is money this month no longer has; the headline
-    // must not hand it back on the 1st
-    carry: previousMonthCarry({
-      incomes: incomes.data ?? [],
-      expenses: expenses.data ?? [],
-      transactions: transactions.data ?? [],
-    }),
   })
 
   return (

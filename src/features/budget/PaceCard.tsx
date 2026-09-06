@@ -9,7 +9,6 @@ interface PaceCardProps {
   monthlyIncome: number
   plannedExpense: number
   transactions: Transaction[]
-  carry?: number
 }
 
 // The proactive limit assistant: safe daily allowance + a burn-rate check
@@ -17,19 +16,11 @@ export function PaceCard({
   monthlyIncome,
   plannedExpense,
   transactions,
-  carry = 0,
 }: PaceCardProps) {
-  const report = paceReport({
-    monthlyIncome,
-    plannedExpense,
-    transactions,
-    carry,
-  })
-  // Gated on the PLAN, not on what is left after last month's debt: a debt big
-  // enough to swallow the month is exactly when this card is worth reading.
-  if (report.planSpendable <= 0) return null
+  const report = paceReport({ monthlyIncome, plannedExpense, transactions })
+  if (report.spendable <= 0) return null
 
-  const progress = Math.min(1, Math.max(0, report.spent / report.planSpendable))
+  const progress = Math.min(1, Math.max(0, report.spent / report.spendable))
   const overshoot = report.projectedTotal - report.spendable
 
   return (
@@ -101,20 +92,8 @@ export function PaceCard({
       </div>
       <div className="mt-1.5 flex justify-between text-xs text-zinc-400 tabular-nums">
         <span>Harcanan {formatMoney(report.spent)}</span>
-        <span>Plan {formatMoney(report.planSpendable)}</span>
+        <span>Bütçe {formatMoney(report.spendable)}</span>
       </div>
-
-      {/* The month used to start from a clean slate, so an overspend in late
-          January simply vanished on 1 February. It does not any more. */}
-      {report.carry < 0 && (
-        <p className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:bg-amber-500/10 dark:text-amber-400">
-          Geçen aydan devreden {formatMoney(-report.carry)} — bu ay{' '}
-          <span className="font-semibold tabular-nums">
-            {formatMoney(report.spendable)}
-          </span>{' '}
-          ile başladın.
-        </p>
-      )}
 
       <p
         className={`mt-3 text-sm ${
