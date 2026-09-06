@@ -12,10 +12,20 @@ import { formatMoney } from '@/lib/money'
 
 type Mode = 'actual' | 'planned'
 
+const monthName = new Intl.DateTimeFormat('tr-TR', {
+  month: 'long',
+  year: 'numeric',
+})
+
 interface CategoryBreakdownProps {
   transactions: Transaction[]
   expenses: ExpenseItem[]
   month?: Date
+  // Required on purpose: the numbers here follow `month`, and the copy has to
+  // follow it too. Giving this a default is how the section ended up saying
+  // "Bu ay harcanan" over another month's total, under a page header that
+  // already named that other month.
+  isCurrentMonth: boolean
 }
 
 /**
@@ -32,8 +42,10 @@ export function CategoryBreakdown({
   transactions,
   expenses,
   month,
+  isCurrentMonth,
 }: CategoryBreakdownProps) {
   const [mode, setMode] = useState<Mode>('actual')
+  const label = isCurrentMonth ? 'Bu ay' : monthName.format(month ?? new Date())
 
   const actual = transactionTotalsByCategory(transactions, month)
   const planned = expenseTotalsByCategory(expenses, month)
@@ -59,7 +71,9 @@ export function CategoryBreakdown({
       {rows.length === 0 ? (
         <p className="text-sm text-zinc-400">
           {mode === 'actual'
-            ? 'Bu ay henüz harcama girmedin.'
+            ? isCurrentMonth
+              ? 'Bu ay henüz harcama girmedin.'
+              : `${label} için kayıtlı harcama yok.`
             : 'Kategorili planlı gider yok.'}
         </p>
       ) : (
@@ -92,7 +106,7 @@ export function CategoryBreakdown({
             </div>
           ))}
           <p className="pt-1 text-xs text-zinc-400 tabular-nums">
-            {mode === 'actual' ? 'Bu ay harcanan' : 'Planlı gider'}{' '}
+            {mode === 'actual' ? `${label} harcanan` : 'Planlı gider'}{' '}
             {formatMoney(total)}
           </p>
         </div>

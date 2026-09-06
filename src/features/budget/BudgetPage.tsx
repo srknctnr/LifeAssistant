@@ -262,6 +262,7 @@ export function BudgetPage() {
       </div>
 
       <CategoryBreakdown
+        isCurrentMonth={status === 'current'}
         transactions={transactions.data ?? []}
         expenses={expenses.data ?? []}
         month={anchor}

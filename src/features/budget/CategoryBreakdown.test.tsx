@@ -56,6 +56,7 @@ describe('CategoryBreakdown', () => {
         transactions={transactions}
         expenses={expenses}
         month={july}
+        isCurrentMonth
       />,
     )
     expect(screen.getByText('Market')).toBeInTheDocument()
@@ -70,6 +71,7 @@ describe('CategoryBreakdown', () => {
         transactions={transactions}
         expenses={expenses}
         month={july}
+        isCurrentMonth
       />,
     )
     // Haziran'daki 9.999₺ sayılsaydı Market'in payı %97 olurdu
@@ -83,6 +85,7 @@ describe('CategoryBreakdown', () => {
         transactions={transactions}
         expenses={expenses}
         month={july}
+        isCurrentMonth
       />,
     )
     await user.click(screen.getByRole('button', { name: 'Planlı' }))
@@ -93,7 +96,12 @@ describe('CategoryBreakdown', () => {
   it('says so when the month has no spending yet, instead of hiding the section', async () => {
     const user = userEvent.setup()
     render(
-      <CategoryBreakdown transactions={[]} expenses={expenses} month={july} />,
+      <CategoryBreakdown
+        transactions={[]}
+        expenses={expenses}
+        month={july}
+        isCurrentMonth
+      />,
     )
     expect(screen.getByText(/henüz harcama girmedin/)).toBeInTheDocument()
     // and the plan is still reachable
@@ -103,8 +111,51 @@ describe('CategoryBreakdown', () => {
 
   it('renders nothing at all when there is neither spending nor a plan', () => {
     const { container } = render(
-      <CategoryBreakdown transactions={[]} expenses={[]} month={july} />,
+      <CategoryBreakdown
+        transactions={[]}
+        expenses={[]}
+        month={july}
+        isCurrentMonth
+      />,
     )
     expect(container).toBeEmptyDOMElement()
+  })
+})
+
+// The section's numbers followed the anchored month while its caption still
+// said "Bu ay", so it claimed another month's total was this month's — on a
+// page whose header right above it already named that other month.
+describe('CategoryBreakdown on a month that is not the current one', () => {
+  const may = new Date(2026, 4, 15)
+  const mayRows = [
+    tx({ id: 'm1', amount: 5000, category: 'Market', spent_on: '2026-05-03' }),
+  ]
+
+  it('names the month it is reporting instead of saying "bu ay"', () => {
+    render(
+      <CategoryBreakdown
+        transactions={mayRows}
+        expenses={expenses}
+        month={may}
+        isCurrentMonth={false}
+      />,
+    )
+    expect(screen.getByText(/Mayıs 2026 harcanan/)).toBeInTheDocument()
+    expect(screen.queryByText(/Bu ay harcanan/)).not.toBeInTheDocument()
+  })
+
+  it('does not tell the user they have not spent anything "this month"', () => {
+    render(
+      <CategoryBreakdown
+        transactions={[]}
+        expenses={expenses}
+        month={may}
+        isCurrentMonth={false}
+      />,
+    )
+    expect(
+      screen.getByText(/Mayıs 2026 için kayıtlı harcama yok/),
+    ).toBeInTheDocument()
+    expect(screen.queryByText(/Bu ay henüz/)).not.toBeInTheDocument()
   })
 })

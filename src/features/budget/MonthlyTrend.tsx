@@ -41,21 +41,25 @@ export function MonthlyTrend({
   value,
   onChange,
 }: MonthlyTrendProps) {
-  const currentRef = useRef<HTMLButtonElement>(null)
+  const selectedRef = useRef<HTMLButtonElement>(null)
+  const hasData =
+    incomes.length > 0 || expenses.length > 0 || transactions.length > 0
 
+  // Keyed on hasData, not [], because the first render of /budget happens
+  // while the queries are still pending: the guard below returns null, no
+  // button exists, and a one-shot effect would scroll nothing and never run
+  // again — leaving the strip parked at the far left. That was survivable at
+  // four months back; at twelve, with this strip now the page's only month
+  // picker, the selected month sits off-screen and the picker looks broken.
   useEffect(() => {
-    currentRef.current?.scrollIntoView?.({
+    if (!hasData) return
+    selectedRef.current?.scrollIntoView?.({
       inline: 'center',
       block: 'nearest',
     })
-  }, [])
+  }, [hasData, value])
 
-  if (
-    incomes.length === 0 &&
-    expenses.length === 0 &&
-    transactions.length === 0
-  )
-    return null
+  if (!hasData) return null
 
   const series = monthlyFlowSeries({ incomes, expenses, transactions })
   const selected =
@@ -95,7 +99,7 @@ export function MonthlyTrend({
           return (
             <button
               key={month.key}
-              ref={isCurrent ? currentRef : undefined}
+              ref={isSelected ? selectedRef : undefined}
               onClick={() => onChange(month.key)}
               aria-pressed={isSelected}
               aria-label={fullMonth.format(month.date)}
