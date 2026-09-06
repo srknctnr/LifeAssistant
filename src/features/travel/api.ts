@@ -253,17 +253,21 @@ export async function setPacked(params: {
 }): Promise<void> {
   const userId = await currentUserId()
   if (params.packed) {
-    const { data, error } = await supabase
+    // ignoreDuplicates is load-bearing, not a nicety: without it postgrest
+    // sends Prefer: resolution=merge-duplicates and Postgres runs ON CONFLICT
+    // DO UPDATE, whose arm is checked against this table's UPDATE policies —
+    // and there deliberately are none, so a second tick on an already-ticked
+    // row is refused with 42501. DO NOTHING needs only the insert policy.
+    const { error } = await supabase
       .from('trip_packing_checks')
       .upsert(
         { item_id: params.itemId, trip_id: params.tripId, user_id: userId },
-        { onConflict: 'item_id,user_id' },
+        { onConflict: 'item_id,user_id', ignoreDuplicates: true },
       )
-      .select('id')
+    // An empty result here means the row was already there, which is success.
+    // Unlike an update or a delete, an insert RLS refuses does not come back
+    // quietly — it raises, and lands in `error`.
     if (error) throw error
-    if (!data || data.length === 0) {
-      throw new Error('Bu geziye erişimin yok; işaret kaydedilmedi.')
-    }
     return
   }
 

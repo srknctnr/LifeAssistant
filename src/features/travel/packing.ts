@@ -185,3 +185,31 @@ export const PACKING_TEMPLATES: PackingTemplate[] = [
     ],
   },
 ]
+
+/**
+ * The line under a row that says what the rest of the group has done.
+ *
+ * A string, but it lives here rather than in the component for the reason the
+ * first version proved: written inline, one of its three branches quietly
+ * hardcoded the count as "1 kişi", and nothing could catch it — the pure tests
+ * did not reach it and no test renders the component.
+ *
+ * Returns null when there is nothing worth saying: a personal trip, or a
+ * personal item nobody else has touched.
+ */
+export function packingCheckedLabel(
+  row: PackingRow,
+  isGroupTrip: boolean,
+  userId: string | undefined,
+): string | null {
+  if (!isGroupTrip) return null
+  const others = row.checkedBy.filter((id) => id !== userId).length
+  if (others === 0) return null
+
+  if (row.item.is_group_item) {
+    return row.mineChecked
+      ? `sen ve ${others} kişi aldı`
+      : `${others} kişi aldı`
+  }
+  return `${others} kişi hazırladı`
+}

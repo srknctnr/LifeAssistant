@@ -4,6 +4,7 @@ import {
   buildPackingView,
   groupPackingByCategory,
   mergePackingTitles,
+  packingCheckedLabel,
   packingProgress,
   type PackingItemLike,
 } from '@/features/travel/packing'
@@ -156,5 +157,47 @@ describe('mergePackingTitles', () => {
   it('folds the way the database does, not the way Turkish does', () => {
     expect(mergePackingTitles(['Islak mendil'], ['ISLAK MENDIL'])).toEqual([])
     expect(mergePackingTitles(['İlaç'], ['ilaç'])).toEqual(['ilaç'])
+  })
+})
+
+describe('packingCheckedLabel', () => {
+  const row = (
+    overrides: Partial<PackingItemLike>,
+    checks: { user_id: string; checked_at: string }[],
+  ) =>
+    buildPackingView(
+      [item({ ...overrides, trip_packing_checks: checks })],
+      ME,
+    )[0]
+
+  it('says nothing on a personal trip', () => {
+    expect(packingCheckedLabel(row({}, [check(AYSE)]), false, ME)).toBeNull()
+  })
+
+  it('says nothing when nobody else has touched it', () => {
+    expect(packingCheckedLabel(row({}, [check(ME)]), true, ME)).toBeNull()
+    expect(packingCheckedLabel(row({}, []), true, ME)).toBeNull()
+  })
+
+  it('counts the others on a personal item', () => {
+    const r = row({}, [check(AYSE), check('ali'), check(ME)])
+    expect(packingCheckedLabel(r, true, ME)).toBe('2 kişi hazırladı')
+  })
+
+  // The bug the first version shipped: this branch hardcoded "1 kişi", so it
+  // under-reported at exactly the moment a shared item was fully covered.
+  it('counts the others on a group item you have also ticked', () => {
+    const r = row({ is_group_item: true }, [
+      check(AYSE),
+      check('ali'),
+      check('veli'),
+      check(ME),
+    ])
+    expect(packingCheckedLabel(r, true, ME)).toBe('sen ve 3 kişi aldı')
+  })
+
+  it('counts them when you have not ticked it yourself', () => {
+    const r = row({ is_group_item: true }, [check(AYSE), check('ali')])
+    expect(packingCheckedLabel(r, true, ME)).toBe('2 kişi aldı')
   })
 })

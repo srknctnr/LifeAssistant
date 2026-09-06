@@ -15,6 +15,7 @@ import {
 import {
   buildPackingView,
   groupPackingByCategory,
+  packingCheckedLabel,
   packingProgress,
   type PackingRow,
 } from '@/features/travel/packing'
@@ -153,8 +154,12 @@ export function PackingList({
         </button>
       </form>
 
-      {error && (
-        <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>
+      {/* a refused tick used to roll back in silence: the optimistic box just
+          flipped, which reads as a broken checkbox rather than a failed write */}
+      {(error || setPacked.isError) && (
+        <p className="mt-2 text-sm text-red-600 dark:text-red-400">
+          {error ?? saveErrorMessage(setPacked.error)}
+        </p>
       )}
     </div>
   )
@@ -177,8 +182,8 @@ function PackingRowView({
   const remove = useDeletePackingItem(tripId)
   const [armed, setArmed] = useState(false)
 
-  const { item, done, mineChecked, checkedBy } = row
-  const others = checkedBy.filter((id) => id !== userId).length
+  const { item, done, mineChecked } = row
+  const checkedLabel = packingCheckedLabel(row, isGroupTrip, userId)
 
   function handleDelete() {
     if (!armed) {
@@ -218,7 +223,7 @@ function PackingRowView({
         >
           {item.title}
         </span>
-        {isGroupTrip && (item.is_group_item || others > 0) && (
+        {isGroupTrip && (item.is_group_item || checkedLabel) && (
           <span className="mt-0.5 flex items-center gap-1.5 text-xs text-zinc-400">
             {item.is_group_item && (
               <span className="flex items-center gap-1 rounded-full bg-zinc-100 px-1.5 py-0.5 font-medium dark:bg-zinc-800">
@@ -227,12 +232,7 @@ function PackingRowView({
             )}
             {/* names would need the group's member list, which this sheet does
                 not load; the count is the part that changes behaviour */}
-            {others > 0 &&
-              (item.is_group_item
-                ? mineChecked
-                  ? 'sen ve 1 kişi aldı'
-                  : `${others} kişi aldı`
-                : `${others} kişi hazırladı`)}
+            {checkedLabel}
           </span>
         )}
       </span>
