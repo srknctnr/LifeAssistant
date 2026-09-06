@@ -306,6 +306,81 @@ export interface Database {
           },
         ]
       }
+      trip_packing_items: {
+        Row: {
+          id: string
+          trip_id: string
+          user_id: string
+          title: string
+          // generated always: never send it on insert or update
+          title_key: string
+          category: string | null
+          is_group_item: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          trip_id: string
+          user_id: string
+          title: string
+          category?: string | null
+          is_group_item?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          trip_id?: string
+          user_id?: string
+          title?: string
+          category?: string | null
+          is_group_item?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'trip_packing_items_trip_id_fkey'
+            columns: ['trip_id']
+            isOneToOne: false
+            referencedRelation: 'trips'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      trip_packing_checks: {
+        Row: {
+          id: string
+          item_id: string
+          trip_id: string
+          user_id: string
+          checked_at: string
+        }
+        Insert: {
+          id?: string
+          item_id: string
+          trip_id: string
+          user_id: string
+          checked_at?: string
+        }
+        Update: {
+          id?: string
+          item_id?: string
+          trip_id?: string
+          user_id?: string
+          checked_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'trip_packing_checks_item_id_trip_id_fkey'
+            columns: ['item_id', 'trip_id']
+            isOneToOne: false
+            referencedRelation: 'trip_packing_items'
+            referencedColumns: ['id', 'trip_id']
+          },
+        ]
+      }
       shared_expenses: {
         Row: {
           id: string

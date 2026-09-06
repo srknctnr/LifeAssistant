@@ -170,3 +170,107 @@ export async function deleteTripItem(id: string): Promise<void> {
     throw new Error('Bu kaydı silme yetkin yok.')
   }
 }
+
+export type PackingItem = Tables<'trip_packing_items'>
+export type PackingCheck = Tables<'trip_packing_checks'>
+
+export interface PackingItemWithChecks extends PackingItem {
+  trip_packing_checks: Pick<PackingCheck, 'user_id' | 'checked_at'>[]
+}
+
+// One query, one round trip: the ticks come embedded over the composite FK,
+// the same read listGroupExpenses does for expense_shares.
+export async function listPackingItems(
+  tripId: string,
+): Promise<PackingItemWithChecks[]> {
+  const { data, error } = await supabase
+    .from('trip_packing_items')
+    .select('*, trip_packing_checks(user_id, checked_at)')
+    .eq('trip_id', tripId)
+    .order('created_at', { ascending: true })
+  if (error) throw error
+  return data as unknown as PackingItemWithChecks[]
+}
+
+export async function addPackingItems(params: {
+  tripId: string
+  titles: string[]
+  category?: string | null
+  isGroupItem?: boolean
+}): Promise<number> {
+  const userId = await currentUserId()
+  const rows = params.titles.map((title) => ({
+    trip_id: params.tripId,
+    user_id: userId,
+    title,
+    category: params.category ?? null,
+    is_group_item: params.isGroupItem ?? false,
+  }))
+  // ignoreDuplicates so applying a template twice, or on two devices, is a
+  // no-op rather than an error — the unique (trip_id, title_key) does the work
+  const { data, error } = await supabase
+    .from('trip_packing_items')
+    .upsert(rows, { onConflict: 'trip_id,title_key', ignoreDuplicates: true })
+    .select('id')
+  if (error) throw error
+  return data?.length ?? 0
+}
+
+export async function updatePackingItem(params: {
+  id: string
+  patch: TablesUpdate<'trip_packing_items'>
+}): Promise<void> {
+  const { data, error } = await supabase
+    .from('trip_packing_items')
+    .update(params.patch)
+    .eq('id', params.id)
+    .select('id')
+  if (error) throw error
+  if (!data || data.length === 0) {
+    throw new Error('Bu kaydı düzenleme yetkin yok.')
+  }
+}
+
+export async function deletePackingItem(id: string): Promise<void> {
+  const { data, error } = await supabase
+    .from('trip_packing_items')
+    .delete()
+    .eq('id', id)
+    .select('id')
+  if (error) throw error
+  if (!data || data.length === 0) {
+    throw new Error('Bu kaydı silme yetkin yok.')
+  }
+}
+
+// A tick is inserted or deleted, never edited: it is one person asserting a
+// fact about their own hands. Both directions prove themselves, because an
+// RLS-blocked write comes back 204 and would otherwise look like success.
+export async function setPacked(params: {
+  itemId: string
+  tripId: string
+  packed: boolean
+}): Promise<void> {
+  const userId = await currentUserId()
+  if (params.packed) {
+    const { data, error } = await supabase
+      .from('trip_packing_checks')
+      .upsert(
+        { item_id: params.itemId, trip_id: params.tripId, user_id: userId },
+        { onConflict: 'item_id,user_id' },
+      )
+      .select('id')
+    if (error) throw error
+    if (!data || data.length === 0) {
+      throw new Error('Bu geziye erişimin yok; işaret kaydedilmedi.')
+    }
+    return
+  }
+
+  const { error } = await supabase
+    .from('trip_packing_checks')
+    .delete()
+    .eq('item_id', params.itemId)
+    .eq('user_id', userId)
+  if (error) throw error
+}

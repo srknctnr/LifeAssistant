@@ -24,6 +24,8 @@ import {
 } from '@/features/travel/hooks'
 import { TripForm } from '@/features/travel/TripForm'
 import { TripItemForm } from '@/features/travel/TripItemForm'
+import { PackingList } from '@/features/travel/PackingList'
+import { PackingTemplates } from '@/features/travel/PackingTemplates'
 import { TripPlan } from '@/features/travel/TripPlan'
 import {
   daysUntil,
@@ -69,6 +71,7 @@ export function TripSheet({ trip, open, onClose }: TripSheetProps) {
   // a sheet rendered inside it would unmount as soon as it steps aside
   const [planAddOpen, setPlanAddOpen] = useState(false)
   const [planEditItem, setPlanEditItem] = useState<TripItem | null>(null)
+  const [packingTemplatesOpen, setPackingTemplatesOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const phase = tripPhase(trip)
@@ -125,6 +128,7 @@ export function TripSheet({ trip, open, onClose }: TripSheetProps) {
           !editOpen &&
           !saveOpen &&
           !planAddOpen &&
+          !packingTemplatesOpen &&
           planEditItem === null &&
           convertItem === null
         }
@@ -163,6 +167,11 @@ export function TripSheet({ trip, open, onClose }: TripSheetProps) {
             trip={trip}
             onAdd={() => setPlanAddOpen(true)}
             onEdit={setPlanEditItem}
+          />
+
+          <PackingList
+            trip={trip}
+            onTemplates={() => setPackingTemplatesOpen(true)}
           />
 
           <div>
@@ -333,6 +342,17 @@ export function TripSheet({ trip, open, onClose }: TripSheetProps) {
         {convertItem && (
           <ConvertForm item={convertItem} onDone={() => setConvertItem(null)} />
         )}
+      </Sheet>
+
+      <Sheet
+        open={packingTemplatesOpen}
+        onClose={() => setPackingTemplatesOpen(false)}
+        title="Hazır liste"
+      >
+        <PackingTemplates
+          trip={trip}
+          onDone={() => setPackingTemplatesOpen(false)}
+        />
       </Sheet>
     </>
   )

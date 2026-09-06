@@ -1,0 +1,160 @@
+import { describe, expect, it } from 'vitest'
+
+import {
+  buildPackingView,
+  groupPackingByCategory,
+  mergePackingTitles,
+  packingProgress,
+  type PackingItemLike,
+} from '@/features/travel/packing'
+
+const ME = 'me'
+const AYSE = 'ayse'
+
+function item(overrides: Partial<PackingItemLike> = {}): PackingItemLike {
+  return {
+    id: 'i1',
+    title: 'Pasaport',
+    category: null,
+    is_group_item: false,
+    trip_packing_checks: [],
+    ...overrides,
+  }
+}
+
+function check(user_id: string, checked_at = '2026-09-01T10:00:00Z') {
+  return { user_id, checked_at }
+}
+
+describe('buildPackingView', () => {
+  // The whole slice turns on this pair of rules.
+  it('leaves a personal item unpacked for you when someone else ticks it', () => {
+    const [row] = buildPackingView(
+      [item({ trip_packing_checks: [check(AYSE)] })],
+      ME,
+    )
+    expect(row.done).toBe(false)
+    expect(row.mineChecked).toBe(false)
+    expect(row.checkedBy).toEqual([AYSE])
+  })
+
+  it('closes a group item for everyone as soon as anyone has it', () => {
+    const [row] = buildPackingView(
+      [
+        item({
+          title: 'Çadır',
+          is_group_item: true,
+          trip_packing_checks: [check(AYSE)],
+        }),
+      ],
+      ME,
+    )
+    expect(row.done).toBe(true)
+    expect(row.mineChecked).toBe(false)
+  })
+
+  it('counts your own tick on a personal item', () => {
+    const [row] = buildPackingView(
+      [item({ trip_packing_checks: [check(AYSE), check(ME)] })],
+      ME,
+    )
+    expect(row.done).toBe(true)
+    expect(row.mineChecked).toBe(true)
+  })
+
+  it('orders the names by when they ticked', () => {
+    const [row] = buildPackingView(
+      [
+        item({
+          trip_packing_checks: [
+            check(ME, '2026-09-02T10:00:00Z'),
+            check(AYSE, '2026-09-01T10:00:00Z'),
+          ],
+        }),
+      ],
+      ME,
+    )
+    expect(row.checkedBy).toEqual([AYSE, ME])
+  })
+
+  it('shows nothing as yours before the session is known', () => {
+    const [row] = buildPackingView(
+      [item({ trip_packing_checks: [check(AYSE)] })],
+      undefined,
+    )
+    expect(row.mineChecked).toBe(false)
+    expect(row.done).toBe(false)
+  })
+})
+
+describe('packingProgress', () => {
+  it('counts what is done for YOU, not what is ticked in total', () => {
+    const rows = buildPackingView(
+      [
+        item({ id: 'a', trip_packing_checks: [check(ME)] }),
+        item({ id: 'b', trip_packing_checks: [check(AYSE)] }), // hers, not mine
+        item({
+          id: 'c',
+          is_group_item: true,
+          trip_packing_checks: [check(AYSE)],
+        }),
+        item({ id: 'd' }),
+      ],
+      ME,
+    )
+    expect(packingProgress(rows)).toEqual({ done: 2, total: 4, ratio: 0.5 })
+  })
+
+  it('does not divide by zero on an empty list', () => {
+    expect(packingProgress([])).toEqual({ done: 0, total: 0, ratio: 0 })
+  })
+})
+
+describe('groupPackingByCategory', () => {
+  it('keeps uncategorized items last, like the itinerary does with undated rows', () => {
+    const rows = buildPackingView(
+      [
+        item({ id: 'a', category: 'Giyim' }),
+        item({ id: 'b', category: null }),
+        item({ id: 'c', category: 'Elektronik' }),
+        item({ id: 'd', category: 'Giyim' }),
+        item({ id: 'e', category: '   ' }),
+      ],
+      ME,
+    )
+    const groups = groupPackingByCategory(rows)
+    expect(groups.map((g) => g.category)).toEqual(['Giyim', 'Elektronik', null])
+    expect(groups[0].rows).toHaveLength(2)
+    expect(groups[2].rows).toHaveLength(2) // null and blank fall together
+  })
+
+  it('omits the loose group entirely when everything is categorized', () => {
+    const rows = buildPackingView([item({ category: 'Giyim' })], ME)
+    expect(groupPackingByCategory(rows).map((g) => g.category)).toEqual([
+      'Giyim',
+    ])
+  })
+})
+
+describe('mergePackingTitles', () => {
+  it('drops what is already on the list, ignoring case and padding', () => {
+    expect(
+      mergePackingTitles(['Pasaport', 'Şarj aleti'], ['  pasaport ', 'Mayo']),
+    ).toEqual(['Mayo'])
+  })
+
+  it('drops repeats inside the incoming list too', () => {
+    expect(mergePackingTitles([], ['Mayo', 'mayo', 'MAYO'])).toEqual(['Mayo'])
+  })
+
+  it('skips blank titles rather than inserting rows the check constraint rejects', () => {
+    expect(mergePackingTitles([], ['  ', 'Mayo', ''])).toEqual(['Mayo'])
+  })
+
+  // The database's title_key is SQL lower(); folding with the Turkish locale
+  // here would map I to ı and disagree with the row it is checking against.
+  it('folds the way the database does, not the way Turkish does', () => {
+    expect(mergePackingTitles(['Islak mendil'], ['ISLAK MENDIL'])).toEqual([])
+    expect(mergePackingTitles(['İlaç'], ['ilaç'])).toEqual(['ilaç'])
+  })
+})

@@ -6,7 +6,13 @@ import {
   createTripItem,
   createTripWish,
   deleteTrip,
+  addPackingItems,
+  deletePackingItem,
   deleteTripItem,
+  listPackingItems,
+  setPacked,
+  updatePackingItem,
+  type PackingItemWithChecks,
   listTripItems,
   listTrips,
   updateTrip,
@@ -112,4 +118,82 @@ export function useUpdateTripItem(tripId: string) {
 export function useDeleteTripItem(tripId: string) {
   const invalidate = useItemsInvalidation(tripId)
   return useMutation({ mutationFn: deleteTripItem, onSettled: invalidate })
+}
+
+const packingKey = (tripId: string) => ['trip_packing', tripId] as const
+
+export function usePackingItems(tripId: string) {
+  return useQuery({
+    queryKey: packingKey(tripId),
+    queryFn: () => listPackingItems(tripId),
+  })
+}
+
+function usePackingInvalidation(tripId: string) {
+  const queryClient = useQueryClient()
+  return () => queryClient.invalidateQueries({ queryKey: packingKey(tripId) })
+}
+
+export function useAddPackingItems(tripId: string) {
+  const invalidate = usePackingInvalidation(tripId)
+  return useMutation({ mutationFn: addPackingItems, onSettled: invalidate })
+}
+
+export function useUpdatePackingItem(tripId: string) {
+  const invalidate = usePackingInvalidation(tripId)
+  return useMutation({ mutationFn: updatePackingItem, onSettled: invalidate })
+}
+
+export function useDeletePackingItem(tripId: string) {
+  const invalidate = usePackingInvalidation(tripId)
+  return useMutation({ mutationFn: deletePackingItem, onSettled: invalidate })
+}
+
+// A tick has to land under your thumb, not after a round trip — the list is
+// used standing over an open suitcase, often on a bad connection. onSettled
+// still reconciles, and onError puts the box back if the write was refused.
+export function useSetPacked(tripId: string, userId: string | undefined) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: setPacked,
+    onMutate: async (variables: {
+      itemId: string
+      tripId: string
+      packed: boolean
+    }) => {
+      if (!userId) return
+      await queryClient.cancelQueries({ queryKey: packingKey(tripId) })
+      const previous = queryClient.getQueryData(packingKey(tripId))
+      queryClient.setQueryData(
+        packingKey(tripId),
+        (rows: PackingItemWithChecks[] | undefined) =>
+          rows?.map((row) =>
+            row.id === variables.itemId
+              ? {
+                  ...row,
+                  trip_packing_checks: variables.packed
+                    ? [
+                        ...row.trip_packing_checks,
+                        {
+                          user_id: userId,
+                          checked_at: new Date().toISOString(),
+                        },
+                      ]
+                    : row.trip_packing_checks.filter(
+                        (c) => c.user_id !== userId,
+                      ),
+                }
+              : row,
+          ),
+      )
+      return { previous }
+    },
+    onError: (_error, _variables, context) => {
+      if (context?.previous !== undefined) {
+        queryClient.setQueryData(packingKey(tripId), context.previous)
+      }
+    },
+    onSettled: () =>
+      queryClient.invalidateQueries({ queryKey: packingKey(tripId) }),
+  })
 }
