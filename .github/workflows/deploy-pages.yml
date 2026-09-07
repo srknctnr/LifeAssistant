@@ -1,16 +1,22 @@
 # Builds the app with the /LifeAssistant/ base path and publishes it to
-# GitHub Pages on every push to main. Requires two repository secrets:
-# VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.
+# GitHub Pages on every push to main.
+#
+# Pages rather than Netlify because netlify.app is blocked on the household's
+# connection — measured, along with pages.dev and fly.dev; github.io,
+# vercel.app and onrender.com answered. That is a property of the shared
+# apex, not of the host, so if github.io is ever blocked too the durable
+# answer is a custom domain (Pages serves one for free) rather than another
+# free subdomain.
+#
+# Repository secrets it needs: VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY,
+# VITE_OMDB_KEY. VITE_TMDB_TOKEN is optional — without it the richer film
+# metadata is simply absent, which the app already handles.
 
 name: Deploy to GitHub Pages
 
-# Manual-only until Pages is enabled in repo settings; switch back to
-# push-triggered when going live:
-#   on:
-#     push:
-#       branches: [main]
-#     workflow_dispatch:
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -39,6 +45,11 @@ jobs:
           BASE_PATH: /LifeAssistant/
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          # every VITE_ var the code reads is inlined at build time, so one
+          # missing here is a feature that fails silently in production —
+          # film search was exactly that until this line
+          VITE_OMDB_KEY: ${{ secrets.VITE_OMDB_KEY }}
+          VITE_TMDB_TOKEN: ${{ secrets.VITE_TMDB_TOKEN }}
       # SPA fallback: Pages serves 404.html for unknown paths, so deep links
       # like /LifeAssistant/budget keep working on refresh
       - run: cp dist/index.html dist/404.html
