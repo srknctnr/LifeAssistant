@@ -89,25 +89,35 @@ export function groupPackingByCategory(
 }
 
 /**
- * Titles to actually insert when a list is copied or a template applied.
+ * The key the database compares titles by, reproduced here.
  *
- * Folded with plain toLowerCase rather than the Turkish locale on purpose: the
- * database's title_key is SQL lower(), and matching it here keeps the client's
- * idea of "already on the list" the same as the unique constraint's. A
- * tr-locale fold would map I to ı and disagree with the row it is checking
- * against.
+ * title_key is `lower(btrim(title))`, and Postgres lower() uses Unicode's
+ * SIMPLE case mapping, where İ (U+0130) becomes a bare i. JavaScript's
+ * toLowerCase() uses the FULL mapping and yields i + U+0307 instead — so the
+ * two disagree on precisely the letter Turkish leans on hardest, and the
+ * disagreement is invisible: the client decides a title is new, the unique
+ * constraint decides it is a duplicate, and the upsert drops it.
+ *
+ * A tr-locale fold would be worse still, mapping I to ı where Postgres keeps
+ * i. So: normalize İ first, lowercase, then strip the combining dot the full
+ * mapping leaves behind.
  */
+export function packingTitleKey(title: string): string {
+  return title.trim().replace(/İ/g, 'i').toLowerCase().replace(/̇/g, '')
+}
+
+/** Titles to actually insert when a list is copied or a template applied. */
 export function mergePackingTitles(
   existing: string[],
   incoming: string[],
 ): string[] {
-  const seen = new Set(existing.map((t) => t.trim().toLowerCase()))
+  const seen = new Set(existing.map(packingTitleKey))
   const out: string[] = []
 
   for (const raw of incoming) {
     const title = raw.trim()
     if (!title) continue
-    const key = title.toLowerCase()
+    const key = packingTitleKey(title)
     if (seen.has(key)) continue
     seen.add(key)
     out.push(title)

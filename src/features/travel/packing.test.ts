@@ -7,6 +7,7 @@ import {
   packingCheckedLabel,
   packingProgress,
   packingSources,
+  packingTitleKey,
   type PackingItemLike,
 } from '@/features/travel/packing'
 
@@ -153,11 +154,21 @@ describe('mergePackingTitles', () => {
     expect(mergePackingTitles([], ['  ', 'Mayo', ''])).toEqual(['Mayo'])
   })
 
-  // The database's title_key is SQL lower(); folding with the Turkish locale
-  // here would map I to ı and disagree with the row it is checking against.
-  it('folds the way the database does, not the way Turkish does', () => {
+  // The database's title_key is SQL lower(), which uses Unicode's SIMPLE case
+  // mapping. A tr-locale fold would map I to ı where Postgres keeps i — and
+  // plain toLowerCase, which this first shipped with, turns İ into i + U+0307
+  // where Postgres gives a bare i. Both disagree with the unique constraint,
+  // and the disagreement is silent: the upsert just drops the row.
+  it('folds I the way Postgres does, not the way Turkish does', () => {
     expect(mergePackingTitles(['Islak mendil'], ['ISLAK MENDIL'])).toEqual([])
-    expect(mergePackingTitles(['İlaç'], ['ilaç'])).toEqual(['ilaç'])
+  })
+
+  it('folds İ the way Postgres does, not the way JavaScript does', () => {
+    expect(mergePackingTitles(['İlaç'], ['ilaç'])).toEqual([])
+    expect(mergePackingTitles(['ilaç'], ['İLAÇ'])).toEqual([])
+    expect(packingTitleKey('İlaçlar')).toBe('ilaçlar')
+    // no stray combining mark survives to make the key un-comparable
+    expect(packingTitleKey('İlaçlar')).toHaveLength(7)
   })
 })
 

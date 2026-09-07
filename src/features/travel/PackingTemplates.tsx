@@ -1,5 +1,7 @@
 import { useState } from 'react'
 
+import { SkeletonRows } from '@/components/SkeletonRows'
+
 import type { PackingDraft, Trip } from '@/features/travel/api'
 import {
   useAddPackingItems,
@@ -57,10 +59,22 @@ export function PackingTemplates({
     // because last year's suitcase is not packed for this trip
     const byTitle = new Map(drafts.map((d) => [d.title, d]))
     try {
-      await add.mutateAsync({
+      const inserted = await add.mutateAsync({
         tripId: trip.id,
         items: fresh.map((title) => byTitle.get(title) ?? { title }),
       })
+      // The count is the only honest report. This client and the database fold
+      // titles independently, and if they ever disagree the upsert drops the
+      // row without complaining — closing the sheet on faith would tell the
+      // user something landed when nothing did.
+      if (inserted < fresh.length) {
+        setError(
+          inserted === 0
+            ? 'Hiçbiri eklenmedi — hepsi zaten bavulda görünüyor.'
+            : `${inserted} eşya eklendi, ${fresh.length - inserted} tanesi zaten listede.`,
+        )
+        return
+      }
       onDone()
     } catch (applyError) {
       setError(saveErrorMessage(applyError))
@@ -105,7 +119,25 @@ export function PackingTemplates({
         )
       })}
 
-      {sources.length > 0 && (
+      {/* Pending, failed and genuinely empty used to render identically —
+          the section simply vanished, which reads as "you have nothing to
+          copy" on exactly the bad connection this list is used over. */}
+      {pool.isPending && (
+        <>
+          <p className="pt-2 text-sm font-semibold tracking-tight">
+            Önceki gezilerinden
+          </p>
+          <SkeletonRows />
+        </>
+      )}
+
+      {pool.isError && (
+        <p className="pt-2 text-sm text-zinc-400">
+          Önceki listelerin yüklenemedi — bağlantını kontrol et.
+        </p>
+      )}
+
+      {!pool.isPending && !pool.isError && sources.length > 0 && (
         <>
           <p className="pt-2 text-sm font-semibold tracking-tight">
             Önceki gezilerinden
