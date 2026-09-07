@@ -11,6 +11,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 import { Button } from '@/components/Button'
+import { LoadFailure } from '@/components/LoadFailure'
 import { Sheet } from '@/components/Sheet'
 import { TextField } from '@/components/TextField'
 import { useEvents } from '@/features/calendar/hooks'
@@ -178,7 +179,19 @@ export function TripSheet({ trip, open, onClose }: TripSheetProps) {
             <p className="mb-2 flex items-center gap-1.5 text-sm font-semibold tracking-tight">
               <PiggyBank size={15} className="text-indigo-500" /> Birikim
             </p>
-            {myGoal ? (
+            {/* without this the CTA below offers to create a savings goal for
+                a trip that already has one, and taking it up would make a
+                second — a failed read turning into duplicated data */}
+            {goals.isError || wishes.isError ? (
+              <LoadFailure
+                what="Birikim"
+                error={goals.error ?? wishes.error}
+                onRetry={() => {
+                  void goals.refetch()
+                  void wishes.refetch()
+                }}
+              />
+            ) : myGoal ? (
               <div className="rounded-xl bg-white p-3.5 shadow-sm shadow-zinc-200/60 dark:bg-zinc-900 dark:shadow-none">
                 <div className="flex items-baseline justify-between gap-3">
                   <p className="text-sm font-medium tabular-nums">

@@ -15,6 +15,7 @@ import { useSearchParams } from 'react-router-dom'
 
 import { Button } from '@/components/Button'
 import { EmptyState } from '@/components/EmptyState'
+import { LoadFailure } from '@/components/LoadFailure'
 import { PageTransition } from '@/components/PageTransition'
 import { Section } from '@/components/Section'
 import { Segmented } from '@/components/Segmented'
@@ -127,7 +128,18 @@ export function FamilyPage() {
         Ailen ve grupların: ortak kasa, paylaşılan bütçe, hedefler ve planlar.
       </p>
 
-      {isLoading ? (
+      {profile.isError || memberships.isError ? (
+        <div className="mt-6">
+          <LoadFailure
+            what="Grupların"
+            error={profile.error ?? memberships.error}
+            onRetry={() => {
+              void profile.refetch()
+              void memberships.refetch()
+            }}
+          />
+        </div>
+      ) : isLoading ? (
         <div className="mt-6">
           <SkeletonRows />
         </div>

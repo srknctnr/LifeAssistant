@@ -10,6 +10,7 @@ import { useState } from 'react'
 
 import { Button } from '@/components/Button'
 import { EmptyState } from '@/components/EmptyState'
+import { LoadFailure } from '@/components/LoadFailure'
 import { PageTransition } from '@/components/PageTransition'
 import { Section } from '@/components/Section'
 import { Segmented } from '@/components/Segmented'
@@ -123,7 +124,13 @@ export function WishlistPage() {
           )}
 
           <Section title="İstekler" onAdd={() => setAddOpen(true)}>
-            {wishes.isPending ? (
+            {wishes.isError ? (
+              <LoadFailure
+                what="İstekler"
+                error={wishes.error}
+                onRetry={() => void wishes.refetch()}
+              />
+            ) : wishes.isPending ? (
               <SkeletonRows />
             ) : activeWishes.length === 0 ? (
               <EmptyState text="Henüz istek eklemedin. Bir gezi ya da almak istediğin bir şeyle başla." />

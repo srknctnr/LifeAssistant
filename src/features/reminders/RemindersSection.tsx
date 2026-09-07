@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import { useState } from 'react'
 
 import { EmptyState } from '@/components/EmptyState'
+import { LoadFailure } from '@/components/LoadFailure'
 import { Section } from '@/components/Section'
 import { Sheet } from '@/components/Sheet'
 import { SkeletonRows } from '@/components/SkeletonRows'
@@ -63,7 +64,16 @@ export function RemindersSection() {
   return (
     <>
       <Section title="Hatırlatmalar" onAdd={() => setAddOpen(true)}>
-        {reminders.isPending ? (
+        {/* "Bekleyen hatırlatma yok 🙌" is the most confident lie in the app
+            when the request simply failed — it congratulates the user for
+            being on top of things they cannot see. */}
+        {reminders.isError ? (
+          <LoadFailure
+            what="Hatırlatmalar"
+            error={reminders.error}
+            onRetry={() => void reminders.refetch()}
+          />
+        ) : reminders.isPending ? (
           <SkeletonRows count={1} />
         ) : pending.length === 0 ? (
           <EmptyState text="Bekleyen hatırlatma yok. 🙌" />

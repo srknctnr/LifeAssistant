@@ -10,6 +10,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import { useState } from 'react'
 
 import { EmptyState } from '@/components/EmptyState'
+import { LoadFailure } from '@/components/LoadFailure'
 import { PageTransition } from '@/components/PageTransition'
 import { Section } from '@/components/Section'
 import { Segmented } from '@/components/Segmented'
@@ -146,7 +147,13 @@ export function MoviesPage() {
           )}
 
           <Section title="İzleme listesi" onAdd={() => setAddOpen(true)}>
-            {movies.isPending ? (
+            {movies.isError ? (
+              <LoadFailure
+                what="Filmlerin"
+                error={movies.error}
+                onRetry={() => void movies.refetch()}
+              />
+            ) : movies.isPending ? (
               <SkeletonRows />
             ) : toWatch.length === 0 ? (
               <EmptyState

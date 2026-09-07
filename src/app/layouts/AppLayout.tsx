@@ -16,6 +16,7 @@ import { QuickTransactionForm } from '@/app/lazy-pages'
 import { Sheet } from '@/components/Sheet'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { useAuth } from '@/features/auth/useAuth'
+import { useOnline } from '@/lib/use-online'
 
 const navItems = [
   { to: '/', label: 'Özet', icon: Home },
@@ -28,6 +29,7 @@ const navItems = [
 
 export function AppLayout() {
   const { signOut } = useAuth()
+  const online = useOnline()
   // Logging a spend is the thing done most often and it used to be the
   // deepest: six tabs, no add button anywhere, and the only way in was a
   // section header on the budget page below two cards. It lives in the layout
@@ -99,6 +101,15 @@ export function AppLayout() {
       </aside>
 
       <div className="flex-1">
+        {/* One line for the whole app rather than a dozen identical error
+            cards: when the network is gone every section fails at once, and
+            the useful thing to say is why, once. */}
+        {!online && (
+          <div className="bg-amber-100 px-5 py-2 text-center text-xs font-medium text-amber-800 dark:bg-amber-500/15 dark:text-amber-300">
+            Çevrimdışısın — kayıtlı veriler görünür, yenilenmez.
+          </div>
+        )}
+
         <header className="mx-auto flex max-w-md items-center justify-between px-5 pt-6 md:hidden">
           <div className="flex items-center gap-2.5">
             <img

@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 
+import { LoadFailure } from '@/components/LoadFailure'
 import { Sheet } from '@/components/Sheet'
 import {
   useExpenseItems,
@@ -45,6 +46,32 @@ export function BudgetDetailSheet({ open, onClose }: BudgetDetailSheetProps) {
   const goalNames = new Map(
     (goals.data ?? []).map((g) => [g.id, g.wishlist_items?.name ?? 'Hedef']),
   )
+
+  // The sheet whose whole job is to itemise the headline. Rendered from
+  // `?? []` on a failed request it becomes a breakdown that accounts for
+  // nothing while looking complete.
+  const failed =
+    incomes.isError ||
+    expenses.isError ||
+    transactions.isError ||
+    goals.isError ||
+    contributions.isError
+
+  if (failed) {
+    return (
+      <Sheet open={open} onClose={onClose} title="Bu ayın dökümü">
+        <LoadFailure
+          what="Döküm"
+          error={incomes.error ?? expenses.error ?? transactions.error}
+          onRetry={() => {
+            void incomes.refetch()
+            void expenses.refetch()
+            void transactions.refetch()
+          }}
+        />
+      </Sheet>
+    )
+  }
 
   return (
     <Sheet open={open} onClose={onClose} title="Bu ayın dökümü">

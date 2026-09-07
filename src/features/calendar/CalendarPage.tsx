@@ -12,6 +12,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 
 import { EmptyState } from '@/components/EmptyState'
+import { LoadFailure } from '@/components/LoadFailure'
 import { PageTransition } from '@/components/PageTransition'
 import { Section } from '@/components/Section'
 import { Segmented } from '@/components/Segmented'
@@ -205,7 +206,16 @@ export function CalendarPage() {
       </Section>
 
       <Section title="Bu hafta" onAdd={() => setAddCategoryOpen(true)}>
-        {categories.isPending || entries.isPending ? (
+        {categories.isError || entries.isError ? (
+          <LoadFailure
+            what="Kategorilerin"
+            error={categories.error ?? entries.error}
+            onRetry={() => {
+              void categories.refetch()
+              void entries.refetch()
+            }}
+          />
+        ) : categories.isPending || entries.isPending ? (
           <SkeletonRows />
         ) : (categories.data ?? []).length === 0 ? (
           <EmptyState text="Henüz kategori yok. Spor, kitap, sosyalleşme… takip etmek istediğin ilk alanı ekle." />
@@ -305,6 +315,19 @@ function DayPlans({
       ),
   )
   const isPast = selectedISO < todayISO()
+
+  if (events.isError || reminders.isError) {
+    return (
+      <LoadFailure
+        what="Günün planı"
+        error={events.error ?? reminders.error}
+        onRetry={() => {
+          void events.refetch()
+          void reminders.refetch()
+        }}
+      />
+    )
+  }
 
   if (events.isPending || reminders.isPending) return <SkeletonRows count={1} />
 
