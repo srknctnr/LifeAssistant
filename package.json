@@ -21,7 +21,10 @@
       "oxlint",
       "prettier --write"
     ],
-    "*.{css,md,json,html}": [
+    "*.{css,md,html}": [
+      "prettier --write"
+    ],
+    "!(package-lock).json": [
       "prettier --write"
     ]
   },

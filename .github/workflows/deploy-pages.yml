@@ -33,9 +33,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # .nvmrc, not a literal: npm ci is strict about the lockfile, and a
+      # lockfile written by one npm major is not always satisfiable by
+      # another. Pinned at 22 while the lockfile came from npm 11, this
+      # refused the deploy at its first step with a transitive optional dep
+      # it could not resolve. One file now says which toolchain both the
+      # developer and CI use.
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version-file: .nvmrc
           cache: npm
       - run: npm ci
       - run: npm run lint
