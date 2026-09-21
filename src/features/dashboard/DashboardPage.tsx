@@ -31,6 +31,7 @@ import {
 } from '@/features/calendar/hooks'
 import { weekDays } from '@/features/calendar/week-math'
 import { BudgetDetailSheet } from '@/features/dashboard/BudgetDetailSheet'
+import { MonthReportCard } from '@/features/dashboard/MonthReportCard'
 import { useMemberships } from '@/features/family/hooks'
 import {
   moduleMembers,
@@ -71,6 +72,10 @@ export function DashboardPage() {
       </p>
 
       <RemindersSection />
+
+      {/* news, so it sits above the standing cards — and it removes itself
+          once read or once the month is half gone */}
+      <MonthReportCard />
 
       <div className="mt-8 grid gap-4 md:grid-cols-2">
         <BudgetModule />

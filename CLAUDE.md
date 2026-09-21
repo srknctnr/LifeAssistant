@@ -89,3 +89,6 @@ Alınan kararlar:
 - Her anlamlı adımda git commit at
 - Karmaşık kararlarda önce seçenekleri sun, sonra uygula
 - Supabase şema değişikliklerini migration dosyası olarak tut
+- Tip kontrolü **`npm run build`** ile yapılır. Kök `tsconfig.json` yalnızca
+  proje referansları tuttuğu için `npx tsc --noEmit` hiçbir şeyi denetlemez ve
+  hatalı kodda bile "geçti" der
