@@ -45,7 +45,9 @@ export function MonthReportCard() {
   const [seen, setSeen] = useState(readSeen)
 
   // A recap assembled from `?? []` while a request is failing would be a
-  // confident summary of data we do not have.
+  // confident summary of data we do not have. These four are the money, so a
+  // failure among them means no card at all; films and trips only cost their
+  // own line, and are dropped below instead of taking the recap with them.
   const ready =
     incomes.isSuccess &&
     expenses.isSuccess &&
@@ -80,8 +82,13 @@ export function MonthReportCard() {
     report.spentBefore !== null ? report.spent - report.spentBefore : null
   const extras = [
     report.saved > 0 ? `${formatMoney(report.saved)} biriktirdin` : null,
-    report.moviesWatched > 0 ? `${report.moviesWatched} film` : null,
-    ...report.trips.map((t) => `${t.emoji} ${t.title}`),
+    movies.isSuccess && report.moviesWatched > 0
+      ? `${report.moviesWatched} film`
+      : null,
+    // silence beats "no trips" to someone who took one
+    ...(trips.isSuccess
+      ? report.trips.map((t) => `${t.emoji} ${t.title}`)
+      : []),
   ].filter((x): x is string => x !== null)
 
   return (
