@@ -256,3 +256,25 @@ describe('parseEntry, money that has not been spent yet', () => {
     expect(parse('kahve 85 TL')?.actions).toEqual(['spend'])
   })
 })
+
+describe('parseEntry, a receipt is not a plan', () => {
+  // A purchase already made does not belong on the calendar.
+  it('does not offer the calendar for a spend that already happened', () => {
+    expect(parse('3 eylülde eczaneden 90 TL ilaç aldım')?.actions).toEqual([
+      'spend',
+    ])
+    expect(parse('dün sinemaya 200 TL verdim')?.actions).toEqual(['spend'])
+  })
+
+  // With no money attached, a log of what happened is the only reading left.
+  it('still offers the calendar for a past day with nothing spent', () => {
+    expect(parse('dün toplantı vardı')?.actions).toEqual(['event'])
+  })
+
+  it('still offers it for an outing that has not happened', () => {
+    expect(parse('haftaya cuma akşam 8 tiyatro 450 lira')?.actions).toEqual([
+      'event',
+      'plan-expense',
+    ])
+  })
+})

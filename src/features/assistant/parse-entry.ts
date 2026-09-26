@@ -313,7 +313,11 @@ function chooseActions(input: {
   // the only thing it can be is a calendar entry.
   const bareDate = hasDate && amount === null
 
-  if (hasDate && (isOuting || bareDate)) {
+  // A purchase already made does not belong on the calendar: "3 eylülde
+  // eczaneden 90 TL ilaç aldım" is a receipt, not a plan. A past day with no
+  // money attached still gets the offer, because a log of what happened is
+  // then the only thing there is to make of the sentence.
+  if (hasDate && (bareDate || (isOuting && !past))) {
     // never both: they would put two entries on the same day for one plan
     actions.push(isMovie ? 'movie-night' : 'event')
   }
