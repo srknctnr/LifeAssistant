@@ -92,8 +92,12 @@ export function buildMonthReport(input: {
     monthlyExpenseTotal(input.expenses, anchor)
   const spent = monthSpendTotal(input.transactions, anchor)
 
-  // no plan and nothing logged: not a month worth recapping
-  if (spendable <= 0 && spent === 0) return null
+  // A verdict needs both sides. With no plan there is nothing to come in
+  // under, and with nothing logged there is no evidence of coming in under
+  // it — a month the user simply did not open the app in looks exactly like
+  // a month of perfect restraint, and congratulating them for it is the same
+  // fabricated improvement the spentBefore rule below refuses to make.
+  if (spendable <= 0 || spent === 0) return null
 
   const before = new Date(anchor.getFullYear(), anchor.getMonth() - 1, 1)
   const spentBeforeRaw = monthSpendTotal(input.transactions, before)

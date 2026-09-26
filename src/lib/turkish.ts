@@ -118,12 +118,18 @@ export const MONTHS_TR = [
  * ends up in a budget and is never noticed. The dot is a thousands separator
  * here and the comma is the decimal mark.
  *
- * With no comma present, the dots are read as grouping when they actually
- * group — every segment after the first exactly three digits long, the first
- * one to three — and as a decimal point otherwise. So "1.250" is 1250 lira,
- * while "1250.50" is 1250 lira 50 kuruş: four digits before the dot is not a
- * group any Turkish writer would produce, so the only sensible reading left is
- * an English keyboard layout.
+ * When both separators appear, the last one is the decimal mark and the other
+ * is grouping — that covers both "1.250,50" and an English "1,250.50".
+ *
+ * When only one kind appears, its meaning is decided by shape, and the same
+ * rule applies to the dot and the comma alike: a separator followed by
+ * exactly three digits, with one to three digits in front of it, is grouping.
+ * Everything else is a decimal mark.
+ *
+ * That symmetry matters. Kuruş has two digits, so "1,250" cannot be one lira
+ * and two hundred fifty kuruş — it is somebody typing a thousand two hundred
+ * fifty with the separator their phone keyboard offered. Reading it as 1,25
+ * logs a thousandth of what was spent, and nothing on screen looks wrong.
  *
  * Returns null for anything it cannot read confidently.
  */
@@ -132,25 +138,26 @@ export function parseTrAmountToMinor(raw: string): number | null {
   if (!/^[\d.,\s]+$/.test(text) || !/\d/.test(text)) return null
 
   const compact = text.replace(/\s/g, '')
-  const lastComma = compact.lastIndexOf(',')
-
   let whole = compact
   let fraction = ''
 
-  if (lastComma > -1) {
-    // a comma is always the decimal mark here: 1.250,50
-    whole = compact.slice(0, lastComma)
-    fraction = compact.slice(lastComma + 1)
-  } else if (compact.includes('.')) {
-    const parts = compact.split('.')
+  const hasComma = compact.includes(',')
+  const hasDot = compact.includes('.')
+
+  if (hasComma && hasDot) {
+    // mixed: whichever comes last is the decimal mark
+    const cut = Math.max(compact.lastIndexOf(','), compact.lastIndexOf('.'))
+    whole = compact.slice(0, cut)
+    fraction = compact.slice(cut + 1)
+  } else if (hasComma || hasDot) {
+    const parts = compact.split(hasComma ? ',' : '.')
     const grouped =
-      parts.length > 1 &&
       parts[0].length >= 1 &&
       parts[0].length <= 3 &&
       parts.slice(1).every((p) => p.length === 3)
     if (!grouped) {
       fraction = parts[parts.length - 1]
-      whole = parts.slice(0, -1).join('.')
+      whole = parts.slice(0, -1).join('')
     }
   }
 
@@ -160,4 +167,81 @@ export function parseTrAmountToMinor(raw: string): number | null {
 
   const kurus = (fraction + '00').slice(0, 2)
   return Number(digits) * 100 + Number(kurus)
+}
+
+/**
+ * Turkish case and derivation endings, longest first.
+ *
+ * Turkish glues these onto the word — "markete", "marketten", "cumaya",
+ * "3 eylülde" — so a bare \b after the stem matches none of them.
+ */
+const SUFFIXES = [
+  'larindan',
+  'lerinden',
+  'larinda',
+  'lerinde',
+  'lardan',
+  'lerden',
+  'larda',
+  'lerde',
+  'ciya',
+  'ciye',
+  'cisi',
+  'lari',
+  'leri',
+  'lara',
+  'lere',
+  'ndan',
+  'nden',
+  'lar',
+  'ler',
+  'nin',
+  'nun',
+  'yla',
+  'yle',
+  'dan',
+  'den',
+  'tan',
+  'ten',
+  'nda',
+  'nde',
+  'lik',
+  'da',
+  'de',
+  'ta',
+  'te',
+  'ya',
+  'ye',
+  'yi',
+  'yu',
+  'si',
+  'su',
+  'na',
+  'ne',
+  'la',
+  'le',
+  'ci',
+  'cu',
+  'in',
+  'un',
+  'im',
+  'um',
+  'a',
+  'e',
+  'i',
+  'u',
+]
+
+export const TR_SUFFIX = `(?:${SUFFIXES.join('|')})?`
+
+/**
+ * A folded stem, matched as a whole word with an optional Turkish ending.
+ *
+ * Bare substring matching is how "kalbim" becomes a trip to BİM, "amacım"
+ * becomes a football match and "kiraz" becomes rent. The leading boundary
+ * stops a keyword being found inside a longer word; the ending list stops
+ * "kiraz" passing as "kira" while still letting "kiraya" through.
+ */
+export function trWord(stem: string, flags = ''): RegExp {
+  return new RegExp(`\\b${stem}${TR_SUFFIX}\\b`, flags)
 }

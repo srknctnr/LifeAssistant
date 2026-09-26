@@ -1,4 +1,4 @@
-import { MONTHS_TR, WEEKDAYS_TR, foldTrIndexed } from '@/lib/turkish'
+import { MONTHS_TR, TR_SUFFIX, WEEKDAYS_TR, foldTrIndexed } from '@/lib/turkish'
 import { toISODate } from '@/lib/dates'
 
 export interface DateMatch {
@@ -54,6 +54,10 @@ const RELATIVE: { word: string; days: number }[] = [
 
 const NEXT_WEEK = ['haftaya', 'gelecek hafta', 'onumuzdeki hafta', 'gelecek']
 
+// The shared Turkish ending list; see lib/turkish.ts for why a bare  is
+// not enough here.
+const SUFFIX = TR_SUFFIX
+
 /**
  * Finds the first date expression in a Turkish sentence.
  *
@@ -61,9 +65,35 @@ const NEXT_WEEK = ['haftaya', 'gelecek hafta', 'onumuzdeki hafta', 'gelecek']
  * entry that silently files something on the wrong day is worse than one that
  * asks, because the wrong day is invisible until the thing is missed.
  */
-export function findDate(input: string, today = new Date()): DateMatch | null {
+export function findDate(
+  input: string,
+  today = new Date(),
+  /**
+   * Which way a year-less date leans. "3 Ekim" said in September means this
+   * October; the same words in a sentence ending "harcadım" mean the one that
+   * has already happened. Getting this backwards files a spend from last week
+   * as a plan for next year, which is invisible until a month total is wrong.
+   */
+  prefer: 'future' | 'past' = 'future',
+): DateMatch | null {
   const { text, at } = foldTrIndexed(input)
   const candidates: DateMatch[] = []
+  const todayIso = toISODate(today)
+
+  // Rolls a year-less date to the year the sentence is talking about.
+  const settleYear = (
+    year: number,
+    month: number,
+    day: number,
+  ): string | null => {
+    const iso = fromParts(year, month, day)
+    if (!iso) return null
+    if (prefer === 'future' && iso < todayIso)
+      return fromParts(year + 1, month, day)
+    if (prefer === 'past' && iso > todayIso)
+      return fromParts(year - 1, month, day)
+    return iso
+  }
 
   // folded indices are translated back through the map, so the words handed
   // to the caller are the ones the user actually typed
@@ -90,37 +120,40 @@ export function findDate(input: string, today = new Date()): DateMatch | null {
   // currency word right after the number settles it: that is money, and a
   // date parser has no business touching it.
   const money = /^\s*(tl|₺|lira)/
+  // "saat 14.05" and "akşam 8.10" are clocks. Without this the date reader
+  // gets there first and turns a 14:05 meeting into 14 May.
+  const clock = /(saat|sabah|oglen|aksam|gece)\s*$/
   for (const m of text.matchAll(
     /\b(\d{1,2})[./](\d{1,2})(?:[./](\d{2,4}))?\b/g,
   )) {
     if (money.test(text.slice(m.index + m[0].length))) continue
     if (text[m.index - 1] === '₺') continue
+    if (!m[3] && clock.test(text.slice(0, m.index))) continue
     const day = +m[1]
     const month = +m[2]
-    let year = m[3] ? +m[3] : today.getFullYear()
-    if (m[3] && m[3].length === 2) year += 2000
-    const iso = fromParts(year, month, day)
-    // a year-less date that has already passed means the next one
-    if (iso && !m[3] && iso < toISODate(today)) {
-      push(fromParts(year + 1, month, day), m.index, m[0].length)
+    if (m[3]) {
+      let year = +m[3]
+      if (m[3].length === 2) year += 2000
+      push(fromParts(year, month, day), m.index, m[0].length)
     } else {
-      push(iso, m.index, m[0].length)
+      push(settleYear(today.getFullYear(), month, day), m.index, m[0].length)
     }
   }
 
-  // 3 Ekim / 3 Ekim 2026
+  // 3 Ekim / 3 Ekim 2026 / 3 eylülde / 15 ağustosta
   const monthWords = MONTHS_TR.join('|')
   for (const m of text.matchAll(
-    new RegExp(`\\b(\\d{1,2})\\s+(${monthWords})(?:\\s+(\\d{4}))?\\b`, 'g'),
+    new RegExp(
+      `\\b(\\d{1,2})\\s+(${monthWords})${SUFFIX}(?:\\s+(\\d{4}))?\\b`,
+      'g',
+    ),
   )) {
     const day = +m[1]
     const month = MONTHS_TR.indexOf(m[2] as (typeof MONTHS_TR)[number]) + 1
-    const year = m[3] ? +m[3] : today.getFullYear()
-    const iso = fromParts(year, month, day)
-    if (iso && !m[3] && iso < toISODate(today)) {
-      push(fromParts(year + 1, month, day), m.index, m[0].length)
+    if (m[3]) {
+      push(fromParts(+m[3], month, day), m.index, m[0].length)
     } else {
-      push(iso, m.index, m[0].length)
+      push(settleYear(today.getFullYear(), month, day), m.index, m[0].length)
     }
   }
 
@@ -154,17 +187,29 @@ export function findDate(input: string, today = new Date()): DateMatch | null {
     const word = WEEKDAYS_TR[w]
     // \b would not fire before Turkish suffixes like "cumaya"; match the word
     // and let the suffix stay in the title
-    const re = new RegExp(`\\b${word}\\b`, 'g')
+    const re = new RegExp(`\\b${word}${SUFFIX}\\b`, 'g')
     for (const m of text.matchAll(re)) {
       // "cumartesi" contains "cuma": skip a match that is only part of a
       // longer weekday name
       if (word === 'cuma' && text.startsWith('cumartesi', m.index)) continue
-      const before = text.slice(Math.max(0, m.index - 20), m.index)
-      const nextWeek = NEXT_WEEK.some((p) => before.includes(p))
+      // "haftaya cuma" is a single date phrase, so the prefix is consumed
+      // with the weekday — it belongs in the chip the user is shown, not left
+      // behind in the title as "Haftaya tiyatro".
+      //
+      // It counts only when it sits immediately in front of the weekday.
+      // "gelecek" on its own is a common word ("gelecek yıl", "gelecek
+      // planlar"), and a loose search for it anywhere earlier in the sentence
+      // would silently push the date a week out.
+      const before = text.slice(0, m.index)
+      const prefix = NEXT_WEEK.map((p) => ({ p, i: before.lastIndexOf(p) }))
+        .filter((hit) => hit.i > -1)
+        .find((hit) => before.slice(hit.i + hit.p.length).trim() === '')
+      const attached = prefix !== undefined
       let days = daysUntilWeekday(today, w)
       // "haftaya cuma" is never today and never this week's Friday
-      if (nextWeek) days += 7
-      push(shift(today, days), m.index, m[0].length)
+      if (attached) days += 7
+      const start = prefix ? prefix.i : m.index
+      push(shift(today, days), start, m.index + m[0].length - start)
     }
   }
 

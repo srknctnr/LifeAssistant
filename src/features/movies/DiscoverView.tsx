@@ -17,6 +17,7 @@ import {
 import {
   discoverByTaste,
   discoverMovies,
+  tmdbGenreIds,
   isOmdbConfigured,
   isTmdbConfigured,
   omdbMovieByImdbId,
@@ -54,9 +55,15 @@ function TheatricalFeeds() {
   const movies = useMovies()
   const all = movies.data ?? []
   const profile = genreTasteProfile(all)
-  const liked = likedGenres(profile)
-  // With nothing rated there is no taste to show, so the tab is not offered
-  // at all — an empty "Sana göre" would be a promise the data cannot keep.
+  // Only the genres TMDB can actually be asked about. The app's vocabulary is
+  // wider than TMDB's — Biyografi, Kara Film, Müzikal and Spor come from OMDb
+  // and have no id — so somebody whose ratings sit entirely in those would
+  // otherwise be offered a tab that names their genres and then returns
+  // nothing at all.
+  const liked = likedGenres(profile).filter((g) => tmdbGenreIds([g]).length > 0)
+  const disliked = dislikedGenres(profile).filter(
+    (g) => tmdbGenreIds([g]).length > 0,
+  )
   const canTaste = !tasteIsThin(all) && liked.length > 0
 
   const [feed, setFeed] = useState<Feed>('taste')
@@ -65,7 +72,6 @@ function TheatricalFeeds() {
   const { add, addingKey, error, askMode, familyVisible, setFamilyVisible } =
     useAddFromSearch()
 
-  const disliked = dislikedGenres(profile)
   const results = useQuery({
     queryKey:
       active === 'taste'
@@ -120,7 +126,17 @@ function TheatricalFeeds() {
         </p>
       )}
 
-      {results.data && (
+      {/* an empty list rendered nothing at all, which reads as a broken
+          screen rather than an answer */}
+      {results.data?.length === 0 && (
+        <p className="mt-4 text-sm text-zinc-500 dark:text-zinc-400">
+          {active === 'taste'
+            ? 'Bu türlerde önerecek yeni bir şey bulamadım. Birkaç film daha puanlarsan profil genişler.'
+            : 'Şu an gösterilecek film yok.'}
+        </p>
+      )}
+
+      {results.data && results.data.length > 0 && (
         <ul className="mt-4 space-y-2.5">
           {results.data.map((result) => (
             <DiscoverRow

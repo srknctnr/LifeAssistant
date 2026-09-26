@@ -141,3 +141,118 @@ describe('parseEntry', () => {
     }
   })
 })
+
+describe('parseEntry action choice', () => {
+  // Rent on the 15th is not an appointment. Offering a calendar entry for it
+  // fills the calendar with bills.
+  it('does not put a bill on the calendar', () => {
+    expect(parse('15 Ekim kira 22.000 TL')?.actions).toEqual(['plan-expense'])
+    expect(parse('3 Ekim elektrik faturası 900 TL')?.actions).toEqual([
+      'plan-expense',
+    ])
+  })
+
+  // Nobody writes a clock time for a rent payment, so one is the clearest
+  // signal that this is something you attend.
+  it('treats a written time as an appointment', () => {
+    const draft = parse('haftaya cuma akşam 8 tiyatro 450 lira')
+    expect(draft?.actions).toEqual(['event', 'plan-expense'])
+    expect(draft?.title).toBe('Tiyatro')
+  })
+
+  // Both would put two entries on the calendar for one plan.
+  it('never offers a film night and a plain event together', () => {
+    const actions = parse('cuma sinemaya gidiyoruz, 600 TL')?.actions ?? []
+    expect(actions).toContain('movie-night')
+    expect(actions).not.toContain('event')
+  })
+
+  it('offers the calendar for a dated plan with no money', () => {
+    expect(parse('pazartesi doktor randevusu')?.actions).toEqual(['event'])
+    expect(parse('salı toplantı')?.actions).toEqual(['event'])
+  })
+
+  // Understanding a word but having nothing to offer is not understanding.
+  // A bare category has no amount to spend and no day to sit on, and the
+  // honest answer is to say so rather than invent today.
+  it('says nothing when it has nothing to propose', () => {
+    expect(parse('market')).toBeNull()
+    expect(parse('sinema')).toBeNull()
+    expect(parse('cuma sinema')).not.toBeNull()
+  })
+})
+
+describe('parseEntry, past-tense dates', () => {
+  // A spend made eleven days ago was being filed as a plan for next year —
+  // wrong in the year, wrong in the table, and invisible until a month total
+  // came out short.
+  it('files a past-tense spend in the year it happened', () => {
+    expect(parse('3 eylülde markete 450 TL harcadım')).toMatchObject({
+      dateISO: '2026-09-03',
+      actions: ['spend'],
+      amount: 450,
+    })
+    expect(parse('15.09 markete 450 TL harcadım')?.dateISO).toBe('2026-09-15')
+    expect(parse('1 eylül kira 15.000 TL ödedim')?.dateISO).toBe('2026-09-01')
+  })
+
+  it('still reads a future plan as a future plan', () => {
+    expect(parse('3 Ekim tiyatro')?.dateISO).toBe('2026-10-03')
+    expect(parse('15 Ekim kira 22.000 TL')?.dateISO).toBe('2026-10-15')
+  })
+
+  it('reads a clock as a clock, not a date', () => {
+    const draft = parse('cuma saat 14.05 toplantı')
+    expect(draft?.dateISO).toBe('2026-10-02')
+    expect(draft?.time).toBe('14:05')
+  })
+})
+
+describe('parseEntry category matching', () => {
+  // As bare substrings these keywords live inside ordinary words, and each
+  // one wrote a wrong category quietly into the budget.
+  it('does not find a keyword inside another word', () => {
+    expect(parse('kalbim için ilaç 100 TL aldım')?.category).toBe('Sağlık')
+    expect(parse('amacım 5000 TL biriktirmek')?.category).toBeNull()
+    expect(parse('kiraz 50 TL aldım')?.category).toBeNull()
+    expect(parse('ev sahibime 5000 TL kira verdim')?.category).toBe('Konut')
+  })
+
+  it('still reads a keyword carrying a Turkish ending', () => {
+    expect(parse('markete 250 TL verdim')?.category).toBe('Market')
+    expect(parse('kiraya 5000 TL verdim')?.category).toBe('Konut')
+    expect(parse('eczaneden 90 TL ilaç aldım')?.category).toBe('Sağlık')
+    expect(parse('sinemaya 200 TL verdim')?.category).toBe('Eğlence')
+  })
+
+  // The same trap for the words that decide the tense and the film night.
+  it('does not see a film or a past tense inside another word', () => {
+    expect(parse('filmi izledim 100 TL')?.actions).toContain('spend')
+    expect(parse('20 Ekim filmler festivali')?.actions).toContain('movie-night')
+  })
+})
+
+describe('parseEntry, money that has not been spent yet', () => {
+  // With no date the sentence reads as "now", so this became a spend and the
+  // budget recorded six hundred lira for a film nobody had seen.
+  it('does not log a stated budget as a spend', () => {
+    const draft = parse('sinemaya 600 TL bütçem var')
+    expect(draft?.past).toBe(false)
+    expect(draft?.actions).not.toContain('spend')
+    expect(draft?.actions).toContain('plan-expense')
+  })
+
+  it('treats setting money aside as a plan', () => {
+    expect(parse('düğün için 50.000 TL bütçe ayırdım')?.actions).toEqual([
+      'plan-expense',
+    ])
+    expect(parse('tatil için 20.000 TL bütçem var')?.actions).toContain(
+      'plan-expense',
+    )
+  })
+
+  it('still logs a real spend as a spend', () => {
+    expect(parse('markete 250 TL harcadım')?.actions).toEqual(['spend'])
+    expect(parse('kahve 85 TL')?.actions).toEqual(['spend'])
+  })
+})

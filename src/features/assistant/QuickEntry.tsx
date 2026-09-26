@@ -67,7 +67,11 @@ export function QuickEntry({ onDone }: { onDone: () => void }) {
   function reread(next: string) {
     setText(next)
     setError(null)
-    setDone([])
+    // `done` deliberately survives an edit. After a partial failure the
+    // calendar entry is already on the calendar; clearing the memory because
+    // the sentence changed would write it a second time and the user would
+    // have no way to know. Closing the sheet is what starts over — Sheet
+    // unmounts its children, so everything here resets with it.
     const parsed = parseEntry(next)
     setTitle(parsed?.title ?? '')
     setDate(parsed?.dateISO ?? '')
@@ -306,7 +310,8 @@ export function QuickEntry({ onDone }: { onDone: () => void }) {
 
           {done.length > 0 && (
             <p className="text-sm text-emerald-600 dark:text-emerald-400">
-              {done.map((a) => ACTION_LABELS[a]).join(', ')} kaydedildi.
+              {done.map((a) => ACTION_LABELS[a]).join(', ')} kaydedildi — tekrar
+              yazılmayacak. Yeniden başlamak için paneli kapat.
             </p>
           )}
 

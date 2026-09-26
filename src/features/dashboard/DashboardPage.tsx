@@ -73,8 +73,8 @@ export function DashboardPage() {
 
       <RemindersSection />
 
-      {/* news, so it sits above the standing cards — and it removes itself
-          once read or once the month is half gone */}
+      {/* news, so it sits above the standing cards — and it stays until the
+          user dismisses it, which is the only rule: see monthReportIsNews */}
       <MonthReportCard />
 
       <div className="mt-8 grid gap-4 md:grid-cols-2">

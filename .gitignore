@@ -29,3 +29,8 @@ coverage
 *.njsproj
 *.sln
 *.sw?
+
+# throwaway probe files written while investigating something
+src/**/__scratch__/
+src/**/__tmp*
+src/**/__repro*

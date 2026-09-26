@@ -210,3 +210,34 @@ describe('monthReportIsNews', () => {
     expect(monthReportIsNews(report, null)).toBe(true)
   })
 })
+
+describe('buildMonthReport refuses a verdict it cannot support', () => {
+  // A month the user never opened the app in looks exactly like a month of
+  // perfect restraint. Congratulating them for 31.000₺ they did not save is
+  // the fastest way to make the whole card untrustworthy.
+  it('says nothing about a month with a plan but no logged spending', () => {
+    expect(
+      buildMonthReport({ ...base, transactions: [tx(500, '2026-09-03')] }),
+    ).toBeNull()
+  })
+
+  // Nothing to exceed means nobody exceeded anything.
+  it('says nothing when there was no plan to measure against', () => {
+    expect(
+      buildMonthReport({
+        ...base,
+        incomes: [],
+        expenses: [],
+        transactions: [tx(500, '2026-08-03')],
+      }),
+    ).toBeNull()
+  })
+
+  it('still reports a month that has both', () => {
+    const report = buildMonthReport({
+      ...base,
+      transactions: [tx(1000, '2026-08-10')],
+    })
+    expect(report?.left).toBe(30000)
+  })
+})

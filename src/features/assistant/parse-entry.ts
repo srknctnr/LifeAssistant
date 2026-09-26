@@ -1,5 +1,5 @@
 import { findDate, findTime } from '@/features/assistant/tr-date'
-import { foldTrIndexed, parseTrAmountToMinor } from '@/lib/turkish'
+import { foldTrIndexed, parseTrAmountToMinor, trWord } from '@/lib/turkish'
 import { fromMinor } from '@/features/expenses/split-math'
 
 /** what the sentence could reasonably be turned into, best first */
@@ -113,6 +113,23 @@ const PAST_WORDS = [
   'cektim',
 ]
 
+// Words that say the money has NOT been spent yet. Without these, "sinemaya
+// 600 TL bütçem var" has no date, so it reads as now, so it becomes a spend —
+// and the budget records six hundred lira for a film nobody has seen.
+const INTENT_WORDS = [
+  'butce',
+  'butcem',
+  'ayirdim',
+  'ayiracagim',
+  'lazim',
+  'planliyorum',
+  'dusunuyorum',
+  'alacagim',
+  'gidecegiz',
+  'gidecegim',
+  'gidiyoruz',
+]
+
 // Money talk that carries no information once the amount has been lifted out.
 // Stripped from the title so "600 TL bütçem var" does not leave "bütçem var".
 const FILLER = [
@@ -165,7 +182,10 @@ export function parseEntry(
   const spans: Span[] = []
   const matched: EntryDraft['matched'] = []
 
-  const date = findDate(source, today)
+  // Past tense changes which year a bare "15.09" means, so it has to be
+  // known before the date is read rather than after.
+  const saidPast = PAST_WORDS.some((w) => trWord(w).test(text))
+  const date = findDate(source, today, saidPast ? 'past' : 'future')
   if (date) {
     spans.push({ from: date.index, to: date.index + date.length })
     matched.push({ field: 'date', text: date.text })
@@ -201,7 +221,7 @@ export function parseEntry(
 
   // A bare number counts as money only when the sentence is already about
   // money — otherwise "3 kişiyiz" would become three lira.
-  if (amount === null && PAST_WORDS.some((w) => text.includes(w))) {
+  if (amount === null && saidPast) {
     for (const m of text.matchAll(/\b[\d.,]*\d\b/g)) {
       const from = at[m.index]
       const to = at[m.index + m[0].length] ?? source.length
@@ -215,10 +235,13 @@ export function parseEntry(
     }
   }
 
+  // Whole words only. As a bare substring, "bim" lives inside "kalbim",
+  // "maç" inside "amacım" and "kira" inside "kiraz" — each one a wrong
+  // category written quietly into the budget.
   let category: string | null = null
   let categoryAt = -1
   for (const [word, name] of CATEGORY_WORDS) {
-    const i = text.indexOf(word)
+    const i = text.search(trWord(word))
     if (i > -1 && (categoryAt === -1 || i < categoryAt)) {
       category = name
       categoryAt = i
@@ -226,13 +249,25 @@ export function parseEntry(
   }
   if (category) matched.push({ field: 'category', text: category })
 
-  const isMovie = MOVIE_WORDS.some((w) => text.includes(w))
+  const isMovie = MOVIE_WORDS.some((w) => trWord(w).test(text))
   // A written date decides for itself, even against "harcadım": a spend
   // cannot be filed on a day that has not happened. With no date at all, the
   // sentence is about now.
-  const past = date ? date.iso <= isoOf(today) : true
+  const saidFuture = INTENT_WORDS.some((w) => trWord(w).test(text))
+  const past = date ? date.iso <= isoOf(today) : !saidFuture
 
   if (!date && !amount && !category && !isMovie) return null
+
+  const actions = chooseActions({
+    isMovie,
+    amount,
+    past,
+    hasDate: !!date,
+    hasTime: !!time,
+    category,
+  })
+  // Understanding a word but having nothing to offer is not understanding.
+  if (!actions.length) return null
 
   return {
     title: buildTitle(source, spans, text, at),
@@ -241,10 +276,15 @@ export function parseEntry(
     amount,
     category,
     past,
-    actions: chooseActions({ isMovie, amount, past, hasDate: !!date }),
+    actions,
     matched,
   }
 }
+
+// Things you go to, as opposed to things you pay. Rent on the 15th is not an
+// appointment; a doctor at 19:30 is. Getting this wrong means either a
+// calendar full of bills or a theatre outing that never makes the calendar.
+const OUTING_CATEGORIES = ['Eğlence', 'Sağlık', 'Eğitim', 'Tatil']
 
 function isoOf(d: Date): string {
   const mm = String(d.getMonth() + 1).padStart(2, '0')
@@ -257,21 +297,32 @@ function chooseActions(input: {
   amount: number | null
   past: boolean
   hasDate: boolean
+  hasTime: boolean
+  category: string | null
 }): EntryAction[] {
-  const { isMovie, amount, past, hasDate } = input
+  const { isMovie, amount, past, hasDate, hasTime, category } = input
   const actions: EntryAction[] = []
 
-  if (isMovie) actions.push('movie-night')
-  else if (hasDate && !(amount !== null && past)) actions.push('event')
+  // A clock time is the clearest signal there is: nobody writes an hour for a
+  // rent payment. Failing that, some categories are places you go.
+  const isOuting =
+    isMovie ||
+    hasTime ||
+    (category !== null && OUTING_CATEGORIES.includes(category))
+  // Something is happening on a named day, and no money was mentioned — then
+  // the only thing it can be is a calendar entry.
+  const bareDate = hasDate && amount === null
+
+  if (hasDate && (isOuting || bareDate)) {
+    // never both: they would put two entries on the same day for one plan
+    actions.push(isMovie ? 'movie-night' : 'event')
+  }
 
   if (amount !== null) {
     // Money on a day that has not happened yet is a plan, not a spend. Writing
     // it as a spend would make the budget claim the user has already paid.
-    if (past) actions.push('spend')
-    else actions.push('plan-expense')
+    actions.push(past ? 'spend' : 'plan-expense')
   }
-
-  if (isMovie && hasDate && !actions.includes('event')) actions.push('event')
   return actions
 }
 

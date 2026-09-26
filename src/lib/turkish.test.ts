@@ -74,7 +74,7 @@ describe('parseTrAmountToMinor', () => {
   })
 
   it('truncates past kuruş rather than rounding into thin air', () => {
-    expect(parseTrAmountToMinor('10,999')).toBe(1099)
+    expect(parseTrAmountToMinor('10,9999')).toBe(1099)
   })
 
   it('refuses anything that is not a number', () => {
@@ -114,5 +114,36 @@ describe('foldTrIndexed', () => {
   it('ends with the source length, so a final match can be sliced', () => {
     const { text, at } = foldTrIndexed('cuma')
     expect(at[text.length]).toBe(4)
+  })
+})
+
+describe('parseTrAmountToMinor, comma and dot decided the same way', () => {
+  // Kuruş has two digits, so three after the comma cannot be kuruş. Reading
+  // "1,250" as 1,25 logged a thousandth of the spend and nothing on screen
+  // looked wrong.
+  it('reads a comma with three digits after it as grouping', () => {
+    expect(parseTrAmountToMinor('1,250')).toBe(125000)
+    expect(parseTrAmountToMinor('2,500')).toBe(250000)
+    expect(parseTrAmountToMinor('45,999')).toBe(4599900)
+  })
+
+  it('still reads a real kuruş comma', () => {
+    expect(parseTrAmountToMinor('1,25')).toBe(125)
+    expect(parseTrAmountToMinor('600,5')).toBe(60050)
+    expect(parseTrAmountToMinor('1250,50')).toBe(125050)
+  })
+
+  it('handles both separators, in either order', () => {
+    expect(parseTrAmountToMinor('1.250,50')).toBe(125050)
+    expect(parseTrAmountToMinor('1,250.50')).toBe(125050)
+    expect(parseTrAmountToMinor('1.250.000,75')).toBe(125000075)
+  })
+
+  it('treats the dot and the comma by exactly the same rule', () => {
+    expect(parseTrAmountToMinor('1,250')).toBe(parseTrAmountToMinor('1.250'))
+    expect(parseTrAmountToMinor('12,50')).toBe(parseTrAmountToMinor('12.50'))
+    expect(parseTrAmountToMinor('1250,50')).toBe(
+      parseTrAmountToMinor('1250.50'),
+    )
   })
 })

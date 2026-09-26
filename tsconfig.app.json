@@ -28,5 +28,8 @@
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src"]
+  "include": ["src"],
+  // Throwaway probe files written while investigating a bug. They are not
+  // part of the app and must never be able to break the build or ship.
+  "exclude": ["src/**/__*"]
 }

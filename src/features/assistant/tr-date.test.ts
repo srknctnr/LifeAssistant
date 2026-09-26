@@ -81,9 +81,17 @@ describe('findDate', () => {
     expect(findDate('', TODAY)).toBeNull()
   })
 
-  it('reports the words it consumed, so the caller can strip them', () => {
+  // The prefix is part of the date phrase. Leaving it behind meant the title
+  // came out as "Haftaya tiyatro".
+  it('reports the whole date phrase, prefix included', () => {
     const hit = findDate('haftaya cuma sinemaya gidiyoruz', TODAY)
+    expect(hit?.text).toBe('haftaya cuma')
+  })
+
+  it('does not swallow a stray prefix that belongs elsewhere', () => {
+    const hit = findDate('gelecek planlar için cuma', TODAY)
     expect(hit?.text).toBe('cuma')
+    expect(hit?.iso).toBe('2026-10-02')
   })
 })
 
@@ -130,5 +138,66 @@ describe('findTime', () => {
   it('does not read the date it was told to skip', () => {
     const date = findDate('15.10 fatura', TODAY)
     expect(findTime('15.10 fatura', date)).toBeNull()
+  })
+})
+
+describe('findDate, the cases that used to be silently wrong', () => {
+  // "saat 14.05" is a clock. The date reader got there first and turned a
+  // 14:05 meeting into 14 May 2027.
+  it('does not turn a clock into a date', () => {
+    expect(findDate('saat 14.05 toplantı', TODAY)).toBeNull()
+    expect(findDate('akşam 8.10 sinema', TODAY)).toBeNull()
+    expect(findTime('saat 14.05 toplantı')?.time).toBe('14:05')
+    expect(findTime('akşam 8.10 sinema')?.time).toBe('20:10')
+  })
+
+  it('still reads a real dotted date', () => {
+    expect(on('sinema 20.10')).toBe('2026-10-20')
+    expect(on('15.10 fatura')).toBe('2026-10-15')
+  })
+
+  // Turkish glues its case endings on. Before this the date was simply lost
+  // and the entry quietly landed on today.
+  it('reads a weekday carrying a case ending', () => {
+    expect(on('cumaya sinemaya gidiyoruz')).toBe('2026-10-02')
+    expect(on('salıya doktor')).toBe('2026-09-29')
+    expect(on('pazartesiye toplantı')).toBe('2026-09-28')
+    expect(on('perşembeye rapor')).toBe('2026-10-01')
+  })
+
+  it('reads a month carrying a case ending', () => {
+    expect(on('3 eylülde market')).toBe('2027-09-03')
+    expect(on('15 ağustosta tatil')).toBe('2027-08-15')
+    expect(on('20 ekimde fatura')).toBe('2026-10-20')
+  })
+
+  // The suffix must not let "cuma" swallow "cumartesi".
+  it('keeps Saturday out of Friday even with an ending', () => {
+    expect(on('cumartesi maç')).toBe('2026-09-26')
+    expect(on('cumartesiye maç')).toBe('2026-09-26')
+  })
+
+  // A year-less date leans the way the sentence does.
+  it('leans a bare date the way the sentence points', () => {
+    expect(findDate('15.09 harcadım', TODAY, 'past')?.iso).toBe('2026-09-15')
+    expect(findDate('15.09 fatura', TODAY, 'future')?.iso).toBe('2027-09-15')
+    expect(findDate('3 ekim', TODAY, 'past')?.iso).toBe('2025-10-03')
+    expect(findDate('3 ekim', TODAY, 'future')?.iso).toBe('2026-10-03')
+  })
+})
+
+describe('findDate, "gelecek" is also an ordinary word', () => {
+  // These used to pass only because the lookbehind window happened to cut
+  // the prefix off. The rule is adjacency, and these exercise it.
+  it('only shifts a week when the prefix sits on the weekday', () => {
+    expect(on('gelecek cuma sinema')).toBe('2026-10-09')
+    expect(on('gelecek planlar için cuma buluşalım')).toBe('2026-10-02')
+    expect(on('gelecek yıl taşınıyoruz, cuma bakacağız')).toBe('2026-10-02')
+    expect(on('haftaya pazartesi başlıyoruz')).toBe('2026-10-05')
+  })
+
+  it('consumes the prefix it used, and nothing it did not', () => {
+    expect(findDate('gelecek cuma sinema', TODAY)?.text).toBe('gelecek cuma')
+    expect(findDate('gelecek planlar için cuma', TODAY)?.text).toBe('cuma')
   })
 })
