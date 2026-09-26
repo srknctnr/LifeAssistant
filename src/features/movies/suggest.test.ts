@@ -2,6 +2,9 @@ import { describe, expect, it } from 'vitest'
 
 import { rankCurated } from '@/features/movies/suggest'
 
+// rankCurated reads `weight`, so these fixtures carry it; the raw `score`
+// stays for readability and is deliberately consistent with it.
+
 const pool = [
   { imdbId: 'tt1', title: 'Klasik Dram', genres: ['Dram'] },
   { imdbId: 'tt2', title: 'Uzay Filmi', genres: ['Bilim Kurgu'] },
@@ -13,8 +16,8 @@ describe('rankCurated', () => {
     const picks = rankCurated(
       pool,
       [
-        { genre: 'Bilim Kurgu', score: 4, count: 2 },
-        { genre: 'Korku', score: -2, count: 1 },
+        { genre: 'Bilim Kurgu', score: 4, count: 2, weight: 0.5 },
+        { genre: 'Korku', score: -2, count: 1, weight: -0.33 },
       ],
       new Set(),
     )

@@ -3,12 +3,19 @@ import { Check, Clapperboard, Loader2, Plus, Star } from 'lucide-react'
 import { useState } from 'react'
 
 import { Segmented } from '@/components/Segmented'
+import { foldTr } from '@/features/assistant/tr-text'
 import { FamilyVisibilityToggle } from '@/features/family/FamilyVisibilityField'
 import { CURATED_POOL } from '@/features/movies/curated-pool'
 import { useMovies } from '@/features/movies/hooks'
 import { rankCurated } from '@/features/movies/suggest'
-import { genreTasteProfile } from '@/features/movies/taste'
 import {
+  dislikedGenres,
+  genreTasteProfile,
+  likedGenres,
+  tasteIsThin,
+} from '@/features/movies/taste'
+import {
+  discoverByTaste,
   discoverMovies,
   isOmdbConfigured,
   isTmdbConfigured,
@@ -37,37 +44,63 @@ export function DiscoverView() {
   )
 }
 
-const feedOptions: { value: DiscoverFeed; label: string }[] = [
-  { value: 'now_playing', label: 'Vizyonda' },
-  { value: 'upcoming', label: 'Yakında' },
-]
+// 'taste' is not a TMDB endpoint; it is a /discover query built from the
+// user's own ratings. It sits first because it is the only feed that is about
+// them rather than about the week.
+type Feed = DiscoverFeed | 'taste'
 
-// TMDB mode: Turkish theatrical listings
+// TMDB mode: what you would like, then what is on
 function TheatricalFeeds() {
-  const [feed, setFeed] = useState<DiscoverFeed>('now_playing')
   const movies = useMovies()
+  const all = movies.data ?? []
+  const profile = genreTasteProfile(all)
+  const liked = likedGenres(profile)
+  // With nothing rated there is no taste to show, so the tab is not offered
+  // at all — an empty "Sana göre" would be a promise the data cannot keep.
+  const canTaste = !tasteIsThin(all) && liked.length > 0
+
+  const [feed, setFeed] = useState<Feed>('taste')
+  const active: Feed = feed === 'taste' && !canTaste ? 'now_playing' : feed
+
   const { add, addingKey, error, askMode, familyVisible, setFamilyVisible } =
     useAddFromSearch()
 
+  const disliked = dislikedGenres(profile)
   const results = useQuery({
-    queryKey: ['tmdb-discover', feed],
-    queryFn: () => discoverMovies(feed),
+    queryKey:
+      active === 'taste'
+        ? ['tmdb-taste', liked.join(','), disliked.join(',')]
+        : ['tmdb-discover', active],
+    queryFn: () =>
+      active === 'taste'
+        ? discoverByTaste({ liked, disliked })
+        : discoverMovies(active),
     staleTime: 5 * 60_000,
   })
 
   const myTmdbIds = new Set(
-    (movies.data ?? [])
-      .map((m) => m.tmdb_id)
-      .filter((id): id is number => id !== null),
+    all.map((m) => m.tmdb_id).filter((id): id is number => id !== null),
   )
+
+  const options: { value: Feed; label: string }[] = [
+    ...(canTaste ? [{ value: 'taste' as const, label: 'Sana göre' }] : []),
+    { value: 'now_playing', label: 'Vizyonda' },
+    { value: 'upcoming', label: 'Yakında' },
+  ]
 
   return (
     <div className="mt-4">
-      <Segmented<DiscoverFeed>
-        options={feedOptions}
-        value={feed}
-        onChange={setFeed}
-      />
+      <Segmented<Feed> options={options} value={active} onChange={setFeed} />
+
+      {active === 'taste' && (
+        <p className="mt-3 text-xs text-zinc-400">
+          Puan verdiğin filmlerden çıkardığım türlere göre:{' '}
+          <span className="font-medium text-zinc-600 dark:text-zinc-300">
+            {liked.join(' · ')}
+          </span>
+          {disliked.length > 0 && ` — ${disliked.join(' ve ')} eleniyor.`}
+        </p>
+      )}
 
       {askMode && (
         <div className="mt-3">
@@ -82,7 +115,8 @@ function TheatricalFeeds() {
 
       {results.isError && (
         <p className="mt-4 text-sm text-red-600 dark:text-red-400">
-          Liste yüklenemedi. TMDB anahtarını ve bağlantını kontrol et.
+          {active === 'taste' ? 'Öneriler' : 'Liste'} yüklenemedi. TMDB
+          anahtarını ve bağlantını kontrol et.
         </p>
       )}
 
@@ -93,7 +127,7 @@ function TheatricalFeeds() {
               key={resultKey(result)}
               result={result}
               meta={
-                feed === 'upcoming' && result.releaseDate
+                active === 'upcoming' && result.releaseDate
                   ? `Çıkış: ${formatDate(result.releaseDate)}`
                   : (result.year ?? '')
               }
@@ -120,7 +154,9 @@ function CuratedSuggestions() {
     useAddFromSearch()
 
   const all = movies.data ?? []
-  const ownedTitles = new Set(all.map((m) => m.title.toLocaleLowerCase('tr')))
+  // folded the same way rankCurated folds the pool, or the exclusion silently
+  // stops excluding
+  const ownedTitles = new Set(all.map((m) => foldTr(m.title)))
   const picks = rankCurated(CURATED_POOL, genreTasteProfile(all), ownedTitles)
 
   const detailQueries = useQueries({

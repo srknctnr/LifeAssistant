@@ -157,6 +157,60 @@ export async function discoverMovies(
   return data.results.slice(0, 12).map(mapTmdbItem)
 }
 
+// Canonical Turkish genre name → TMDB id, inverted from the map above so the
+// two can never drift apart.
+const TMDB_GENRE_IDS: Record<string, number> = Object.fromEntries(
+  Object.entries(TMDB_GENRES).map(([id, name]) => [name, Number(id)]),
+)
+
+/** the taste feed cannot be built from genres TMDB does not have an id for */
+export function tmdbGenreIds(names: string[]): number[] {
+  return names
+    .map((name) => TMDB_GENRE_IDS[name])
+    .filter((id): id is number => id !== undefined)
+}
+
+/**
+ * Films chosen for this user's taste, from TMDB's own catalogue.
+ *
+ * The vote-count floor is the important parameter: without one, sorting by
+ * score surfaces obscure films with three perfect votes, and a recommender
+ * that suggests things nobody has heard of reads as broken rather than
+ * adventurous.
+ *
+ * Disliked genres are excluded outright rather than ranked down — TMDB has no
+ * way to express "less of this", and a horror film in a list built for
+ * somebody who rates horror one star is worse than a shorter list.
+ */
+export async function discoverByTaste(input: {
+  liked: string[]
+  disliked?: string[]
+  page?: number
+}): Promise<MovieSearchResult[]> {
+  const liked = tmdbGenreIds(input.liked)
+  if (!liked.length) return []
+  const disliked = tmdbGenreIds(input.disliked ?? []).filter(
+    (id) => !liked.includes(id),
+  )
+
+  const params: Record<string, string> = {
+    // pipe is OR; a comma here would mean AND and would only ever return
+    // films sitting in every one of the liked genres at once
+    with_genres: liked.join('|'),
+    sort_by: 'vote_average.desc',
+    'vote_count.gte': '500',
+    include_adult: 'false',
+    page: String(input.page ?? 1),
+  }
+  if (disliked.length) params.without_genres = disliked.join(',')
+
+  const data = await tmdbFetch<{ results: TmdbSearchItem[] }>(
+    '/discover/movie',
+    params,
+  )
+  return data.results.map(mapTmdbItem)
+}
+
 interface OmdbSearchItem {
   imdbID: string
   Title: string

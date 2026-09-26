@@ -32,7 +32,7 @@ import { AddMovieSearch } from '@/features/movies/AddMovieSearch'
 import { DiscoverView } from '@/features/movies/DiscoverView'
 import { MovieForm } from '@/features/movies/MovieForm'
 import { MovieNightBanner } from '@/features/movies/MovieNightBanner'
-import { genreTasteProfile } from '@/features/movies/taste'
+import { genreTasteProfile, likedGenres } from '@/features/movies/taste'
 import { tmdbPosterUrl } from '@/features/movies/tmdb'
 import { WatchedForm } from '@/features/movies/WatchedForm'
 import { formatDate } from '@/lib/dates'
@@ -69,9 +69,9 @@ export function MoviesPage() {
   const allGenres = [...new Set(all.flatMap((m) => m.genres))].sort((a, b) =>
     a.localeCompare(b, 'tr'),
   )
-  const favoriteGenres = genreTasteProfile(all)
-    .filter((g) => g.score > 0)
-    .slice(0, 3)
+  // one definition of "liked", shared with the Keşfet taste feed, so the two
+  // cannot name different favourites on the same screen
+  const favoriteGenres = likedGenres(genreTasteProfile(all))
 
   return (
     <PageTransition>
@@ -140,9 +140,9 @@ export function MoviesPage() {
             <p className="mt-3 text-xs text-zinc-400">
               En sevdiğin türler:{' '}
               <span className="font-medium text-zinc-600 dark:text-zinc-300">
-                {favoriteGenres.map((g) => g.genre).join(' · ')}
+                {favoriteGenres.join(' · ')}
               </span>{' '}
-              — öneriler yakında bunlara göre gelecek.
+              — Keşfet'teki “Sana göre” bunlara bakıyor.
             </p>
           )}
 
