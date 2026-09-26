@@ -11,6 +11,7 @@ import {
   useCreateTransaction,
 } from '@/features/budget/hooks'
 import { useCreateEvent } from '@/features/calendar/hooks'
+import { FamilyVisibilityField } from '@/features/family/FamilyVisibilityField'
 import { useMyShareMode } from '@/features/family/hooks'
 import { resolveFamilyVisibility } from '@/features/family/share-utils'
 import { formatDate, todayISO } from '@/lib/dates'
@@ -56,6 +57,7 @@ export function QuickEntry({ onDone }: { onDone: () => void }) {
   const [amount, setAmount] = useState('')
   const [category, setCategory] = useState('')
   const [chosen, setChosen] = useState<EntryAction[]>([])
+  const [familyVisible, setFamilyVisible] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [done, setDone] = useState<EntryAction[]>([])
 
@@ -164,7 +166,10 @@ export function QuickEntry({ onDone }: { onDone: () => void }) {
           action === 'movie-night' && parsedAmount
             ? `Bütçe: ${formatMoney(parsedAmount)}`
             : null,
-        is_family_visible: resolveFamilyVisibility(calendarShare, false),
+        is_family_visible: resolveFamilyVisibility(
+          calendarShare,
+          familyVisible,
+        ),
       })
       return
     }
@@ -176,7 +181,7 @@ export function QuickEntry({ onDone }: { onDone: () => void }) {
         category: category.trim() || null,
         note,
         spent_on: effectiveDate,
-        is_family_visible: resolveFamilyVisibility(budgetShare, false),
+        is_family_visible: resolveFamilyVisibility(budgetShare, familyVisible),
       })
       return
     }
@@ -188,7 +193,7 @@ export function QuickEntry({ onDone }: { onDone: () => void }) {
       period: 'once',
       expense_date: effectiveDate,
       category: category.trim() || null,
-      is_family_visible: resolveFamilyVisibility(budgetShare, false),
+      is_family_visible: resolveFamilyVisibility(budgetShare, familyVisible),
     })
   }
 
@@ -269,6 +274,16 @@ export function QuickEntry({ onDone }: { onDone: () => void }) {
 
           {(chosen.includes('spend') || chosen.includes('plan-expense')) && (
             <CategoryPicker value={category} onChange={setCategory} />
+          )}
+
+          {/* At the "Sor" level every other form asks this. Leaving it out
+              here meant quick entry could only ever write a private record,
+              with nothing on screen to say so. */}
+          {(budgetShare === 'ask' || calendarShare === 'ask') && (
+            <FamilyVisibilityField
+              value={familyVisible}
+              onChange={setFamilyVisible}
+            />
           )}
 
           <div className="space-y-2">

@@ -33,6 +33,7 @@ import { DiscoverView } from '@/features/movies/DiscoverView'
 import { MovieForm } from '@/features/movies/MovieForm'
 import { MovieNightBanner } from '@/features/movies/MovieNightBanner'
 import { genreTasteProfile, likedGenres } from '@/features/movies/taste'
+import { tasteFeed } from '@/features/movies/taste-feed'
 import { tmdbPosterUrl } from '@/features/movies/tmdb'
 import { WatchedForm } from '@/features/movies/WatchedForm'
 import { formatDate } from '@/lib/dates'
@@ -69,8 +70,10 @@ export function MoviesPage() {
   const allGenres = [...new Set(all.flatMap((m) => m.genres))].sort((a, b) =>
     a.localeCompare(b, 'tr'),
   )
-  // one definition of "liked", shared with the Keşfet taste feed, so the two
-  // cannot name different favourites on the same screen
+  // The same call Keşfet makes, so this line cannot point at a tab that is
+  // not there: it used to appear after a single rating, while the tab needs
+  // three, a TMDB key, and genres TMDB has an id for.
+  const taste = tasteFeed(all)
   const favoriteGenres = likedGenres(genreTasteProfile(all))
 
   return (
@@ -141,8 +144,10 @@ export function MoviesPage() {
               En sevdiğin türler:{' '}
               <span className="font-medium text-zinc-600 dark:text-zinc-300">
                 {favoriteGenres.join(' · ')}
-              </span>{' '}
-              — Keşfet'teki “Sana göre” bunlara bakıyor.
+              </span>
+              {taste.available
+                ? ' — Keşfet’teki “Sana göre” bunlara bakıyor.'
+                : ' — birkaç film daha puanlarsan Keşfet sana göre önermeye başlar.'}
             </p>
           )}
 

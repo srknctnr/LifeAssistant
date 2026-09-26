@@ -26,7 +26,10 @@ vi.mock('@/features/assistant/parse-entry', () => ({
 vi.mock('@/features/auth/useAuth', () => ({
   useAuth: () => ({ session: { user: { id: 'u1' } } }),
 }))
-vi.mock('@/features/family/hooks', () => ({ useMyShareMode: () => null }))
+let shareMode: string | null = null
+vi.mock('@/features/family/hooks', () => ({
+  useMyShareMode: () => shareMode,
+}))
 vi.mock('@/features/budget/CategoryPicker', () => ({
   CategoryPicker: () => null,
 }))
@@ -52,6 +55,7 @@ const save = (user: ReturnType<typeof userEvent.setup>) =>
   user.click(screen.getByRole('button', { name: 'Kaydet' }))
 
 beforeEach(() => {
+  shareMode = null
   eventInsert.mockReset()
   expenseInsert.mockReset()
   txInsert.mockReset()
@@ -115,5 +119,41 @@ describe('QuickEntry', () => {
     await save(user)
 
     expect(screen.getByText(/kaydedildi/)).toBeTruthy()
+  })
+})
+
+describe('QuickEntry sharing', () => {
+  // Every other form asks this at the "Sor" level. Leaving it out meant
+  // quick entry could only ever write a private record.
+  it('asks who the record is for when the share level says ask', async () => {
+    const user = userEvent.setup()
+    shareMode = 'ask'
+    eventInsert.mockResolvedValue({})
+    expenseInsert.mockResolvedValue({})
+
+    await typeSentence(user)
+    expect(screen.queryByText(/Kimin için/)).not.toBeNull()
+  })
+
+  it('does not ask when the share level already decides', async () => {
+    const user = userEvent.setup()
+    shareMode = 'full'
+    await typeSentence(user)
+    expect(screen.queryByText(/Kimin için/)).toBeNull()
+  })
+
+  // At "Tam" the other forms sync automatically; this must too, or a family
+  // sees every record except the ones added the fastest way.
+  it('shares automatically at the full level', async () => {
+    const user = userEvent.setup()
+    shareMode = 'full'
+    eventInsert.mockResolvedValue({})
+    expenseInsert.mockResolvedValue({})
+
+    await typeSentence(user)
+    await save(user)
+
+    expect(eventInsert.mock.calls[0][0].is_family_visible).toBe(true)
+    expect(expenseInsert.mock.calls[0][0].is_family_visible).toBe(true)
   })
 })

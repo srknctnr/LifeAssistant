@@ -111,6 +111,8 @@ export function useCreateEvent() {
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: eventsKey })
       queryClient.invalidateQueries({ queryKey: moviesKey })
+      // the family calendar reads the same rows through its own key
+      queryClient.invalidateQueries({ queryKey: ['member-events'] })
     },
   })
 }
@@ -145,6 +147,8 @@ export function useUpdateEvent() {
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: eventsKey })
       queryClient.invalidateQueries({ queryKey: moviesKey })
+      // the family calendar reads the same rows through its own key
+      queryClient.invalidateQueries({ queryKey: ['member-events'] })
     },
   })
 }
@@ -167,6 +171,8 @@ export function useDeleteEvent() {
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: eventsKey })
       queryClient.invalidateQueries({ queryKey: moviesKey })
+      // the family calendar reads the same rows through its own key
+      queryClient.invalidateQueries({ queryKey: ['member-events'] })
     },
   })
 }

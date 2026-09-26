@@ -8,16 +8,11 @@ import { FamilyVisibilityToggle } from '@/features/family/FamilyVisibilityField'
 import { CURATED_POOL } from '@/features/movies/curated-pool'
 import { useMovies } from '@/features/movies/hooks'
 import { rankCurated } from '@/features/movies/suggest'
-import {
-  dislikedGenres,
-  genreTasteProfile,
-  likedGenres,
-  tasteIsThin,
-} from '@/features/movies/taste'
+import { genreTasteProfile } from '@/features/movies/taste'
+import { tasteFeed } from '@/features/movies/taste-feed'
 import {
   discoverByTaste,
   discoverMovies,
-  tmdbGenreIds,
   isOmdbConfigured,
   isTmdbConfigured,
   omdbMovieByImdbId,
@@ -54,17 +49,9 @@ type Feed = DiscoverFeed | 'taste'
 function TheatricalFeeds() {
   const movies = useMovies()
   const all = movies.data ?? []
-  const profile = genreTasteProfile(all)
-  // Only the genres TMDB can actually be asked about. The app's vocabulary is
-  // wider than TMDB's — Biyografi, Kara Film, Müzikal and Spor come from OMDb
-  // and have no id — so somebody whose ratings sit entirely in those would
-  // otherwise be offered a tab that names their genres and then returns
-  // nothing at all.
-  const liked = likedGenres(profile).filter((g) => tmdbGenreIds([g]).length > 0)
-  const disliked = dislikedGenres(profile).filter(
-    (g) => tmdbGenreIds([g]).length > 0,
-  )
-  const canTaste = !tasteIsThin(all) && liked.length > 0
+  // one definition, shared with the Filmler page, so the two cannot promise
+  // different things about the same tab
+  const { liked, disliked, available: canTaste } = tasteFeed(all)
 
   const [feed, setFeed] = useState<Feed>('taste')
   const active: Feed = feed === 'taste' && !canTaste ? 'now_playing' : feed
@@ -93,6 +80,16 @@ function TheatricalFeeds() {
     { value: 'now_playing', label: 'Vizyonda' },
     { value: 'upcoming', label: 'Yakında' },
   ]
+
+  // Which tabs exist depends on the ratings, so deciding before they arrive
+  // shows "Vizyonda" and then jumps to "Sana göre" under the reader's thumb.
+  if (movies.isPending) {
+    return (
+      <div className="mt-4">
+        <DiscoverSkeleton />
+      </div>
+    )
+  }
 
   return (
     <div className="mt-4">

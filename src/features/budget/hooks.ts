@@ -54,22 +54,26 @@ export function useExpenseItems() {
   return useQuery({ queryKey: expenseItemsKey, queryFn: listExpenseItems })
 }
 
-export function useCreateExpenseItem() {
+// A planned expense also moves the family budget totals, the same way a
+// transaction does. Without this the family view keeps showing a figure the
+// budget page has already corrected.
+function useExpenseItemInvalidation() {
   const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: createExpenseItem,
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: expenseItemsKey }),
-  })
+  return () => {
+    queryClient.invalidateQueries({ queryKey: expenseItemsKey })
+    queryClient.invalidateQueries({ queryKey: ['member-expenses'] })
+    queryClient.invalidateQueries({ queryKey: ['member-budget-summary'] })
+  }
+}
+
+export function useCreateExpenseItem() {
+  const invalidate = useExpenseItemInvalidation()
+  return useMutation({ mutationFn: createExpenseItem, onSuccess: invalidate })
 }
 
 export function useUpdateExpenseItem() {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: updateExpenseItem,
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: expenseItemsKey }),
-  })
+  const invalidate = useExpenseItemInvalidation()
+  return useMutation({ mutationFn: updateExpenseItem, onSuccess: invalidate })
 }
 
 export function useBudgetCategories() {
@@ -125,10 +129,6 @@ export function useDeleteTransaction() {
 }
 
 export function useDeleteExpenseItem() {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: deleteExpenseItem,
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: expenseItemsKey }),
-  })
+  const invalidate = useExpenseItemInvalidation()
+  return useMutation({ mutationFn: deleteExpenseItem, onSuccess: invalidate })
 }
