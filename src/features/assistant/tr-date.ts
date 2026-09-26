@@ -44,15 +44,32 @@ function daysUntilWeekday(today: Date, weekday: number): number {
 
 // Longest first, so "öbür gün" is not eaten by "gün" and "haftaya cuma" beats
 // a bare "cuma".
-const RELATIVE: { word: string; days: number }[] = [
-  { word: 'obur gun', days: 2 },
-  { word: 'oburgun', days: 2 },
-  { word: 'bugun', days: 0 },
-  { word: 'yarin', days: 1 },
-  { word: 'dun', days: -1 },
+// Every accepted form is spelled out instead of stem + optional ending. The
+// general ending list would let "dün" match "dünya" — "ya" is a real Turkish
+// ending — and a sentence about a world tour would be filed on yesterday.
+const RELATIVE: { words: string[]; days: number }[] = [
+  { words: ['obur gun', 'oburgun', 'obur gune'], days: 2 },
+  { words: ['bugun', 'bugune', 'bugunden', 'bugunku'], days: 0 },
+  { words: ['yarin', 'yarina', 'yarinki', 'yarindan'], days: 1 },
+  { words: ['dun', 'dune', 'dunden', 'dunku'], days: -1 },
 ]
 
 const NEXT_WEEK = ['haftaya', 'gelecek hafta', 'onumuzdeki hafta', 'gelecek']
+// "geçen cuma" is the Friday that has been, not the one coming. Without this
+// a past spend was filed as a plan for next week.
+const LAST_WEEK = ['gecen hafta', 'gecen', 'onceki hafta', 'onceki']
+
+/** the last prefix in `before` that sits immediately against the word */
+function adjacentPrefix(
+  before: string,
+  prefixes: string[],
+): { p: string; i: number } | undefined {
+  return prefixes
+    .map((p) => ({ p, i: before.lastIndexOf(p) }))
+    .filter((hit) => hit.i > -1)
+    .sort((a, b) => b.i - a.i)
+    .find((hit) => before.slice(hit.i + hit.p.length).trim() === '')
+}
 
 // The shared Turkish ending list; see lib/turkish.ts for why a bare  is
 // not enough here.
@@ -90,8 +107,20 @@ export function findDate(
     if (!iso) return null
     if (prefer === 'future' && iso < todayIso)
       return fromParts(year + 1, month, day)
-    if (prefer === 'past' && iso > todayIso)
-      return fromParts(year - 1, month, day)
+    if (prefer === 'past' && iso > todayIso) {
+      const back = fromParts(year - 1, month, day)
+      // A past-tense verb can belong to a different part of the sentence
+      // than the date does: in "3 Ekim biletleri aldım" the buying happened,
+      // the third of October has not. Rolling a date eleven months backwards
+      // to satisfy the verb is a worse reading than leaving it where the
+      // words put it, so the past preference only reaches back six months.
+      const limit = new Date(
+        today.getFullYear(),
+        today.getMonth() - 6,
+        today.getDate(),
+      )
+      if (back && back >= toISODate(limit)) return back
+    }
     return iso
   }
 
@@ -122,7 +151,7 @@ export function findDate(
   const money = /^\s*(tl|₺|lira)/
   // "saat 14.05" and "akşam 8.10" are clocks. Without this the date reader
   // gets there first and turns a 14:05 meeting into 14 May.
-  const clock = /(saat|sabah|oglen|aksam|gece)\s*$/
+  const clock = /(saat|sabah|oglen|ogleden sonra|aksam|gece)\s*$/
   for (const m of text.matchAll(
     /\b(\d{1,2})[./](\d{1,2})(?:[./](\d{2,4}))?\b/g,
   )) {
@@ -157,10 +186,15 @@ export function findDate(
     }
   }
 
-  // bugün / yarın / öbür gün / dün
+  // bugün / yarın / öbür gün / dün — whole words only, see RELATIVE
   for (const r of RELATIVE) {
-    const i = text.indexOf(r.word)
-    if (i > -1) push(shift(today, r.days), i, r.word.length)
+    for (const word of r.words) {
+      const m = new RegExp(`\\b${word}\\b`).exec(text)
+      if (m) {
+        push(shift(today, r.days), m.index, word.length)
+        break
+      }
+    }
   }
 
   // "3 gün sonra" / "2 hafta sonra" / "5 gün önce"
@@ -172,22 +206,30 @@ export function findDate(
     push(shift(today, +m[1] * unit * sign), m.index, m[0].length)
   }
 
-  // "hafta sonu" → the coming Saturday
+  // "hafta sonu" → the coming Saturday; "gelecek hafta sonu" → the one after
   const weekendAt = text.indexOf('hafta sonu')
   if (weekendAt > -1) {
+    // "gelecek hafta sonu" also contains "gelecek hafta", so the prefix is
+    // looked for against the whole phrase rather than the bare weekday list
+    const lead = adjacentPrefix(text.slice(0, weekendAt), [
+      'gelecek',
+      'onumuzdeki',
+    ])
+    const start = lead ? lead.i : weekendAt
     push(
-      shift(today, daysUntilWeekday(today, 5)),
-      weekendAt,
-      'hafta sonu'.length,
+      shift(today, daysUntilWeekday(today, 5) + (lead ? 7 : 0)),
+      start,
+      weekendAt + 'hafta sonu'.length - start,
     )
   }
 
-  // weekday, optionally prefixed by "haftaya" / "gelecek hafta"
+  // weekday, optionally prefixed by "haftaya" / "gelecek hafta" / "geçen"
   for (let w = 0; w < WEEKDAYS_TR.length; w++) {
     const word = WEEKDAYS_TR[w]
-    // \b would not fire before Turkish suffixes like "cumaya"; match the word
-    // and let the suffix stay in the title
-    const re = new RegExp(`\\b${word}${SUFFIX}\\b`, 'g')
+    // "pazar" is also the word for a street market, and "pazardan 200 TL
+    // meyve aldım" is about fruit, not about Sunday. Only the bare form is
+    // taken as a weekday; the suffixed forms belong to the bazaar.
+    const re = new RegExp(`\\b${word}${word === 'pazar' ? '' : SUFFIX}\\b`, 'g')
     for (const m of text.matchAll(re)) {
       // "cumartesi" contains "cuma": skip a match that is only part of a
       // longer weekday name
@@ -201,13 +243,14 @@ export function findDate(
       // planlar"), and a loose search for it anywhere earlier in the sentence
       // would silently push the date a week out.
       const before = text.slice(0, m.index)
-      const prefix = NEXT_WEEK.map((p) => ({ p, i: before.lastIndexOf(p) }))
-        .filter((hit) => hit.i > -1)
-        .find((hit) => before.slice(hit.i + hit.p.length).trim() === '')
-      const attached = prefix !== undefined
+      const ahead = adjacentPrefix(before, NEXT_WEEK)
+      const back = adjacentPrefix(before, LAST_WEEK)
+      const prefix = ahead ?? back
       let days = daysUntilWeekday(today, w)
-      // "haftaya cuma" is never today and never this week's Friday
-      if (attached) days += 7
+      // "haftaya cuma" is never today and never this week's Friday;
+      // "geçen cuma" is the most recent one that has already been
+      if (ahead) days += 7
+      else if (back) days -= 7
       const start = prefix ? prefix.i : m.index
       push(shift(today, days), start, m.index + m[0].length - start)
     }
@@ -278,17 +321,14 @@ export function findTime(
     if (hit) return hit
   }
 
-  // "saat 19", "saat 19.30" — the word carries the meaning the colon would
-  for (const m of text.matchAll(/\bsaat\s+(\d{1,2})(?:[.:](\d{2}))?\b/g)) {
-    if (blocked(m.index, m[0].length)) continue
-    const hit = make(+m[1], m[2] ? +m[2] : 0, m.index, m[0].length)
-    if (hit) return hit
-  }
-
-  // "akşam 8", "sabah 9.30" — the daypart decides am/pm
+  // Dayparts come before the bare "saat" branch: in "akşam saat 8" the word
+  // "saat" would otherwise win and hand back 08:00, dropping the only part
+  // of the sentence that says which eight is meant.
+  //
+  // "akşam 8", "sabah 9.30", "akşam saat 8" — the daypart decides am/pm
   for (const part of DAYPARTS) {
     const re = new RegExp(
-      `\\b${part.word}\\s+(\\d{1,2})(?:[.:](\\d{2}))?\\b`,
+      `\\b${part.word}\\s+(?:saat\\s+)?(\\d{1,2})(?:[.:](\\d{2}))?\\b`,
       'g',
     )
     for (const m of text.matchAll(re)) {
@@ -296,6 +336,13 @@ export function findTime(
       const hit = make(part.hour(+m[1]), m[2] ? +m[2] : 0, m.index, m[0].length)
       if (hit) return hit
     }
+  }
+
+  // "saat 19", "saat 19.30" — the word carries the meaning the colon would
+  for (const m of text.matchAll(/\bsaat\s+(\d{1,2})(?:[.:](\d{2}))?\b/g)) {
+    if (blocked(m.index, m[0].length)) continue
+    const hit = make(+m[1], m[2] ? +m[2] : 0, m.index, m[0].length)
+    if (hit) return hit
   }
 
   return null

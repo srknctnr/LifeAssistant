@@ -202,9 +202,15 @@ export function parseEntry(
 
   // Money is read last, so the date and time have already claimed their
   // digits and cannot be spent twice.
+  //
+  // A space is allowed inside the number, but only between digits: "1 250 TL"
+  // is one thousand two hundred fifty, and reading it as 250 loses a
+  // thousand lira without a mark on screen. The lookahead stops the space
+  // from also swallowing the gap before the currency word.
+  const NUMBER = String.raw`\d(?:[\d.,]|\s(?=\d))*`
   let amount: number | null = null
   const moneyRe = new RegExp(
-    `(?:₺\\s*([\\d.,]+)|([\\d.,]+)\\s*${CURRENCY})(?![\\w])`,
+    `(?:₺\\s*(${NUMBER})|(${NUMBER})\\s*${CURRENCY})(?![\\w])`,
     'g',
   )
   for (const m of text.matchAll(moneyRe)) {
@@ -341,15 +347,16 @@ function buildTitle(
   folded: string,
   at: number[],
 ): string {
+  // Whole words, like every other match here. As substrings these cut
+  // letters out of the middle of longer words: "bütçelerimi gözden geçirdim"
+  // came back as "Lerimi gözden geçirdim".
   const fillerSpans: Span[] = []
   for (const word of FILLER) {
-    let i = folded.indexOf(word)
-    while (i > -1) {
+    for (const m of folded.matchAll(trWord(word, 'g'))) {
       fillerSpans.push({
-        from: at[i],
-        to: at[i + word.length] ?? source.length,
+        from: at[m.index],
+        to: at[m.index + m[0].length] ?? source.length,
       })
-      i = folded.indexOf(word, i + word.length)
     }
   }
 

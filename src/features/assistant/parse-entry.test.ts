@@ -294,3 +294,25 @@ describe('parseEntry, a clock with no day', () => {
     expect(parse('kahve 85 TL')?.actions).toEqual(['spend'])
   })
 })
+
+describe('parseEntry, the second review round', () => {
+  // "1 250 TL" lost its leading group and logged 250 — a thousand lira gone
+  // with nothing on screen to show for it.
+  it('reads a number written with spaces between the groups', () => {
+    expect(parse('market 1 250 TL harcadım')?.amount).toBe(1250)
+    expect(parse('kira 12 500 TL ödedim')?.amount).toBe(12500)
+    // and a count next to a price is still a count
+    expect(parse('2 kahve 85 TL')?.amount).toBe(85)
+  })
+
+  // FILLER was stripped as a substring and cut letters out of a longer word.
+  it('does not cut the middle out of a word in the title', () => {
+    expect(parse('bütçelerimi gözden geçirdim 100 TL harcadım')?.title).toBe(
+      'Bütçelerimi gözden geçirdim',
+    )
+  })
+
+  it('keeps the whole date phrase out of the title', () => {
+    expect(parse('geçen cuma markete 300 TL harcadım')?.title).toBe('Markete')
+  })
+})

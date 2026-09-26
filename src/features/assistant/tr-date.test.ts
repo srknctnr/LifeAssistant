@@ -181,7 +181,9 @@ describe('findDate, the cases that used to be silently wrong', () => {
   it('leans a bare date the way the sentence points', () => {
     expect(findDate('15.09 harcadım', TODAY, 'past')?.iso).toBe('2026-09-15')
     expect(findDate('15.09 fatura', TODAY, 'future')?.iso).toBe('2027-09-15')
-    expect(findDate('3 ekim', TODAY, 'past')?.iso).toBe('2025-10-03')
+    // a date just behind us goes backwards; one most of a year back does
+    // not — see the six-month limit below
+    expect(findDate('20.09', TODAY, 'past')?.iso).toBe('2026-09-20')
     expect(findDate('3 ekim', TODAY, 'future')?.iso).toBe('2026-10-03')
   })
 })
@@ -199,5 +201,67 @@ describe('findDate, "gelecek" is also an ordinary word', () => {
   it('consumes the prefix it used, and nothing it did not', () => {
     expect(findDate('gelecek cuma sinema', TODAY)?.text).toBe('gelecek cuma')
     expect(findDate('gelecek planlar için cuma', TODAY)?.text).toBe('cuma')
+  })
+})
+
+describe('findDate, the second review round', () => {
+  // "ya" is a real Turkish ending, so the general suffix list let "dün"
+  // match "dünya" and a world tour was filed on yesterday.
+  it('does not find yesterday inside "dünya"', () => {
+    expect(on('dünya turu planlıyoruz')).toBeNull()
+    expect(on('dünyanın en iyi filmi')).toBeNull()
+    expect(on('dün 200 TL harcadım')).toBe('2026-09-25')
+    expect(on('dünden kalma yemek')).toBe('2026-09-25')
+  })
+
+  // "geçen cuma" was read as the Friday coming, turning a spend that had
+  // happened into a plan for next week.
+  it('reads "geçen" as the weekday that has been', () => {
+    expect(on('geçen cuma 300 TL harcadım')).toBe('2026-09-25')
+    expect(on('geçen pazartesi toplantı vardı')).toBe('2026-09-21')
+    expect(on('önceki cuma')).toBe('2026-09-25')
+    // and the other direction still works
+    expect(on('haftaya cuma')).toBe('2026-10-09')
+  })
+
+  // "pazar" is also the word for a street market.
+  it('does not turn the bazaar into Sunday', () => {
+    expect(on('pazardan 200 TL meyve aldım')).toBeNull()
+    expect(on('pazara gidip sebze alacağım')).toBeNull()
+    expect(on('pazar günü maç var')).toBe('2026-09-27')
+  })
+
+  it('pushes "gelecek hafta sonu" to the weekend after this one', () => {
+    expect(on('gelecek hafta sonu tatil')).toBe('2026-10-03')
+    expect(on('hafta sonu piknik')).toBe('2026-09-26')
+  })
+
+  // The past-tense verb can belong to a different part of the sentence than
+  // the date: in "3 Ekim biletleri aldım" the buying happened, the third of
+  // October has not.
+  it('will not roll a date back most of a year to satisfy a verb', () => {
+    expect(findDate('3 Ekim biletleri aldım', TODAY, 'past')?.iso).toBe(
+      '2026-10-03',
+    )
+    // but a date that really is just behind us still goes backwards
+    expect(findDate('15.09 harcadım', TODAY, 'past')?.iso).toBe('2026-09-15')
+    expect(findDate('3 eylülde harcadım', TODAY, 'past')?.iso).toBe(
+      '2026-09-03',
+    )
+  })
+})
+
+describe('findTime, the daypart must survive the word "saat"', () => {
+  // "saat" matched first and handed back 08:00, dropping the only part of
+  // the sentence that says which eight was meant.
+  it('reads "akşam saat 8" as the evening', () => {
+    expect(findTime('akşam saat 8 sinema')?.time).toBe('20:00')
+    expect(findTime('sabah saat 9 doktor')?.time).toBe('09:00')
+    expect(findTime('saat 8 toplantı')?.time).toBe('08:00')
+  })
+
+  it('does not let "öğleden sonra 2.10" become a date', () => {
+    expect(findDate('öğleden sonra 2.10 toplantı', TODAY)).toBeNull()
+    expect(findTime('öğleden sonra 2.10 toplantı')?.time).toBe('14:10')
   })
 })
