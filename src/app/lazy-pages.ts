@@ -57,3 +57,11 @@ export const QuickTransactionForm = lazy(() =>
     default: m.TransactionForm,
   })),
 )
+
+// Same reasoning as above: the sentence parser and the three write paths it
+// can reach would otherwise pull budget, calendar and family into the shell.
+export const QuickEntryForm = lazy(() =>
+  import('@/features/assistant/QuickEntry').then((m) => ({
+    default: m.QuickEntry,
+  })),
+)

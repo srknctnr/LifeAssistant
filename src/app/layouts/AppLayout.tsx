@@ -12,7 +12,8 @@ import { motion } from 'motion/react'
 import { Suspense, useState } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
 
-import { QuickTransactionForm } from '@/app/lazy-pages'
+import { QuickEntryForm, QuickTransactionForm } from '@/app/lazy-pages'
+import { Segmented } from '@/components/Segmented'
 import { Sheet } from '@/components/Sheet'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { useAuth } from '@/features/auth/useAuth'
@@ -27,6 +28,8 @@ const navItems = [
   { to: '/family', label: 'Gruplar', icon: Users },
 ]
 
+type AddMode = 'spend' | 'sentence'
+
 export function AppLayout() {
   const { signOut } = useAuth()
   const online = useOnline()
@@ -35,6 +38,10 @@ export function AppLayout() {
   // section header on the budget page below two cards. It lives in the layout
   // so it is one touch from wherever you happen to be.
   const [spendOpen, setSpendOpen] = useState(false)
+  // The spend form stays the default tab: logging a spend is still the most
+  // frequent thing anyone does here, and it should not cost an extra tap to
+  // reach just because the sheet grew a second way in.
+  const [addMode, setAddMode] = useState<AddMode>('spend')
 
   const signOutButton = (
     <button
@@ -63,7 +70,7 @@ export function AppLayout() {
           className="mt-7 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-br from-indigo-600 to-violet-600 py-2.5 text-sm font-semibold text-white shadow-lg shadow-indigo-600/20 transition-transform hover:-translate-y-0.5"
         >
           <Plus size={17} />
-          Harcama ekle
+          Hızlı ekle
         </button>
 
         <nav aria-label="Ana gezinme" className="mt-4 space-y-1">
@@ -148,7 +155,7 @@ export function AppLayout() {
           so opening the form covers it like everything else */}
       <motion.button
         onClick={() => setSpendOpen(true)}
-        aria-label="Harcama ekle"
+        aria-label="Hızlı ekle"
         whileTap={{ scale: 0.92 }}
         className="fixed right-5 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-30 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-indigo-600 to-violet-600 text-white shadow-xl shadow-indigo-600/30 md:hidden"
       >
@@ -158,8 +165,18 @@ export function AppLayout() {
       <Sheet
         open={spendOpen}
         onClose={() => setSpendOpen(false)}
-        title="Harcama ekle"
+        title="Hızlı ekle"
       >
+        <div className="mb-4">
+          <Segmented<AddMode>
+            options={[
+              { value: 'spend', label: 'Harcama' },
+              { value: 'sentence', label: 'Cümleyle' },
+            ]}
+            value={addMode}
+            onChange={setAddMode}
+          />
+        </div>
         <Suspense
           fallback={
             <div className="space-y-4">
@@ -168,7 +185,11 @@ export function AppLayout() {
             </div>
           }
         >
-          <QuickTransactionForm onDone={() => setSpendOpen(false)} />
+          {addMode === 'spend' ? (
+            <QuickTransactionForm onDone={() => setSpendOpen(false)} />
+          ) : (
+            <QuickEntryForm onDone={() => setSpendOpen(false)} />
+          )}
         </Suspense>
       </Sheet>
 
