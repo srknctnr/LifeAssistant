@@ -13,7 +13,7 @@ Vizyon ve yol haritası için [docs/life-assistant-proje-dokumani.md](docs/life-
 - **Tailwind CSS 4** + **Motion** (animasyon) + **lucide-react** (ikonlar)
 - **Supabase** — PostgreSQL + Auth; sunucu durumu **TanStack Query** ile
 - **Vitest + Testing Library** — test; **oxlint + Prettier** — kalite
-- **Netlify** — dağıtım hedefi
+- **GitHub Pages** — dağıtım hedefi
 
 ## Kurulum
 

@@ -4,8 +4,9 @@ import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
-// '/' locally and on Netlify; '/LifeAssistant/' when the GitHub Pages
-// workflow sets BASE_PATH (the site lives under a subpath there)
+// '/' when served from a domain root or the dev server; '/LifeAssistant/'
+// when the GitHub Pages workflow sets BASE_PATH, because the site lives under
+// a subpath there
 const base = process.env.BASE_PATH ?? '/'
 
 // https://vite.dev/config/

@@ -51,7 +51,7 @@ Film, seyahat detayı, takvim entegrasyonu, ortak masraf paylaşımı = sonraki 
 
 - **Frontend:** React + Vite, mobil öncelikli PWA (vite-plugin-pwa)
 - **Backend:** Supabase (PostgreSQL + Auth + Realtime)
-- **Deploy:** Netlify
+- **Deploy:** GitHub Pages (push to main → .github/workflows/deploy-pages.yml)
 - **AI katmanı (Faz 4):** Claude API — şimdilik kurma
 - **Stil:** Tailwind CSS + Framer Motion (animasyonlar için)
 
