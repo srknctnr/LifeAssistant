@@ -1,4 +1,4 @@
-import { foldTr } from '@/features/assistant/tr-text'
+import { foldTr } from '@/lib/turkish'
 import type { CuratedMovie } from '@/features/movies/curated-pool'
 import type { GenreAffinity } from '@/features/movies/taste'
 

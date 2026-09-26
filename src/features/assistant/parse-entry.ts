@@ -1,8 +1,5 @@
 import { findDate, findTime } from '@/features/assistant/tr-date'
-import {
-  foldTrIndexed,
-  parseTrAmountToMinor,
-} from '@/features/assistant/tr-text'
+import { foldTrIndexed, parseTrAmountToMinor } from '@/lib/turkish'
 import { fromMinor } from '@/features/expenses/split-math'
 
 /** what the sentence could reasonably be turned into, best first */

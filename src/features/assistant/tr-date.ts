@@ -1,8 +1,4 @@
-import {
-  MONTHS_TR,
-  WEEKDAYS_TR,
-  foldTrIndexed,
-} from '@/features/assistant/tr-text'
+import { MONTHS_TR, WEEKDAYS_TR, foldTrIndexed } from '@/lib/turkish'
 import { toISODate } from '@/lib/dates'
 
 export interface DateMatch {

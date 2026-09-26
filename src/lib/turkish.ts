@@ -1,5 +1,9 @@
 /**
- * Turkish text handling for the quick-entry parser.
+ * Turkish text handling.
+ *
+ * Lives in lib rather than under a feature because two features need it:
+ * the quick-entry parser reads sentences with it, and the film recommender
+ * folds titles with it so its exclusion list actually excludes.
  *
  * Everything here exists because a phone keyboard is not a form. People type
  * "persembe" for Perşembe, "YARIN" in caps, and "1.250,50 TL" for a number

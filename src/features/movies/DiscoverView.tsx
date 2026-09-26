@@ -3,7 +3,7 @@ import { Check, Clapperboard, Loader2, Plus, Star } from 'lucide-react'
 import { useState } from 'react'
 
 import { Segmented } from '@/components/Segmented'
-import { foldTr } from '@/features/assistant/tr-text'
+import { foldTr } from '@/lib/turkish'
 import { FamilyVisibilityToggle } from '@/features/family/FamilyVisibilityField'
 import { CURATED_POOL } from '@/features/movies/curated-pool'
 import { useMovies } from '@/features/movies/hooks'

@@ -1,10 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import {
-  foldTr,
-  foldTrIndexed,
-  parseTrAmountToMinor,
-} from '@/features/assistant/tr-text'
+import { foldTr, foldTrIndexed, parseTrAmountToMinor } from '@/lib/turkish'
 
 describe('foldTr', () => {
   it('folds Turkish letters to a plain form', () => {
