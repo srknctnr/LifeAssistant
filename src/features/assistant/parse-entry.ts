@@ -256,7 +256,7 @@ export function parseEntry(
   const saidFuture = INTENT_WORDS.some((w) => trWord(w).test(text))
   const past = date ? date.iso <= isoOf(today) : !saidFuture
 
-  if (!date && !amount && !category && !isMovie) return null
+  if (!date && !time && !amount && !category && !isMovie) return null
 
   const actions = chooseActions({
     isMovie,
@@ -309,15 +309,19 @@ function chooseActions(input: {
     isMovie ||
     hasTime ||
     (category !== null && OUTING_CATEGORIES.includes(category))
-  // Something is happening on a named day, and no money was mentioned — then
-  // the only thing it can be is a calendar entry.
-  const bareDate = hasDate && amount === null
+  // A written clock time with no day means today. The date field is shown
+  // and prefilled, so this is a visible default rather than a guess — the
+  // same one the spend form has always made.
+  const dayKnown = hasDate || hasTime
+  // Something is happening at a known time, and no money was mentioned —
+  // then the only thing it can be is a calendar entry.
+  const bareWhen = dayKnown && amount === null
 
   // A purchase already made does not belong on the calendar: "3 eylülde
   // eczaneden 90 TL ilaç aldım" is a receipt, not a plan. A past day with no
   // money attached still gets the offer, because a log of what happened is
   // then the only thing there is to make of the sentence.
-  if (hasDate && (bareDate || (isOuting && !past))) {
+  if (dayKnown && (bareWhen || (isOuting && !past))) {
     // never both: they would put two entries on the same day for one plan
     actions.push(isMovie ? 'movie-night' : 'event')
   }

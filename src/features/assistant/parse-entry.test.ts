@@ -278,3 +278,19 @@ describe('parseEntry, a receipt is not a plan', () => {
     ])
   })
 })
+
+describe('parseEntry, a clock with no day', () => {
+  // "saat 14.05 toplantı" used to be understood as nothing at all. A written
+  // clock time says the day is today clearly enough, and the date field is
+  // shown prefilled and editable — the same default the spend form makes.
+  it('reads a written time as a plan for today', () => {
+    const draft = parse('saat 14.05 toplantı')
+    expect(draft?.time).toBe('14:05')
+    expect(draft?.dateISO).toBeNull()
+    expect(draft?.actions).toEqual(['event'])
+  })
+
+  it('does not invent an appointment out of a spend', () => {
+    expect(parse('kahve 85 TL')?.actions).toEqual(['spend'])
+  })
+})
