@@ -1,5 +1,6 @@
 import {
   Bell,
+  CalendarArrowDown,
   Check,
   ChevronLeft,
   ChevronRight,
@@ -27,6 +28,7 @@ import type {
 import { CalendarGrid } from '@/features/calendar/CalendarGrid'
 import { CategoryForm } from '@/features/calendar/CategoryForm'
 import { busyDates, eventsOnDay } from '@/features/calendar/event-day'
+import { buildIcs } from '@/features/calendar/ics'
 import { EventForm } from '@/features/calendar/EventForm'
 import {
   useCategoryEntries,
@@ -108,10 +110,15 @@ export function CalendarPage() {
 
   return (
     <PageTransition>
-      <h1 className="text-2xl font-semibold tracking-tight">Takvim</h1>
-      <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
-        Planların, etkinliklerin ve yaşam kategorilerin.
-      </p>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Takvim</h1>
+          <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
+            Planların, etkinliklerin ve yaşam kategorilerin.
+          </p>
+        </div>
+        <IcsExportButton />
+      </div>
 
       <div className="mt-4">
         <Segmented<CalendarView>
@@ -589,5 +596,53 @@ function AgendaSection({ selectedISO }: { selectedISO: string }) {
         </div>
       )}
     </Section>
+  )
+}
+
+/**
+ * Hands the calendar over as a .ics file.
+ *
+ * This is the whole of "Google Calendar integration" and it needs no Google:
+ * .ics is the format every calendar app imports, so there is no OAuth client
+ * to register, no consent screen, no token to refresh and no server to keep
+ * one on — which matters, because this app is a static bundle. The reminders
+ * then come from the user's own calendar, on their phone, with the app shut.
+ *
+ * ponytail: export, not live sync. Editing an entry here means exporting
+ * again; the same UID means a re-import updates rather than duplicates. A
+ * real two-way sync needs an OAuth client id and somewhere to run a refresh,
+ * and neither exists yet.
+ */
+function IcsExportButton() {
+  const events = useEvents()
+  const reminders = useReminders()
+  const ready = events.isSuccess && reminders.isSuccess
+
+  function download() {
+    const file = buildIcs({
+      events: events.data ?? [],
+      // a reminder that has been dealt with is not a plan
+      reminders: (reminders.data ?? []).filter((r) => r.status === 'pending'),
+      stamp: new Date(),
+    })
+    const url = URL.createObjectURL(
+      new Blob([file], { type: 'text/calendar;charset=utf-8' }),
+    )
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `life-assistant-${todayISO()}.ics`
+    link.click()
+    URL.revokeObjectURL(url)
+  }
+
+  return (
+    <button
+      onClick={download}
+      disabled={!ready}
+      className="shrink-0 rounded-xl border border-zinc-200 px-3 py-2 text-xs font-semibold text-zinc-600 transition-colors hover:bg-zinc-100 disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+    >
+      <CalendarArrowDown size={14} className="mr-1.5 inline" />
+      .ics indir
+    </button>
   )
 }
