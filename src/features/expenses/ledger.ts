@@ -84,14 +84,53 @@ export function ledgerMembers(
   return [...members, ...former]
 }
 
+/**
+ * Every currency the ledger actually holds, the group's own first.
+ *
+ * The group's currency is always included so an empty ledger still has a card
+ * to draw; the rest are whatever people really spent.
+ */
+export function ledgerCurrencies(
+  expenses: { currency: string }[],
+  settlements: { currency: string }[],
+  primary: string,
+): string[] {
+  const rest = new Set(
+    [...expenses, ...settlements]
+      .map((r) => r.currency)
+      .filter((c) => c !== primary),
+  )
+  return [primary, ...[...rest].sort()]
+}
+
+/**
+ * One currency's ledger.
+ *
+ * `currency` is required, and that is the point: balances used to be summed
+ * across currencies, so a group that spent 100 € and 100 ₺ was told somebody
+ * owed 200 of something. There is no exchange rate here and no need for one —
+ * "you owe €40 and ₺300" is two facts, while one converted number is a guess
+ * dressed as an answer, and the rate it used would be invisible a month later.
+ */
 export function buildLedgerView(params: {
   members: LedgerMember[]
   expenses: ExpenseWithShares[]
   settlements: ExpenseSettlement[]
   userId: string | undefined
+  currency: string
 }): LedgerView {
-  const { members, expenses, settlements, userId } = params
-  const memberIds = ledgerParticipants(members, expenses, settlements)
+  const { members, userId } = params
+  const expenses = params.expenses.filter((e) => e.currency === params.currency)
+  const settlements = params.settlements.filter(
+    (s) => s.currency === params.currency,
+  )
+  // participants come from the whole ledger, not this currency's slice: a
+  // member who only ever paid in euros must still appear at zero here
+  const memberIds = ledgerParticipants(
+    members,
+    params.expenses,
+    params.settlements,
+  )
   const nameOf = (id: string) =>
     members.find((m) => m.userId === id)?.name ?? 'Eski üye'
 

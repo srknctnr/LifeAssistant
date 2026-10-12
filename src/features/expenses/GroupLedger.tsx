@@ -1,6 +1,6 @@
 import { ArrowRight, HandCoins, Receipt, Trash2, Wallet } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
-import { useState } from 'react'
+import { Fragment, useState } from 'react'
 
 import { AnimatedNumber } from '@/components/AnimatedNumber'
 import { EmptyState } from '@/components/EmptyState'
@@ -16,6 +16,7 @@ import {
 } from '@/features/expenses/hooks'
 import {
   buildLedgerView,
+  ledgerCurrencies,
   ledgerMembers,
   resolveTripTag,
   type LedgerMember,
@@ -47,7 +48,12 @@ export function GroupLedger({ familyId, currency, members }: GroupLedgerProps) {
 
   const [addOpen, setAddOpen] = useState(false)
   const [editExpense, setEditExpense] = useState<ExpenseWithShares | null>(null)
-  const [settleWith, setSettleWith] = useState<LedgerTransfer | null>(null)
+  // the suggestion carries its own currency: with two ledgers open, the
+  // settle form must record the debt in the currency it was run up in
+  const [settleWith, setSettleWith] = useState<{
+    transfer: LedgerTransfer
+    currency: string
+  } | null>(null)
   const [settleOpen, setSettleOpen] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
   // a label, never part of the balance: this filters the list only
@@ -60,12 +66,25 @@ export function GroupLedger({ familyId, currency, members }: GroupLedgerProps) {
     expenses.data ?? [],
     settlements.data ?? [],
   )
-  const view = buildLedgerView({
-    members,
-    expenses: expenses.data ?? [],
-    settlements: settlements.data ?? [],
-    userId: session?.user.id,
-  })
+  // One ledger per currency. A group that spent 100 € and 100 ₺ used to be
+  // told somebody owed 200 of something; there is no rate here and no need
+  // for one, because two honest numbers beat one invented one.
+  const currencies = ledgerCurrencies(
+    expenses.data ?? [],
+    settlements.data ?? [],
+    currency,
+  )
+  const views = currencies.map((code) => ({
+    code,
+    view: buildLedgerView({
+      members,
+      expenses: expenses.data ?? [],
+      settlements: settlements.data ?? [],
+      userId: session?.user.id,
+      currency: code,
+    }),
+  }))
+  const multi = views.length > 1
 
   const groupTrips = (trips.data ?? []).filter((t) => t.family_id === familyId)
   // never the raw state: a stale id would filter the list by a trip no chip
@@ -111,85 +130,97 @@ export function GroupLedger({ familyId, currency, members }: GroupLedgerProps) {
 
   return (
     <>
-      <div
-        className={`mt-6 rounded-3xl p-5 text-white shadow-lg ${
-          view.myNet >= 0
-            ? 'bg-gradient-to-br from-emerald-600 to-teal-600 shadow-emerald-600/20'
-            : 'bg-gradient-to-br from-rose-600 to-orange-600 shadow-rose-600/20'
-        }`}
-      >
-        <div className="flex items-center justify-between text-sm text-white/80">
-          <span className="flex items-center gap-2">
-            <HandCoins size={16} /> Ortak Kasa
-          </span>
-          <span className="text-xs">
-            toplam {formatMoney(view.total, currency)}
-          </span>
-        </div>
-        <p className="mt-3 text-sm text-white/80">
-          {view.isSettled
-            ? 'Herkes ödeşmiş'
-            : view.myNet >= 0
-              ? 'Senin alacağın'
-              : 'Senin borcun'}
-        </p>
-        <AnimatedNumber
-          className="mt-0.5 block text-4xl font-bold tracking-tight tabular-nums"
-          value={Math.abs(view.myNet)}
-          format={(v) => formatMoney(v, currency)}
-        />
-        {view.balances.length > 0 && (
-          <div className="mt-4 flex flex-wrap gap-1.5">
-            {view.balances.map((balance) => (
-              <span
-                key={balance.userId}
-                className="rounded-full bg-white/15 px-2.5 py-1 text-[11px] font-medium tabular-nums"
-              >
-                {balance.isSelf ? 'Sen' : balance.name}{' '}
-                {balance.net === 0
-                  ? '✓'
-                  : `${balance.net > 0 ? '+' : '−'}${formatMoney(Math.abs(balance.net), currency)}`}
+      {views.map(({ code, view }) => (
+        <Fragment key={code}>
+          <div
+            className={`mt-6 rounded-3xl p-5 text-white shadow-lg ${
+              view.myNet >= 0
+                ? 'bg-gradient-to-br from-emerald-600 to-teal-600 shadow-emerald-600/20'
+                : 'bg-gradient-to-br from-rose-600 to-orange-600 shadow-rose-600/20'
+            }`}
+          >
+            <div className="flex items-center justify-between text-sm text-white/90">
+              <span className="flex items-center gap-2">
+                <HandCoins size={16} /> Ortak Kasa
+                {/* the code only earns its space once there is more than one */}
+                {multi && (
+                  <span className="rounded-full bg-white/20 px-2 py-0.5 text-[11px] font-semibold">
+                    {code}
+                  </span>
+                )}
               </span>
-            ))}
+              <span className="text-xs">
+                toplam {formatMoney(view.total, code)}
+              </span>
+            </div>
+            <p className="mt-3 text-sm text-white/90">
+              {view.isSettled
+                ? 'Herkes ödeşmiş'
+                : view.myNet >= 0
+                  ? 'Senin alacağın'
+                  : 'Senin borcun'}
+            </p>
+            <AnimatedNumber
+              className="mt-0.5 block text-4xl font-bold tracking-tight tabular-nums"
+              value={Math.abs(view.myNet)}
+              format={(v) => formatMoney(v, code)}
+            />
+            {view.balances.length > 0 && (
+              <div className="mt-4 flex flex-wrap gap-1.5">
+                {view.balances.map((balance) => (
+                  <span
+                    key={balance.userId}
+                    className="rounded-full bg-white/15 px-2.5 py-1 text-[11px] font-medium tabular-nums"
+                  >
+                    {balance.isSelf ? 'Sen' : balance.name}{' '}
+                    {balance.net === 0
+                      ? '✓'
+                      : `${balance.net > 0 ? '+' : '−'}${formatMoney(Math.abs(balance.net), code)}`}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
-        )}
-      </div>
 
-      <Section title="Kim kime ödesin">
-        {view.transfers.length === 0 ? (
-          <p className="text-sm text-zinc-400">
-            {view.total === 0
-              ? 'Henüz ortak harcama yok.'
-              : 'Herkes ödeşti, borç kalmadı. 🎉'}
-          </p>
-        ) : (
-          <ul className="space-y-1.5">
-            {view.transfers.map((transfer) => (
-              <li key={`${transfer.fromUser}-${transfer.toUser}`}>
-                <button
-                  onClick={() => {
-                    setSettleWith(transfer)
-                    setSettleOpen(true)
-                  }}
-                  className="flex w-full items-center gap-3 rounded-xl bg-white px-3.5 py-3 text-left shadow-sm shadow-zinc-200/60 transition-colors hover:bg-indigo-50 dark:bg-zinc-900 dark:shadow-none dark:hover:bg-indigo-500/10"
-                >
-                  <span className="min-w-0 flex-1 truncate text-sm font-medium">
-                    {nameOf(transfer.fromUser)}
-                    <ArrowRight
-                      size={13}
-                      className="mx-1.5 inline text-zinc-400"
-                    />
-                    {nameOf(transfer.toUser)}
-                  </span>
-                  <span className="shrink-0 text-sm font-semibold tabular-nums">
-                    {formatMoney(transfer.amount, currency)}
-                  </span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </Section>
+          <Section
+            title={multi ? `Kim kime ödesin · ${code}` : 'Kim kime ödesin'}
+          >
+            {view.transfers.length === 0 ? (
+              <p className="text-sm text-zinc-400">
+                {view.total === 0
+                  ? 'Henüz ortak harcama yok.'
+                  : 'Herkes ödeşti, borç kalmadı. 🎉'}
+              </p>
+            ) : (
+              <ul className="space-y-1.5">
+                {view.transfers.map((transfer) => (
+                  <li key={`${transfer.fromUser}-${transfer.toUser}`}>
+                    <button
+                      onClick={() => {
+                        setSettleWith({ transfer, currency: code })
+                        setSettleOpen(true)
+                      }}
+                      className="flex w-full items-center gap-3 rounded-xl bg-white px-3.5 py-3 text-left shadow-sm shadow-zinc-200/60 transition-colors hover:bg-indigo-50 dark:bg-zinc-900 dark:shadow-none dark:hover:bg-indigo-500/10"
+                    >
+                      <span className="min-w-0 flex-1 truncate text-sm font-medium">
+                        {nameOf(transfer.fromUser)}
+                        <ArrowRight
+                          size={13}
+                          className="mx-1.5 inline text-zinc-400"
+                        />
+                        {nameOf(transfer.toUser)}
+                      </span>
+                      <span className="shrink-0 text-sm font-semibold tabular-nums">
+                        {formatMoney(transfer.amount, code)}
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Section>
+        </Fragment>
+      ))}
 
       <Section title="Ortak harcamalar" onAdd={() => setAddOpen(true)}>
         {allExpenses.length === 0 ? (
@@ -219,10 +250,16 @@ export function GroupLedger({ familyId, currency, members }: GroupLedgerProps) {
               <p className="mb-2 text-xs text-zinc-400">
                 Bu gezide harcanan:{' '}
                 <span className="font-semibold text-zinc-600 tabular-nums dark:text-zinc-300">
-                  {formatMoney(
-                    shownExpenses.reduce((sum, e) => sum + e.amount, 0),
-                    currency,
-                  )}
+                  {ledgerCurrencies(shownExpenses, [], currency)
+                    .map((code) => ({
+                      code,
+                      sum: shownExpenses
+                        .filter((e) => e.currency === code)
+                        .reduce((total, e) => total + e.amount, 0),
+                    }))
+                    .filter(({ sum }) => sum > 0)
+                    .map(({ code, sum }) => formatMoney(sum, code))
+                    .join(' + ')}
                 </span>{' '}
                 · bakiye yukarıda, grubun tamamı üzerinden
               </p>
@@ -379,9 +416,9 @@ export function GroupLedger({ familyId, currency, members }: GroupLedgerProps) {
       >
         <SettlementForm
           familyId={familyId}
-          currency={currency}
+          currency={settleWith?.currency ?? currency}
           members={participants}
-          suggestion={settleWith ?? undefined}
+          suggestion={settleWith?.transfer}
           onDone={() => setSettleOpen(false)}
         />
       </Sheet>

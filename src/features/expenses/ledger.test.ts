@@ -8,6 +8,7 @@ import {
   buildLedgerView,
   equalShares,
   ledgerMembers,
+  ledgerCurrencies,
   ledgerParticipants,
   resolveTripTag,
   weightedShares,
@@ -107,6 +108,7 @@ describe('buildLedgerView', () => {
       members,
       expenses: [expense()],
       settlements: [],
+      currency: 'TRY',
       userId: 'a',
     })
     expect(view.myNet).toBe(50)
@@ -128,6 +130,7 @@ describe('buildLedgerView', () => {
       members,
       expenses: [expense()],
       settlements: [settlement()],
+      currency: 'TRY',
       userId: 'a',
     })
     expect(view.myNet).toBe(0)
@@ -140,6 +143,7 @@ describe('buildLedgerView', () => {
       members,
       expenses: [expense()],
       settlements: [],
+      currency: 'TRY',
       userId: 'b',
     })
     expect(view.balances[0].name).toBe('Serkan')
@@ -152,6 +156,7 @@ describe('buildLedgerView', () => {
       members,
       expenses: [expense({ paid_by: 'gone' })],
       settlements: [],
+      currency: 'TRY',
       userId: 'a',
     })
     expect(view.balances.some((b) => b.name === 'Eski üye')).toBe(true)
@@ -180,6 +185,7 @@ describe('buildLedgerView', () => {
         }),
       ],
       settlements: [settlement({ amount: 10 })],
+      currency: 'TRY',
       userId: 'a',
     })
     const sum = view.balances.reduce((total, b) => total + b.net, 0)
@@ -258,5 +264,94 @@ describe('resolveTripTag', () => {
     expect(resolveTripTag('', trips)).toBeNull()
     expect(resolveTripTag(null, trips)).toBeNull()
     expect(resolveTripTag(undefined, trips)).toBeNull()
+  })
+})
+
+describe('mixed currencies', () => {
+  const euro = expense({
+    id: 'x2',
+    currency: 'EUR',
+    amount: 60,
+    paid_by: 'b',
+    expense_shares: [
+      {
+        id: 's3',
+        expense_id: 'x2',
+        family_id: 'f1',
+        user_id: 'a',
+        amount: 30,
+        weight: null,
+        created_at: '',
+      },
+      {
+        id: 's4',
+        expense_id: 'x2',
+        family_id: 'f1',
+        user_id: 'b',
+        amount: 30,
+        weight: null,
+        created_at: '',
+      },
+    ],
+  })
+
+  // Balances used to be summed across currencies, so 100 ₺ and 60 € came out
+  // as one number that is true in no currency at all.
+  it('keeps each currency ledger to itself', () => {
+    const base = {
+      members,
+      expenses: [expense(), euro],
+      settlements: [],
+      userId: 'a',
+    }
+    const lira = buildLedgerView({ ...base, currency: 'TRY' })
+    const eur = buildLedgerView({ ...base, currency: 'EUR' })
+
+    expect(lira.total).toBe(100)
+    expect(lira.myNet).toBe(50)
+    expect(eur.total).toBe(60)
+    expect(eur.myNet).toBe(-30)
+  })
+
+  // A settlement in euros cannot close a debt in lira.
+  it('does not let a settlement cross currencies', () => {
+    const base = {
+      members,
+      expenses: [expense()],
+      settlements: [settlement({ currency: 'EUR' })],
+      userId: 'a',
+    }
+    expect(buildLedgerView({ ...base, currency: 'TRY' }).myNet).toBe(50)
+    expect(buildLedgerView({ ...base, currency: 'EUR' }).myNet).toBe(-50)
+  })
+
+  // Somebody who only ever paid in euros still belongs in the lira card, at
+  // zero, or the group looks like it has fewer people than it has.
+  it('lists every participant in every currency', () => {
+    const view = buildLedgerView({
+      members,
+      expenses: [euro],
+      settlements: [],
+      currency: 'TRY',
+      userId: 'a',
+    })
+    expect(view.balances.map((b) => b.userId).sort()).toEqual(['a', 'b'])
+    expect(view.isSettled).toBe(true)
+  })
+})
+
+describe('ledgerCurrencies', () => {
+  it('puts the group currency first and names the rest once', () => {
+    expect(
+      ledgerCurrencies(
+        [{ currency: 'EUR' }, { currency: 'TRY' }, { currency: 'EUR' }],
+        [{ currency: 'USD' }],
+        'TRY',
+      ),
+    ).toEqual(['TRY', 'EUR', 'USD'])
+  })
+
+  it('still names the group currency when nothing has been spent', () => {
+    expect(ledgerCurrencies([], [], 'TRY')).toEqual(['TRY'])
   })
 })
