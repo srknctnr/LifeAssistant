@@ -17,6 +17,10 @@ import { Segmented } from '@/components/Segmented'
 import { Sheet } from '@/components/Sheet'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { useAuth } from '@/features/auth/useAuth'
+import { useReminders } from '@/features/reminders/hooks'
+import { dueReminderCount } from '@/features/reminders/reminder-sync'
+import { todayISO } from '@/lib/dates'
+import { useAppBadge } from '@/lib/use-app-badge'
 import { useOnline } from '@/lib/use-online'
 
 const navItems = [
@@ -33,6 +37,10 @@ type AddMode = 'spend' | 'sentence'
 export function AppLayout() {
   const { signOut } = useAuth()
   const online = useOnline()
+  // The installed icon carries the count, which is the one nudge that
+  // survives the app being closed without a push server behind it.
+  const reminders = useReminders()
+  useAppBadge(dueReminderCount(reminders.data ?? [], todayISO()))
   // Logging a spend is the thing done most often and it used to be the
   // deepest: six tabs, no add button anywhere, and the only way in was a
   // section header on the budget page below two cards. It lives in the layout

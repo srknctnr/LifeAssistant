@@ -249,3 +249,18 @@ export function planEventReminders({
 
   return plan
 }
+
+/**
+ * How many reminders are actually waiting on the user today.
+ *
+ * Pending and due — a reminder dated next month is not a nudge yet, and one
+ * already dealt with never was. Overdue ones count, because they are the
+ * whole reason to look.
+ */
+export function dueReminderCount(
+  reminders: { status: string; due_on: string }[],
+  todayIso: string,
+): number {
+  return reminders.filter((r) => r.status === 'pending' && r.due_on <= todayIso)
+    .length
+}

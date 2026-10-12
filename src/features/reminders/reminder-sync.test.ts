@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import type { Reminder } from '@/features/reminders/api'
 import {
+  dueReminderCount,
   eventOwnedMovieIds,
   planContributionReminders,
   planEventReminders,
@@ -541,5 +542,36 @@ describe('planContributionReminders — the month is closed by the amount', () =
     expect(second.toInsert).toEqual([])
     expect(second.toComplete).toEqual([])
     expect(second.toDismiss).toEqual([])
+  })
+})
+
+describe('dueReminderCount', () => {
+  const TODAY = '2026-10-12'
+  const r = (over: { status?: string; due_on?: string } = {}) => ({
+    status: 'pending',
+    due_on: TODAY,
+    ...over,
+  })
+
+  it('counts what is waiting today', () => {
+    expect(dueReminderCount([r(), r()], TODAY)).toBe(2)
+  })
+
+  // Overdue ones are the whole reason to look.
+  it('counts overdue', () => {
+    expect(dueReminderCount([r({ due_on: '2026-09-01' })], TODAY)).toBe(1)
+  })
+
+  it('ignores what is not due yet', () => {
+    expect(dueReminderCount([r({ due_on: '2026-11-01' })], TODAY)).toBe(0)
+  })
+
+  it('ignores what has been dealt with', () => {
+    expect(dueReminderCount([r({ status: 'done' })], TODAY)).toBe(0)
+    expect(dueReminderCount([r({ status: 'dismissed' })], TODAY)).toBe(0)
+  })
+
+  it('is zero for nothing', () => {
+    expect(dueReminderCount([], TODAY)).toBe(0)
   })
 })
