@@ -89,6 +89,7 @@ export function CategoryPicker({ value, onChange }: CategoryPickerProps) {
               }
             }}
             placeholder="Yeni kategori adı"
+            aria-label="Yeni kategori adı"
             className="w-full rounded-xl border border-zinc-200 bg-white px-3.5 py-2 text-sm text-zinc-900 transition placeholder:text-zinc-400 focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:border-indigo-500 dark:focus:ring-indigo-500/20"
           />
           <button
